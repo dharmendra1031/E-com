@@ -274,6 +274,10 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto request)
         {
             var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            if (request?.Items == null || !request.Items.Any() || request.Items.Any(i => i == null || i.ProductId <= 0 || i.Quantity <= 0) ||
+                request.Items.GroupBy(i => i.ProductId).Any(g => g.Count() > 1))
+                return BadRequest(new { message = currentCulture == "ar" ? "امر طلب غير صالح" : "Invalid order request" });
+
             var sessionUserId = HttpContext.Session.GetInt32("UserId");
             int userId;
 
@@ -347,13 +351,8 @@ namespace EcommerceWebApplication.Controllers
 
             if (userId == null)
                 return Unauthorized(new { message = "User not logged in" });
-            if (request == null || request.Items == null || !request.Items.Any())
-            {
-                if (currentCulture == "ar")
-                    return BadRequest(new { message = "امر طلب غير صالح" });
-                else
-                    return BadRequest(new { message = "Invalid order request" });
-            }
+            if (!await _context.UserAddresses.AnyAsync(a => a.AddressId == request.DeliveryAddress && a.UserId == userId && a.isdeleted == 0))
+                return BadRequest(new { message = currentCulture == "ar" ? "عنوان غير صالح" : "Invalid delivery address" });
 
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
