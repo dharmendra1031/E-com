@@ -931,44 +931,18 @@
     </script>
 
     <script>
-        $('#statusForm').on('submit', function (e) {
+        $('#statusForm').on('submit', async function (e) {
             e.preventDefault();
-
             const payload = {
                 orderId: $('#changeOrderId').val(),
                 currentStatus: $('#newStatus').val(),
                 remark: $('#remark').val()
             };
-
-            fetch('/ManageOrders/UpdateOrderStatus', {
+            await AdminFeedback.post('/ManageOrders/UpdateOrderStatus', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    $('#statusModal').modal('hide');
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: 'Status updated successfully!',
-                        confirmButtonColor: '#3085d6',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        location.reload(); // Refresh after user clicks OK
-                    });
-
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Something went wrong!',
-                        confirmButtonColor: '#d33'
-                    });
-                }
-            });
+            }, () => { $('#statusModal').modal('hide'); location.reload(); });
         });
     </script>
 
@@ -1047,36 +1021,15 @@
 
 
             // Submit Payment Status Update
-            $("#paymentStatusForm").submit(function (e) {
+            $("#paymentStatusForm").submit(async function (e) {
                 e.preventDefault();
-
-                var orderId = $("#modalOrderId").val();
-                var selectedStatus = $("#paymentStatusDropdown").val();
-
-                $.post("/ManageOrders/UpdatePaymentStatus", {
-                    orderId: orderId,
-                    PaymentStatus: selectedStatus
-                }, function (response) {
-                    if (response.success) {
-                        $("#paymentStatusModal").modal("hide");
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: response.message,
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: response.message || "Failed to update payment status.",
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                });
+                await AdminFeedback.post("/ManageOrders/UpdatePaymentStatus", {
+                    method: "POST",
+                    body: new URLSearchParams({
+                        orderId: $("#modalOrderId").val(),
+                        PaymentStatus: $("#paymentStatusDropdown").val()
+                    })
+                }, () => { $("#paymentStatusModal").modal("hide"); location.reload(); });
             });
         });
     </script>

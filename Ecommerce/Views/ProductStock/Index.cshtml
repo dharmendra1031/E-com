@@ -320,41 +320,18 @@
             $("#addStockModal").modal("show");
         }
 
-                function saveStock() {
-            var productId = $("#productId").val();
-            var newStock = $("#newStockQty").val();
-
-            if (!newStock || newStock <= 0) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "@_localizer["Invalid Input"]",
-                    text: "@_localizer["Please enter valid stock quantity."]",
-                    confirmButtonText: "OK"
-                });
+        async function saveStock() {
+            const productId = $("#productId").val();
+            const newStock = Number($("#newStockQty").val());
+            if (!Number.isInteger(newStock) || newStock <= 0 || newStock > 2147483647) {
+                AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "أدخل كمية مخزون صحيحة." : "Enter a valid positive stock quantity.");
                 return;
             }
-
-            $.post("/ProductStock/AddStock", { productId: productId, newStock: newStock }, function (response) {
-                if (response.success) {
-                    Swal.fire({
-                        icon: "success",
-                        title: "@_localizer["Success"]",
-                        text: response.message,
-                        confirmButtonText: "OK"
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "error",
-                        title: "@_localizer["Error"]",
-                        text: "@_localizer["Something went wrong."]",
-                        confirmButtonText: "OK"
-                    });
-                }
-            });
+            await AdminFeedback.post("/ProductStock/AddStock", {
+                method: "POST",
+                body: new URLSearchParams({productId, newStock: String(newStock)})
+            }, () => { $("#addStockModal").modal("hide"); location.reload(); });
         }
-
 
         //Filter searcg
                      function submitFilter() {

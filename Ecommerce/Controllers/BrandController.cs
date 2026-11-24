@@ -158,8 +158,6 @@ namespace EcommerceWebApplication.Controllers
                     {
                         brand.BrandLogo = compressedBytes;
                     }
-
-                    TempData["Success"] = "Brand updated successfully!";
                 }
                 else
                 {
@@ -171,15 +169,15 @@ namespace EcommerceWebApplication.Controllers
                     model.CreatedAt = DateTime.Now;
 
                     _context.Brand.Add(model);
-
-                    TempData["Success"] = "Brand created successfully!";
                 }
 
                 _context.SaveChanges();
+                TempData["Success"] = "Brand saved successfully.";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error: " + ex.Message;
+                TempData.Remove("Success");
+                TempData["Error"] = "Unable to save brand. Please review the details and try again.";
             }
 
             return RedirectToAction("Index");

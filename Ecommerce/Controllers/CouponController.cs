@@ -152,6 +152,11 @@ namespace EcommerceWebApplication.Controllers
                 if (model.CouponId > 0) // Update
                 {
                     var coupon = _context.Coupons.FirstOrDefault(c => c.CouponId == model.CouponId);
+                    if (coupon == null)
+                    {
+                        TempData["Error"] = "Coupon not found.";
+                        return RedirectToAction("Index");
+                    }
                     if (coupon != null)
                     {
                         coupon.Code = model.Code;
@@ -164,20 +169,20 @@ namespace EcommerceWebApplication.Controllers
                         coupon.IsActive = model.IsActive;
 
                         _context.Update(coupon);
-                        TempData["Success"] = "Coupon updated successfully.";
                     }
                 }
                 else // Save
                 {
                     _context.Coupons.Add(model);
-                    TempData["Success"] = "Coupon created successfully.";
                 }
 
                 _context.SaveChanges();
+                TempData["Success"] = "Coupon saved successfully.";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error: " + ex.Message;
+                TempData.Remove("Success");
+                TempData["Error"] = "Unable to save coupon. Please review the details and try again.";
             }
             return RedirectToAction("Index");
         }

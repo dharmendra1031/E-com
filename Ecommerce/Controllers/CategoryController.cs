@@ -437,7 +437,7 @@ namespace EcommerceWebApplication.Controllers
                 model.CreatedBy = 1;
 
                 _context.TopCategories.Add(model);
-                TempData["Message"] = "Top Category saved successfully.";
+
             }
             else
             {
@@ -462,10 +462,11 @@ namespace EcommerceWebApplication.Controllers
                     }
                 }
                 _context.TopCategories.Update(existing);
-                TempData["Message"] = "Top Category updated successfully.";
+
             }
 
             await _context.SaveChangesAsync();
+            TempData["Success"] = "Top category saved successfully.";
             return RedirectToAction("TopCategory");
         }
         [HttpPost]
@@ -476,7 +477,7 @@ namespace EcommerceWebApplication.Controllers
             {
                 _context.TopCategories.Remove(item);
                 await _context.SaveChangesAsync();
-                TempData["Message"] = "Top Category Deleted successfully.";
+                TempData["Success"] = "Top category deleted successfully.";
             }
 
             return RedirectToAction("TopCategory");
