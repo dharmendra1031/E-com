@@ -17,7 +17,7 @@
 </style>
 
 
-<div class="container-fluid">
+<div class="container-fluid store-wide">
     <div class="catalog-layout">
         <!-- LEFT SIDEBAR -->
         <aside class="catalog-sidebar">
@@ -42,147 +42,128 @@
     </div>
 </div>
 <script>
-    let selectedCategoryName = "";
-    let selectedSubCategoryName = "";
+    (() => {
+        const categories = document.getElementById("categoryContainer");
+        const subcategories = document.getElementById("SubCategoryContainer");
+        const products = document.getElementById("ProductContainer");
+        const arabic = document.documentElement.lang === "ar";
+        const selectedCategory = "@ViewBag.SelectedCategoryId";
+        const selectedSubcategory = "@ViewBag.SelectedSubCategoryId";
+        let categoryId = "", subcategoryId = "";
+        let categoryRequest, productRequest;
 
-    let currentCategoryId = null;
-    let currentSubCategoryId = null;
+        async function getPartial(url, signal) {
+            const response = await fetch(url, { signal });
+            if (!response.ok) throw new Error("Unable to load catalog");
+            return response.text();
+        }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const selectedCategoryId = urlParams.get("categoryId");
+        function status(container, message) {
+            container.textContent = message;
+        }
 
-    // 🔹 LOAD CATEGORIES (AJAX)
-    fetch("/WebCategory/CategoryPartial")
-        .then(res => res.text())
-        .then(html => {
-            document.getElementById("categoryContainer").innerHTML = html;
+        function setActive(container, link) {
+            container.querySelectorAll("a.active").forEach(item => {
+                item.classList.remove("active");
+                item.removeAttribute("aria-current");
+            });
+            link.classList.add("active");
+            link.setAttribute("aria-current", "true");
+        }
 
-            let selectedCategory;
+        function updateUrl() {
+            const url = new URL(location.href);
+            url.searchParams.set("categoryId", categoryId);
+            if (subcategoryId) url.searchParams.set("subCategoryId", subcategoryId);
+            else url.searchParams.delete("subCategoryId");
+            history.replaceState(null, "", url);
+        }
 
-            if (selectedCategoryId) {
-                selectedCategory = document.querySelector(
-                    `.category-link[data-categoryid="${selectedCategoryId}"]`
-                );
+        function updateHeading() {
+            const title = document.getElementById("breadcrumbTitle");
+            if (!title) return;
+            const parent = categories.querySelector(".active")?.textContent.trim() || "";
+            const child = subcategories.querySelector(".active")?.dataset.subname || "";
+            title.textContent = child ? parent + " / " + child : parent;
+        }
+
+        async function loadProducts() {
+            productRequest?.abort();
+            const request = new AbortController();
+            productRequest = request;
+            const params = new URLSearchParams({ categoryId, sortBy: document.getElementById("sortProducts")?.value || "newest" });
+            if (subcategoryId) params.set("subCategoryId", subcategoryId);
+            status(products, arabic ? "جارٍ تحميل المنتجات…" : "Loading products…");
+            products.setAttribute("aria-busy", "true");
+            try {
+                const html = await getPartial("/WebCategory/ProductPartial?" + params, request.signal);
+                if (!request.signal.aborted) products.innerHTML = html;
+            } catch (error) {
+                if (error.name !== "AbortError") status(products, arabic ? "تعذر تحميل المنتجات." : "Unable to load products.");
+            } finally {
+                if (productRequest === request) products.removeAttribute("aria-busy");
             }
+        }
 
-            if (!selectedCategory) {
-                selectedCategory = document.querySelector(".category-link");
+        async function selectCategory(link, initialSubcategory = "") {
+            categoryRequest?.abort();
+            productRequest?.abort();
+            const request = new AbortController();
+            categoryRequest = request;
+            categoryId = link.dataset.categoryid;
+            subcategoryId = "";
+            setActive(categories, link);
+            status(subcategories, arabic ? "جارٍ التحميل…" : "Loading…");
+            products.textContent = "";
+            products.removeAttribute("aria-busy");
+            try {
+                const html = await getPartial("/WebCategory/SubCategoryCardPartial?categoryId=" + encodeURIComponent(categoryId), request.signal);
+                if (request.signal.aborted) return;
+                subcategories.innerHTML = html;
+                const sub = Array.from(subcategories.querySelectorAll(".subcategory-link")).find(item => item.dataset.subid === initialSubcategory);
+                if (sub) {
+                    subcategoryId = sub.dataset.subid;
+                    setActive(subcategories, sub);
+                }
+                updateHeading();
+                updateUrl();
+                await loadProducts();
+            } catch (error) {
+                if (error.name !== "AbortError") status(subcategories, arabic ? "تعذر التحميل." : "Unable to load categories.");
             }
+        }
 
-            if (selectedCategory) {
-                selectedCategory.click(); // 🔥 auto trigger
-            }
+        categories.addEventListener("click", event => {
+            const link = event.target.closest(".category-link");
+            if (!link) return;
+            event.preventDefault();
+            selectCategory(link);
         });
 
-    // 🔹 CATEGORY CLICK
-    document.addEventListener("click", function (e) {
-        const cat = e.target.closest(".category-link");
-        if (!cat) return;
+        subcategories.addEventListener("click", event => {
+            const link = event.target.closest(".subcategory-link");
+            if (!link) return;
+            event.preventDefault();
+            subcategoryId = link.dataset.subid;
+            setActive(subcategories, link);
+            updateHeading();
+            updateUrl();
+            loadProducts();
+        });
 
-        e.preventDefault(); // ✅ VERY IMPORTANT
+        subcategories.addEventListener("change", event => {
+            if (event.target.id === "sortProducts" && categoryId) loadProducts();
+        });
 
-        currentCategoryId = cat.dataset.categoryid;
-        currentSubCategoryId = null;
-
-        selectedCategoryName = cat.innerText.trim();
-        selectedSubCategoryName = "";
-
-        // Active class
-        document.querySelectorAll(".category-link")
-            .forEach(x => x.classList.remove("active"));
-        cat.classList.add("active");
-          document.querySelectorAll(".subcategory-link")
-        .forEach(x => x.classList.remove("active"));
-
-
-        // Load SubCategories
-        fetch(`/WebCategory/SubCategoryCardPartial?categoryId=${currentCategoryId}`)
-            .then(res => res.text())
-            .then(html => {
-                document.getElementById("SubCategoryContainer").innerHTML = html;
-
-                // Load products directly (default)
-                loadProductsByCategory(currentCategoryId);
-                updateHeading();
-            });
-    });
-
-    // 🔹 SUBCATEGORY CLICK
-    document.addEventListener("click", function (e) {
-         const sub = e.target.closest(".subcategory-link");
-         if (!sub) return;
-
-         e.preventDefault();
-
-         currentSubCategoryId = sub.dataset.subid;
-         selectedSubCategoryName = sub.dataset.subname;
-
-         // 🔹 sab subcategories se active hatao
-         document.querySelectorAll(".subcategory-link")
-             .forEach(x => x.classList.remove("active"));
-
-         // 🔹 sirf clicked wali active
-         sub.classList.add("active");
-
-         updateHeading();
-
-         fetch(`/WebCategory/ProductPartial?categoryId=${currentCategoryId}&subCategoryId=${currentSubCategoryId}`)
-             .then(res => res.text())
-             .then(html => {
-                 document.getElementById("ProductContainer").innerHTML = html;
-             });
-     });
-
-    // 🔹 LOAD PRODUCTS BY CATEGORY
-    function loadProductsByCategory(categoryId) {
-        fetch(`/WebCategory/ProductPartial?categoryId=${categoryId}`)
-            .then(res => res.text())
-            .then(html => {
-                document.getElementById("ProductContainer").innerHTML = html;
-            });
-    }
-
-    // 🔹 UPDATE HEADING / BREADCRUMB
-    function updateHeading() {
-        const title = document.getElementById("breadcrumbTitle");
-        if (!title) return;
-
-        title.innerText = selectedSubCategoryName
-            ? `${selectedCategoryName} / ${selectedSubCategoryName}`
-            : selectedCategoryName;
-    }
+        getPartial("/WebCategory/CategoryPartial").then(html => {
+            categories.innerHTML = html;
+            const links = Array.from(categories.querySelectorAll(".category-link"));
+            const link = links.find(item => item.dataset.categoryid === selectedCategory) || links[0];
+            if (link) selectCategory(link, selectedSubcategory);
+            else status(products, arabic ? "لا توجد فئات" : "No categories found");
+        }).catch(() => status(categories, arabic ? "تعذر التحميل." : "Unable to load categories."));
+    })();
 </script>
-
-<script>
-    // 🔹 SORTING (standalone & working)
-    document.addEventListener("change", function (e) {
-
-        if (!e.target.matches("#sortProducts")) return;
-
-        const sortBy = e.target.value;
-
-        // 🔹 category must be selected
-        if (!currentCategoryId) {
-            console.warn("Category not selected yet");
-            return;
-        }
-
-        let url = `/WebCategory/ProductPartial?categoryId=${currentCategoryId}`;
-
-        if (currentSubCategoryId) {
-            url += `&subCategoryId=${currentSubCategoryId}`;
-        }
-
-        url += `&sortBy=${sortBy}`;
-
-        fetch(url)
-            .then(res => res.text())
-            .then(html => {
-                document.getElementById("ProductContainer").innerHTML = html;
-            });
-    });
-</script>
-
 
 @if (TempData["CartMessage"] != null)
 {

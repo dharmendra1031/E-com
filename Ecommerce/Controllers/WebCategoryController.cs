@@ -15,6 +15,18 @@ namespace EcommerceWebApplication.Controllers
         }
         public IActionResult Index(int? categoryId, int? subCategoryId)
         {
+            if (subCategoryId.HasValue)
+            {
+                var parentCategoryId = _context.SubCategories
+                    .Where(s => s.SubCategoryId == subCategoryId && s.IsActive && s.ParentCategory.IsActive)
+                    .Select(s => (int?)s.ParentCategoryId)
+                    .FirstOrDefault();
+                if (parentCategoryId.HasValue)
+                    categoryId = parentCategoryId;
+                else
+                    subCategoryId = null;
+            }
+
             ViewBag.SelectedCategoryId = categoryId;
             ViewBag.SelectedSubCategoryId = subCategoryId;
             return View();
