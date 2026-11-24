@@ -27,8 +27,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--base-url", default="http://localhost:5229")
 parser.add_argument("--browser", choices=["chromium","firefox","webkit"], default="chromium")
 parser.add_argument("--reference", action="store_true")
+parser.add_argument("--product-id", type=int, help="Existing public product ID for product-detail coverage")
+parser.add_argument("--checkout", action="store_true", help="Check checkout page without submitting an order; requires a valid cart")
 parser.add_argument("--output", type=Path, default=Path(tempfile.gettempdir())/"ecom-responsive")
 args = parser.parse_args()
+if args.product_id is not None:
+    ROUTES.append(("product", "/WebSingleProduct/SingleProduct/"+str(args.product_id)))
+if args.checkout:
+    ROUTES.append(("checkout", "/WebCheckout/Index"))
 args.output.mkdir(parents=True, exist_ok=True)
 report = []
 
@@ -61,6 +67,9 @@ with sync_playwright() as pw:
                         const body=document.querySelector('#pageContent');
                         const search=document.querySelector('#searchInput');
                         const rect=el=>el?.getBoundingClientRect();
+                        const controls = [...document.querySelectorAll("#siteHeader .store-header-action, #siteHeader .header-actions > .btn, .store-product-grid .add-to-cart-btn")].filter(el=>rect(el).width && rect(el).height && (rect(el).width<43.5 || rect(el).height<43.5)).map(el=>el.className);
+                        const badImages = [...document.querySelectorAll(".store-product-grid .cart-image-container")].filter(el=>rect(el).height && Math.abs(rect(el).width/rect(el).height-4/3)>.05).length;
+                        const clippedCards = [...document.querySelectorAll(".store-product-grid .cart-item-card, .store-product-grid .cart-item-footer, .store-product-grid .product-price")].filter(el=>el.scrollWidth>el.clientWidth+2).length;
                         const overflow=[...document.querySelectorAll('body *')].filter(el=>{
                           if (!el.getClientRects().length || getComputedStyle(el).visibility==='hidden') return false;
                           if (el.closest('.overflow-auto,.category-scroll,.category-list,.storefront-brands,.product-thumbnails,.table-responsive,.carousel,.offcanvas,.dropdown-menu')) return false;
@@ -68,7 +77,7 @@ with sync_playwright() as pw:
                           return r.width>0 && r.height>0 && (r.right>innerWidth+2 || r.left< -2);
                         }).slice(0,12).map(el=>el.tagName+'.'+String(el.className).slice(0,100));
                         return {lang:root.lang,dir:root.dir||getComputedStyle(root).direction,
-                          viewport:root.clientWidth,scrollWidth:root.scrollWidth,
+                          viewport:root.clientWidth,scrollWidth:root.scrollWidth, controls,badImages,clippedCards,
                           headerHeight:rect(header)?.height||0,
                           headerOverlaps:header && body && getComputedStyle(header).position==='fixed'
                             ? rect(body).top+parseFloat(getComputedStyle(body).paddingTop)<rect(header).bottom-2:false,
@@ -83,6 +92,9 @@ with sync_playwright() as pw:
                         if metrics["lang"]!=language: row["issues"].append("wrong language")
                         if metrics["headerOverlaps"]: row["issues"].append("header overlaps page")
                         if not metrics["searchVisible"]: row["issues"].append("search hidden")
+                        if metrics["controls"]: row["issues"].append("undersized touch targets")
+                        if metrics["badImages"]: row["issues"].append("product image aspect ratio")
+                        if metrics["clippedCards"]: row["issues"].append("product card clipping")
                     page.screenshot(path=str(args.output/f"{args.browser}-{language}-{width}x{height}-{name}.png"), full_page=False, animations="disabled")
                 except Exception as error:
                     row["issues"].append(str(error))
