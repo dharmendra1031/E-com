@@ -1,0 +1,26 @@
+name: Web application CI
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+    branches: [development, main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore web project
+        run: dotnet restore Ecommerce/EcommerceWebApplication.csproj
+      - name: Build web project
+        run: dotnet build Ecommerce/EcommerceWebApplication.csproj --configuration Release --no-restore
+      - name: List vulnerable dependencies
+        run: dotnet list Ecommerce/EcommerceWebApplication.csproj package --vulnerable --include-transitive
