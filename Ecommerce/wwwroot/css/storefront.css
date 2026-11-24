@@ -75,7 +75,9 @@
 .store-header-action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; gap: 5px; padding-inline: 4px; color: white; border: 0; background: transparent; text-decoration: none; }
 .store-header-grid .header-actions > .btn { min-width: 44px; min-height: 44px; }
 #siteHeader .store-categories-toggle { min-height: 44px; padding-inline: 4px; }
-#siteHeader #categoryDropdown { max-width: min(85vw, 360px); }
+#siteHeader #categoryDropdown { width: min(300px, 85vw); max-width: 85vw; padding: 6px; }
+#siteHeader #categoryDropdown .dropdown-item { display:flex; align-items:center; gap:12px; min-height:44px; padding:8px 12px; font-size:.9rem; color:#111; }
+#siteHeader #categoryDropdown .submenu { width: min(300px, 85vw); border:1px solid #dce3e9; border-radius:8px; padding:6px; }
 @media (max-width: 991.98px) { #siteHeader #categoryDropdown { max-height: min(65dvh, 480px); overflow-y: auto; } }
 #siteHeader #categoryDropdown .dropdown-item { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 991.98px) {

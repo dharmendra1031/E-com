@@ -86,7 +86,7 @@ namespace EcommerceWebApplication.Controllers
                     ReviewCount = p.ProductReviews.Count(),
                     Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
                         - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
-                    ProductImageId = p.ProductImages.Where(img => img.ImageData != null).OrderByDescending(img => img.IsPrimary == true).ThenBy(img => img.ImageId)
+                    ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
                         .Select(img => (int?)img.ImageId).FirstOrDefault()
                 }).ToList();
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
@@ -98,11 +98,14 @@ namespace EcommerceWebApplication.Controllers
         public IActionResult FilterBrands(int categoryId, int? subCategoryId)
         {
             bool ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-            var brands = _context.Products.AsNoTracking()
-                .Where(p => p.IsActive && p.CategoryId == categoryId && p.BrandId != null &&
-                    (!subCategoryId.HasValue || p.SubCategoryId == subCategoryId))
-                .Select(p => new { id = p.BrandId, name = ar ? p.Brand.BrandNameAr : p.Brand.BrandNameAEn })
-                .Distinct().OrderBy(b => b.name).ToList();
+            var products = _context.Products.AsNoTracking()
+                .Where(p => p.IsActive && p.CategoryId == categoryId && p.BrandId.HasValue);
+            if (subCategoryId.HasValue)
+                products = products.Where(p => p.SubCategoryId == subCategoryId.Value);
+            var brands = _context.Brand.AsNoTracking()
+                .Where(b => products.Any(p => p.BrandId == b.BrandId))
+                .Select(b => new { id = b.BrandId, name = ar && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn })
+                .OrderBy(b => b.name).ToList();
             return Ok(brands);
         }
 

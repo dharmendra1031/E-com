@@ -41,6 +41,7 @@
                     <button type="button" id="resetFilters" class="btn btn-outline-secondary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعادة تعيين" : "Reset")</button>
                 </div>
                 <p id="filterError" class="small text-danger mb-0" role="status"></p>
+                <button type="button" id="retryBrands" class="btn btn-outline-primary btn-sm w-100 mt-2 d-none">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعادة تحميل العلامات التجارية" : "Retry brands")</button>
             </form>
             </div>
         </aside>
@@ -53,6 +54,7 @@
             <div class="text-center my-3">
                 <button type="button" id="loadMoreProducts" class="btn btn-outline-primary px-4 py-2 d-none">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "عرض المزيد" : "Load more products")</button>
                 <p id="catalogStatus" class="small text-danger mt-2" role="status"></p>
+                <button type="button" id="retryProducts" class="btn btn-outline-primary d-none">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعادة المحاولة" : "Try again")</button>
             </div>
         </main>
     </div>
@@ -79,6 +81,10 @@
         const rating = document.getElementById("minRating");
         const stock = document.getElementById("inStock");
         const resultCount = document.getElementById("resultCount");
+        const retryBrands = document.getElementById("retryBrands");
+        const retryProducts = document.getElementById("retryProducts");
+        retryBrands.addEventListener("click", () => loadBrands());
+        retryProducts.addEventListener("click", () => loadProducts());
         let filters = {};
         let brandRequest;
         function resetFilterValues() {
@@ -93,16 +99,23 @@
             brandRequest = request;
             brand.replaceChildren(new Option(arabic ? "الكل" : "All brands", ""));
             brand.disabled = true;
+            retryBrands.classList.add("d-none");
+            filterError.textContent = "";
             try {
                 const params = new URLSearchParams({ categoryId });
                 if (subcategoryId) params.set("subCategoryId", subcategoryId);
                 const response = await fetch("/WebCategory/FilterBrands?" + params, { signal: request.signal });
-                if (!response.ok) throw new Error();
+                if (!response.ok) throw new Error("FilterBrands HTTP " + response.status);
                 const data = await response.json();
+                if (!Array.isArray(data)) throw new Error("Invalid FilterBrands response");
                 if (request.signal.aborted) return;
                 for (const item of data) if (item.id && item.name) brand.add(new Option(item.name, item.id));
             } catch(error) {
-                if (error.name !== "AbortError") catalogStatus.textContent = arabic ? "تعذر تحميل العلامات التجارية." : "Unable to load brands.";
+                if (error.name !== "AbortError") {
+                    console.error("Catalog brands:", error);
+                    filterError.textContent = arabic ? "تعذر تحميل العلامات التجارية." : "Unable to load brands.";
+                    retryBrands.classList.remove("d-none");
+                }
             } finally { if (brandRequest === request) brand.disabled = false; }
         }
         filterForm.addEventListener("submit", event => {
@@ -130,7 +143,7 @@
 
         async function getPartial(url, signal) {
             const response = await fetch(url, { signal });
-            if (!response.ok) throw new Error("Unable to load catalog");
+            if (!response.ok) throw new Error(new URL(url, location.origin).pathname + " HTTP " + response.status);
             return response.text();
         }
 
@@ -185,6 +198,7 @@
                 status(products, arabic ? "جارٍ تحميل المنتجات…" : "Loading products…");
             }
             more.disabled = true;
+            retryProducts.classList.add("d-none");
             catalogStatus.textContent = "";
             const params = new URLSearchParams({ categoryId, page, sortBy: document.getElementById("sortProducts")?.value || "newest", ...filters });
             if (subcategoryId) params.set("subCategoryId", subcategoryId);
@@ -208,8 +222,12 @@
                 more.classList.toggle("d-none", !nextPage);
             } catch (error) {
                 if (error.name !== "AbortError") {
+                    console.error("Catalog products:", error);
                     if (append) catalogStatus.textContent = arabic ? "تعذر تحميل المزيد. حاول مرة أخرى." : "Unable to load more. Try again.";
-                    else status(products, arabic ? "تعذر تحميل المنتجات." : "Unable to load products.");
+                    else {
+                        status(products, arabic ? "تعذر تحميل المنتجات." : "Unable to load products.");
+                        retryProducts.classList.remove("d-none");
+                    }
                 }
             } finally {
                 if (productRequest === request) {
@@ -235,6 +253,7 @@
             products.removeAttribute("aria-busy");
             nextPage = 0;
             more.classList.add("d-none");
+            retryProducts.classList.add("d-none");
             catalogStatus.textContent = "";
             try {
                 const html = await getPartial("/WebCategory/SubCategoryCardPartial?categoryId=" + encodeURIComponent(categoryId), request.signal);
