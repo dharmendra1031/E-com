@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers.Admin
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ProductStockController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -99,8 +99,11 @@ namespace EcommerceWebApplication.Controllers.Admin
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult AddStock(int productId, int newStock)
         {
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var userId) || !_context.Users.Any(u => u.UserId == userId && u.IsActive))
+                return Json(new { success = false, message = "Administrator session is invalid." });
             if (!ModelState.IsValid || newStock <= 0 || !_context.Products.Any(p => p.ProductId == productId))
                 return Json(new { success = false, message = "Invalid product or stock quantity." });
 
@@ -109,7 +112,7 @@ namespace EcommerceWebApplication.Controllers.Admin
                 ProductId = productId,
                 StockQty = newStock,
                 CreatedAt = DateTime.Now,
-                CreatedBy = 1 // 🔹 Replace with logged-in user id
+                CreatedBy = userId
             };
 
             _context.ProductStocks.Add(stock);

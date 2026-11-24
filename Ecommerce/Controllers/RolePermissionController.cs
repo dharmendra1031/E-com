@@ -126,6 +126,20 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CreateOrUpdatePermission(RolePermission model)
         {
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var userId) || !_context.Users.Any(u => u.UserId == userId && u.IsActive))
+                return Forbid();
+            if (!_context.Roles.Any(r => r.RoleId == model.RoleId))
+            {
+                TempData["Error"] = "Invalid role.";
+                return RedirectToAction("RoleIndex");
+            }
+            model.PageIds = model.PageIds?.Distinct().ToList() ?? new List<int>();
+            var validPages = _context.PageMaster.Select(p => p.PageId).ToList().ToHashSet();
+            if (model.PageIds.Any(id => !validPages.Contains(id)))
+            {
+                TempData["Error"] = "Invalid page selection.";
+                return RedirectToAction("RoleIndex", new { roleId = model.RoleId });
+            }
             
             if (model.PageIds == null || !model.PageIds.Any())
             {
@@ -175,7 +189,7 @@ namespace EcommerceWebApplication.Controllers
                     existing.ReportView = model.ReportView;
                     existing.ReportPrint = model.ReportPrint;
                     existing.UpdatedAt = DateTime.Now;
-                    existing.UpdateBy = 1;
+                    existing.UpdateBy = userId;
 
                     _context.RolePermission.Update(existing);
                     anyUpdated = true;
@@ -194,7 +208,7 @@ namespace EcommerceWebApplication.Controllers
                         ReportView = model.ReportView,
                         ReportPrint = model.ReportPrint,
                         CreatedAt = DateTime.Now,
-                        CreatedBy = 1
+                        CreatedBy = userId
                     };
 
                     _context.RolePermission.Add(newPermission);
@@ -332,6 +346,7 @@ namespace EcommerceWebApplication.Controllers
         //}
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
         {
             try

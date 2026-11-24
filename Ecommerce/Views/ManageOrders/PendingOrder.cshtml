@@ -12,6 +12,7 @@
 
 }
 
+@Html.AntiForgeryToken()
 <div id="main-content">
     <div class="row">
         <div class="col-lg-12">
@@ -898,12 +899,13 @@
 
             fetch('/ManageOrders/VerifyPassword', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
+                body: JSON.stringify({ password, orderId: Number(selectedOrderId), operation: "order" })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.valid) {
+                    $('#adminPassword').val('');
                     $('#passwordModal').modal('hide');
 
                     fetch(`/ManageOrders/GetStatusList?orderId=${selectedOrderId}`)
@@ -915,8 +917,7 @@
                             $statusDropdown.append(`<option value="">-- Select Status --</option>`);
 
                             statusList.forEach(item => {
-                                const selectedAttr = item.selected ? 'selected' : '';
-                                $statusDropdown.append(`<option value="${item.value}" ${selectedAttr}>${item.text}</option>`);
+                                $statusDropdown.append(new Option(item.text, item.value, false, item.selected));
                             });
 
                             $('#changeOrderId').val(selectedOrderId);
@@ -934,8 +935,8 @@
         $('#statusForm').on('submit', async function (e) {
             e.preventDefault();
             const payload = {
-                orderId: $('#changeOrderId').val(),
-                currentStatus: $('#newStatus').val(),
+                orderId: Number($('#changeOrderId').val()),
+                currentStatus: Number($('#newStatus').val()),
                 remark: $('#remark').val()
             };
             await AdminFeedback.post('/ManageOrders/UpdateOrderStatus', {
@@ -988,13 +989,14 @@
 
                 fetch('/ManageOrders/VerifyPassword', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
+                    body: JSON.stringify({ password, orderId: Number(selectedPaymentOrderId), operation: "payment" })
                 })
                 .then(res => res.json())
                 .then(data => {
                     // Submit Payment Status binding
                     if (data.valid) {
+                        $('#paymentAdminPassword').val('');
                         $('#paymentPasswordModal').modal('hide');
 
                         $("#paymentStatusDropdown").empty();

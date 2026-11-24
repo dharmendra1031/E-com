@@ -10,7 +10,7 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ManageOrdersController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -216,44 +216,70 @@ namespace EcommerceWebApplication.Controllers
             }
         }
 
-        [HttpPost]
-        public JsonResult VerifyPassword([FromBody] PasswordRequest model)
-        {
-            if (string.IsNullOrEmpty(model.Password))
-            {
-                return Json(new { valid = false });
-            }
+        // Re-authentication is scoped to the current administrator, order and operation.
+        private string VerificationKey(int userId, int orderId, string operation)
+            => $"OrderVerification:{userId}:{orderId}:{operation}";
 
-            var user = _context.Users.FirstOrDefault(u => u.RoleId == 1 && u.PasswordHash == model.Password);
-            return Json(new { valid = user != null });
+        private bool ConsumeVerification(int orderId, string operation, out int userId)
+        {
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out userId))
+                return false;
+            var key = VerificationKey(userId, orderId, operation);
+            var proof = HttpContext.Session.GetString(key);
+            HttpContext.Session.Remove(key);
+            var currentUserId = userId;
+            return long.TryParse(proof, out var expires) && expires >= DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                && _context.Users.Any(u => u.UserId == currentUserId && u.IsActive && u.Role.RoleName == "Admin");
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        public JsonResult VerifyPassword([FromBody] PasswordRequest model)
+        {
+            if (model == null || string.IsNullOrEmpty(model.Password)
+                || !int.TryParse(User.FindFirst("UserId")?.Value, out var userId)
+                || model.OrderId <= 0 || (model.Operation != "order" && model.Operation != "payment"))
+                return Json(new { valid = false });
+
+            var key = VerificationKey(userId, model.OrderId, model.Operation);
+            HttpContext.Session.Remove(key);
+            // Existing password representation is retained until all login paths are migrated.
+            var user = _context.Users.FirstOrDefault(u => u.UserId == userId && u.IsActive && u.Role.RoleName == "Admin");
+            if (user == null || !string.Equals(user.PasswordHash, model.Password, StringComparison.Ordinal)
+                || !_context.Orders.Any(o => o.OrderId == model.OrderId))
+                return Json(new { valid = false });
+
+            HttpContext.Session.SetString(key, DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+            return Json(new { valid = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult UpdateOrderStatus([FromBody] ChangeStatusRequest model)
         {
+            if (model == null || !ModelState.IsValid || !ConsumeVerification(model.OrderId, "order", out var userId))
+                return Json(new { success = false, message = "Verification required. Reopen the order and verify your password." });
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == model.OrderId);
-            if (order == null)
-                return Json(new { success = false, message = "Order not found" });
+            if (order == null || !_context.OrderStatus.Any(x => x.OrderstatusId == model.CurrentStatus))
+                return Json(new { success = false, message = "Order or status not found." });
+            if (order.Status == model.CurrentStatus)
+                return Json(new { success = true, message = "Order status is already up to date." });
 
             var previousStatus = order.Status;
-
             order.Status = model.CurrentStatus;
-            _context.SaveChanges();
-
-            var statusChange = new ChangeOrderStatus
+            order.UpdatedAt = DateTime.Now;
+            _context.ChangeOrderStatus.Add(new ChangeOrderStatus
             {
                 OrderId = model.OrderId,
                 PreviousStatus = previousStatus,
                 CurrentStatus = model.CurrentStatus,
                 Remark = string.IsNullOrWhiteSpace(model.Remark) ? null : model.Remark,
                 CreatedAt = DateTime.Now,
-                CreatedBy = 1
-            };
-
-            _context.ChangeOrderStatus.Add(statusChange);
+                CreatedBy = userId
+            });
+            // EF commits the order and history in one SaveChanges transaction.
             _context.SaveChanges();
-
-            return Json(new { success = true });
+            return Json(new { success = true, message = "Order status updated successfully." });
         }
 
         [HttpGet]
@@ -273,54 +299,31 @@ namespace EcommerceWebApplication.Controllers
             return Json(statusList);
         }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult UpdatePaymentStatus(int orderId, int PaymentStatus)
         {
+            if (!ModelState.IsValid || !ConsumeVerification(orderId, "payment", out _))
+                return Json(new { success = false, message = "Verification required. Reopen the order and verify your password." });
             try
             {
-                bool isUpdated = false;
-
                 var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
-                if (order != null)
-                {
-                    order.PaymentStatus = PaymentStatus;
-                    isUpdated = true;
-                }
+                var payments = _context.Payments.Where(p => p.OrderId == orderId).Take(2).ToList();
+                if (order == null || payments.Count != 1 || !_context.PaymentStatus.Any(x => x.PaymentstatusId == PaymentStatus))
+                    return Json(new { success = false, message = "Order, payment record or status is invalid. Review the payment records." });
 
-                var payment = _context.Payments.FirstOrDefault(p => p.OrderId == orderId);
-                if (payment != null)
-                {
-                    payment.PaymentStatus = PaymentStatus;
+                var payment = payments[0];
+                if (payment.PaymentStatus != PaymentStatus && PaymentStatus == 1)
                     payment.PaidAt = DateTime.Now;
-                    _context.SaveChanges();
-                    isUpdated = true;
-                }
-
-
-                if (isUpdated)
-                {
-                    _context.SaveChanges();
-                    return Json(new
-                    {
-                        success = true,
-                        message = "Payment status updated successfully."
-                    });
-                }
-                else
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "No matching Order or Payment found for the given OrderId."
-                    });
-                }
+                order.PaymentStatus = PaymentStatus;
+                order.UpdatedAt = DateTime.Now;
+                payment.PaymentStatus = PaymentStatus;
+                _context.SaveChanges();
+                return Json(new { success = true, message = "Payment status updated successfully." });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    success = false,
-                    message = "Error: " + ex.Message
-                });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ManageOrdersController>>().LogError(ex, "Payment status update failed for order {OrderId}", orderId);
+                return Json(new { success = false, message = "Unable to update payment status." });
             }
         }
 
@@ -333,6 +336,8 @@ namespace EcommerceWebApplication.Controllers
         public class PasswordRequest
         {
             public string? Password { get; set; }
+            public int OrderId { get; set; }
+            public string Operation { get; set; } = "";
         }
 
 

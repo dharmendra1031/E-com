@@ -8,6 +8,7 @@
     var productJson = System.Text.Json.JsonSerializer.Serialize(Model);
 }
 
+@Html.AntiForgeryToken()
 <div id="main-content">
     <div class="row">
         <div class="col-lg-12">
