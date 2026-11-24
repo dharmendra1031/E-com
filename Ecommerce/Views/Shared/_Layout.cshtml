@@ -23,7 +23,7 @@
 @{
     var culture = System.Globalization.CultureInfo.CurrentCulture;
     var direction = culture.TextInfo.IsRightToLeft ? "rtl" : "ltr";
-    var layoutDirection = Context.Request.Cookies["LayoutDirection"] ?? "ltr";
+    var layoutDirection = direction;
     var rtlCssPath = "/AdminTheame/assets/css/rtl.css";
     //var rtlCssHref = layoutDirection == "rtl" ? rtlCssPath : "";
     var rtlCssHref = rtlCssPath;
@@ -104,7 +104,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>E-commerce Admin Dashboard</title>
+    <title>@pageTitle · Raqmikart Admin</title>
     <!-- ================= Favicon ================== -->
     <!-- Standard -->
     <link rel="shortcut icon" href="http://placehold.it/64.png/000/fff">
@@ -129,11 +129,12 @@
     <link href="/AdminTheame/assets/css/style.css" rel="stylesheet">
 
     <link id="rtlStyles" rel="stylesheet" href="@rtlCssHref" />
+    <link rel="stylesheet" href="~/css/admin-workspace.css" asp-append-version="true" />
 
 
 </head>
 
-<body>
+<body class="admin-workspace" dir="@layoutDirection">
     <script>
            function enableSuggestionNavigation(inputSelector, suggestionBoxSelector, nextInputSelector) {
             let selectedIndex = -1;
@@ -262,92 +263,24 @@
         <div class="nano">
             <div class="nano-content">
                 <ul>
-                    <li class="label">@_localizer["Main"]</li>
-                    <li class="active"><a href="@Url.Action("Index", "AdminDashboard")"><i class="ti-home"></i> @_localizer["Dashboard"] </a></li>
-                    <li>
-                        <a href="@Url.Action("Index", "Companydetails")"><i class="ti-receipt"></i>@_localizer["CompanyDetail"]</a>
-                    </li>
-
-                    <li><a href="@Url.Action("Index", "Category")"><i class="ti-pencil-alt"></i>@_localizer["Category"]</a></li>
-                    <li><a href="@Url.Action("List", "SubCategory")"><i class="ti-bookmark-alt"></i>@_localizer["Sub-Category"]</a></li>
-                    <li><a href="@Url.Action("TopCategory", "Category")"><i class="ti-pencil-alt"></i>@_localizer["Top-Categories"]</a></li>
-                    <li>
-                        <a href="@Url.Action("Index", "Brand")"><i class="ti-briefcase"></i> @_localizer["Brand"]</a>
-                    </li>
-
-                    <li>
-                        <a href="@Url.Action("ProductList", "Products")"><i class="ti-bar-chart-alt"></i> @_localizer["Products"] </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("WekendDealsList", "WekendDeals")"><i class="ti-tag"></i> @_localizer["Wekend Deals"] </a>
-                    </li>
-                   
-                    <li>
-                        <a href="@Url.Action("AddBanner", "Banner")"><i class="ti-package"></i> @_localizer["Add Banners"] </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("Index", "ProductStock")"><i class="ti-package"></i> @_localizer["Manage Stocks"] </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("Index", "Coupon")"><i class="ti-bookmark-alt"></i> @_localizer["Coupon"] </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("PendingOrder", "ManageOrders")"><i class="ti-receipt"></i> @_localizer["Orders"]</a>                       
-                    </li>
-                    <li>
-                        <a href="@Url.Action("CustomerList", "ManageCustomer")">
-                            <i class="ti-receipt"></i>@_localizer["Customers"]
-                            </a>
-
-                    </li>
-                 @*    @if (userRole == "Admin" && userEmail == "admin@gmail.com")
-                    {
-                        <li>
-                            <a href="@Url.Action("UserList", "User")">
-                                <i class="ti-user"></i> @_localizer["Users"]
-                            </a>
-                        </li>
-                        <li>
-                            <a href="@Url.Action("RoleIndex", "RolePermission")">
-                                <i class="ti-lock"></i> @_localizer["Role Permission"]
-                            </a>
-                        </li>
-                    }
-           *@
-                    @if (isSuperAdmin)
-                    {
-                        <li><a href="@Url.Action("UserList", "User")"><i class="ti-user"></i> @_localizer["Users"]</a>
-                    
-                        </li>
-                        <li><a href="@Url.Action("RoleIndex", "RolePermission")"><i class="ti-lock"></i> @_localizer["Role Permission"]n</a></li>
-                    }
-                    @* <li><a href="@Url.Action("UserList", "User")"><i class="ti-user"></i> @_localizer["Users"]</a></li> *@
-                    <li><a href="@Url.Action("ContactList", "Contact")"><i class="ti-comment"></i> @_localizer["Contact Massage"]</a></li>
-                    <li><a href="@Url.Action("UpdateAbout", "AboutUs")"><i class="ti-info-alt"></i>@_localizer["About Us"]</a></li>
-                    <li><a href="@Url.Action("BlogList", "Blog")"><i class="fas fa-address-card"></i>@_localizer["Blog"]</a></li>
-
-                   @*  <li><a href="@Url.Action("RoleIndex", "RolePermission")"><i class="ti-lock"></i>@_localizer["Role Permission"]</a></li> *@
-                    <li>
-                        <a href="@Url.Action("Index", "SendNotification")">
-                            <i class="ti-email"></i> @_localizer["Send Notification"]
-                        </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("AreaList", "Areas")">
-                            <i class="ti-map-alt"></i> @_localizer["Areas"]
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="@Url.Action("BlockList", "Blocks")">
-                            <i class="ti-layout-grid2"></i> @_localizer["Blocks"]
-                        </a>
-                    </li>
-                    <li>
-                        <a href="@Url.Action("Index", "Changecolors")">
-                            <i class="ti-pencil-alt"></i> @_localizer["Change Colors"]
-                        </a>
-                    </li>
+                    <li class="label">@(isArabic ? "العمليات" : "Operations")</li>
+                    <li class="@activeClass("AdminDashboard", "Index")"><a href="@Url.Action("Index", "AdminDashboard")" title="@_localizer["Dashboard"]"><i class="ti-home" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Dashboard"]</span></a></li>
+                    <li class="@activeClass("ManageOrders", "PendingOrder")"><a href="@Url.Action("PendingOrder", "ManageOrders")" title="@_localizer["Orders"]"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Orders"]</span></a></li>
+                    <li class="@activeClass("ManageCustomer", "CustomerList")"><a href="@Url.Action("CustomerList", "ManageCustomer")" title="@_localizer["Customers"]"><i class="ti-user" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Customers"]</span></a></li>
+                    <li class="@activeClass("ProductStock", "Index")"><a href="@Url.Action("Index", "ProductStock")" title="@_localizer["Manage Stocks"]"><i class="ti-package" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Manage Stocks"]</span></a></li>
+                    <li class="label">@(isArabic ? "الكتالوج" : "Catalog")</li>
+                    <li class="@activeClass("Products", "ProductList")"><a href="@Url.Action("ProductList", "Products")" title="@_localizer["Products"]"><i class="ti-bar-chart-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Products"]</span></a></li>
+                    <li class="@activeClass("Category", "Index")"><a href="@Url.Action("Index", "Category")" title="@_localizer["Category"]"><i class="ti-layout-grid2" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Category"]</span></a></li>
+                    <li class="@activeClass("SubCategory", "List")"><a href="@Url.Action("List", "SubCategory")" title="@_localizer["Sub-Category"]"><i class="ti-bookmark-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Sub-Category"]</span></a></li>
+                    <li class="@activeClass("Category", "TopCategory")"><a href="@Url.Action("TopCategory", "Category")" title="@_localizer["Top-Categories"]"><i class="ti-star" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Top-Categories"]</span></a></li>
+                    <li class="@activeClass("Brand", "Index")"><a href="@Url.Action("Index", "Brand")" title="@_localizer["Brand"]"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Brand"]</span></a></li>
+                    <li class="label">@(isArabic ? "التسويق" : "Marketing")</li>
+                    <li class="@activeClass("WekendDeals", "WekendDealsList")"><a href="@Url.Action("WekendDealsList", "WekendDeals")" title="@_localizer["Wekend Deals"]"><i class="ti-tag" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Wekend Deals"]</span></a></li>
+                    <li class="@activeClass("Coupon", "Index")"><a href="@Url.Action("Index", "Coupon")" title="@_localizer["Coupon"]"><i class="ti-ticket" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Coupon"]</span></a></li>
+                    <li class="@activeClass("Banner", "AddBanner")"><a href="@Url.Action("AddBanner", "Banner")" title="@_localizer["Add Banners"]"><i class="ti-image" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Add Banners"]</span></a></li>
+                    <li class="@activeClass("SendNotification", "Index")"><a href="@Url.Action("Index", "SendNotification")" title="@_localizer["Send Notification"]"><i class="ti-email" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Send Notification"]</span></a></li>
+                    <li class="@activeClass("Blog", "BlogList")"><a href="@Url.Action("BlogList", "Blog")" title="@_localizer["Blog"]"><i class="ti-pencil-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Blog"]</span></a></li>
+                    <li class="label">@(isArabic ? "التقارير" : "Reporting")</li>
                     <li class="sidebar-sub-toggle @activeMenuClass(new[] { "Report" })">
                         <a href="javascript:void(0);">
                             <i class="ti-bar-chart-alt"></i> @_localizer["Reports"]
@@ -371,9 +304,19 @@
                             </li>
                         </ul>
                     </li>
-
-
-                    <li><a href="@Url.Action("Logout", "Account")"><i class="ti-close"></i> @_localizer["Logout"]</a></li>
+                    <li class="label">@(isArabic ? "الإعدادات" : "Settings")</li>
+                    <li class="@activeClass("Companydetails", "Index")"><a href="@Url.Action("Index", "Companydetails")" title="@_localizer["CompanyDetail"]"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["CompanyDetail"]</span></a></li>
+                    <li class="@activeClass("Areas", "AreaList")"><a href="@Url.Action("AreaList", "Areas")" title="@_localizer["Areas"]"><i class="ti-map-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Areas"]</span></a></li>
+                    <li class="@activeClass("Blocks", "BlockList")"><a href="@Url.Action("BlockList", "Blocks")" title="@_localizer["Blocks"]"><i class="ti-layout-grid2" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Blocks"]</span></a></li>
+                    <li class="@activeClass("Contact", "ContactList")"><a href="@Url.Action("ContactList", "Contact")" title="@_localizer["Contact Massage"]"><i class="ti-comment" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Contact Massage"]</span></a></li>
+                    <li class="@activeClass("AboutUs", "UpdateAbout")"><a href="@Url.Action("UpdateAbout", "AboutUs")" title="@_localizer["About Us"]"><i class="ti-info-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["About Us"]</span></a></li>
+                    <li class="@activeClass("Changecolors", "Index")"><a href="@Url.Action("Index", "Changecolors")" title="@_localizer["Change Colors"]"><i class="ti-palette" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Change Colors"]</span></a></li>
+                    @if (isSuperAdmin)
+                    {
+                    <li class="@activeClass("User", "UserList")"><a href="@Url.Action("UserList", "User")" title="@_localizer["Users"]"><i class="ti-user" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Users"]</span></a></li>
+                    <li class="@activeClass("RolePermission", "RoleIndex")"><a href="@Url.Action("RoleIndex", "RolePermission")" title="@_localizer["Role Permission"]"><i class="ti-lock" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Role Permission"]</span></a></li>
+                    }
+                    <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>
 
             </div>
@@ -383,12 +326,12 @@
 
     <div class="header">
         <div class="pull-left">
-            <div class="logo"><a href="~/WebHome/Index"target="_blank"><!-- <img src="assets/images/logo.png" alt="" /> --><span>@_localizer["E-Commerce Admin"]</span></a></div>
-            <div class="hamburger sidebar-toggle">
+            <div class="logo"><a href="~/WebHome/Index" target="_blank" rel="noopener"><span>Raqmikart</span><small>ADMIN</small></a></div>
+            <button type="button" class="hamburger sidebar-toggle admin-menu-toggle" aria-label="@(isArabic ? "القائمة" : "Toggle navigation")">
                 <span class="line"></span>
                 <span class="line"></span>
                 <span class="line"></span>
-            </div>
+            </button>
         </div>
         <div class="pull-right p-r-15">
             <ul>
@@ -529,7 +472,7 @@
                 </li>
 
                                <li class="header-icon dib">
-                    <img class="avatar-img" src="assets/images/avatar/1.jpg" alt="" />
+                    <span class="admin-user-icon" aria-hidden="true"><i class="ti-user"></i></span>
                     <span class="user-avatar">
                         @User.FindFirstValue(ClaimTypes.Name) <i class="ti-angle-down f-s-10"></i>
                     </span>
@@ -765,7 +708,7 @@
 
     <script>
         $(document).ready(function () {
-            let layoutDir = getCookie("LayoutDirection") || "ltr";
+            let layoutDir = document.documentElement.dir || "ltr";
 
             // Set direction
             document.body.setAttribute("dir", layoutDir);
@@ -791,7 +734,7 @@
 
         // 🟢 On page load, set direction from cookie
         document.addEventListener("DOMContentLoaded", function () {
-            let layoutDir = getCookie("LayoutDirection") || "ltr";
+            let layoutDir = document.documentElement.dir || "ltr";
             document.body.setAttribute("dir", layoutDir);
 
             if (layoutDir === 'rtl') {
@@ -819,20 +762,16 @@
             window.location.href = `/Home/SetLanguage?culture=${newCulture}&returnUrl=${encodeURIComponent(returnUrl)}`;
         }
 
-        // side bar active  start
-
-            document.addEventListener("DOMContentLoaded", function () {
-            const currentUrl = window.location.pathname.toLowerCase();
-            const menuItems = document.querySelectorAll(".sidebar ul li a");
-            menuItems.forEach(item => {
-                if (item.getAttribute("href").toLowerCase() === currentUrl) {
-                    item.parentElement.classList.add("active");
-                } else {
-                    item.parentElement.classList.remove("active");
+        document.addEventListener("DOMContentLoaded", function () {
+            const current = location.pathname.replace(/\/$/, "").toLowerCase();
+            document.querySelectorAll(".sidebar a[href]").forEach(link => {
+                if (link.getAttribute("href").startsWith("javascript:")) return;
+                if (new URL(link.href, location.origin).pathname.replace(/\/$/, "").toLowerCase() === current) {
+                    link.setAttribute("aria-current","page");
+                    link.parentElement.classList.add("active");
                 }
             });
         });
-       
 
         // Sidebar active  end 
 
