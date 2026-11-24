@@ -4,36 +4,18 @@
     ViewData["Title"] = _localizer["SHOP"].Value;
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
-<style>
-    .catalog-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; padding-block: 20px; align-items: start; }
-    .catalog-sidebar { min-width: 0; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
-    .catalog-sidebar .category-title { font-size: 1rem; font-weight: 700; color: #111; text-align: start; }
-    .catalog-main { min-width: 0; }
-    #SubCategoryContainer { margin-block-end: 16px; }
-    @@media (max-width: 991.98px) {
-        .catalog-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; padding-block: 12px; }
-        .catalog-sidebar { padding: 10px; }
-    }
-</style>
-
-
-<div class="container-fluid store-wide">
+<div class="container-fluid store-wide store-catalog">
+    <nav class="store-breadcrumb" aria-label="@_localizer["SHOP"]"><a href="~/WebHome/Index">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الرئيسية" : "Home")</a><span aria-hidden="true">/</span><span>@_localizer["SHOP"]</span></nav>
+    <div id="SubCategoryContainer"></div>
     <div class="catalog-layout">
-        <!-- LEFT SIDEBAR -->
-        <aside class="catalog-sidebar">
-            <h6 class="mb-3 category-title">@_localizer["Top Categories"]</h6>
-
-            <div id="categoryContainer"></div>
-        </aside>
-        <!-- RIGHT CONTENT -->
-        <main class="catalog-main">
-            <!-- HEADER -->
-          
-            <!-- SUB CATEGORIES -->
-            <div id="SubCategoryContainer"></div>
-
+        <aside class="catalog-sidebar offcanvas-lg offcanvas-start" id="catalogFilterDrawer" tabindex="-1" aria-labelledby="filterDrawerTitle">
+            <div class="offcanvas-header d-lg-none">
+                <h2 class="offcanvas-title h5" id="filterDrawerTitle">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية المنتجات" : "Filters")</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#catalogFilterDrawer" aria-label="@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إغلاق" : "Close")"></button>
+            </div>
+            <div class="offcanvas-body">
             <form id="catalogFilters" class="store-filter-panel" novalidate>
-                <div class="store-filter-heading"><strong>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية المنتجات" : "Filter products")</strong><span id="resultCount" class="small text-secondary" role="status"></span></div>
+                <div class="store-filter-heading"><strong>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية المنتجات" : "Filter products")</strong></div>
                 <div class="store-filter-fields">
                     <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العلامة التجارية" : "Brand")
                         <select id="filterBrand" class="form-select"><option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "All brands")</option></select>
@@ -56,18 +38,25 @@
                     <button type="submit" class="btn btn-primary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تطبيق" : "Apply filters")</button>
                     <button type="button" id="resetFilters" class="btn btn-outline-secondary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعادة تعيين" : "Reset")</button>
                 </div>
+                <p id="filterError" class="small text-danger mb-0" role="status"></p>
             </form>
-            <!-- PRODUCTS GRID -->
-            <div id="ProductContainer" aria-live="polite">
-                <!-- Products grid yahan -->
+                <details class="store-category-disclosure">
+                    <summary>@_localizer["Top Categories"]</summary>
+                    <div id="categoryContainer"></div>
+                </details>
             </div>
+        </aside>
+        <main class="catalog-main">
+            <div class="catalog-toolbar">
+                <span id="resultCount" role="status"></span>
+                <button type="button" class="btn btn-outline-primary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#catalogFilterDrawer" aria-controls="catalogFilterDrawer"><i class="bi bi-sliders" aria-hidden="true"></i> @(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية" : "Filters")</button>
+            </div>
+            <div id="ProductContainer" aria-live="polite"></div>
             <div class="text-center my-3">
                 <button type="button" id="loadMoreProducts" class="btn btn-outline-primary px-4 py-2 d-none">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "عرض المزيد" : "Load more products")</button>
                 <p id="catalogStatus" class="small text-danger mt-2" role="status"></p>
             </div>
-
         </main>
-
     </div>
 </div>
 <script>
@@ -84,6 +73,8 @@
         const more = document.getElementById("loadMoreProducts");
         const catalogStatus = document.getElementById("catalogStatus");
         const filterForm = document.getElementById("catalogFilters");
+        const filterError = document.getElementById("filterError");
+        function closeFilters() { bootstrap.Offcanvas.getInstance(document.getElementById("catalogFilterDrawer"))?.hide(); }
         const brand = document.getElementById("filterBrand");
         const minPrice = document.getElementById("minPrice");
         const maxPrice = document.getElementById("maxPrice");
@@ -94,6 +85,7 @@
         let brandRequest;
         function resetFilterValues() {
             filterForm.reset();
+            filterError.textContent = "";
             filters = {};
             resultCount.textContent = "";
         }
@@ -120,7 +112,7 @@
             if (!categoryId || !subcategories.querySelector("#sortProducts")) return;
             if (!minPrice.checkValidity() || !maxPrice.checkValidity() ||
                 (minPrice.value !== "" && maxPrice.value !== "" && Number(minPrice.value) > Number(maxPrice.value))) {
-                catalogStatus.textContent = arabic ? "تحقق من نطاق السعر." : "Enter a valid price range.";
+                filterError.textContent = arabic ? "تحقق من نطاق السعر." : "Enter a valid price range.";
                 return;
             }
             filters = {};
@@ -129,6 +121,8 @@
             if (maxPrice.value !== "") filters.maxPrice = maxPrice.value;
             if (rating.value) filters.minRating = rating.value;
             if (stock.checked) filters.inStock = "true";
+            filterError.textContent = "";
+            closeFilters();
             loadProducts();
         });
         document.getElementById("resetFilters").addEventListener("click", () => {
@@ -177,6 +171,7 @@
             const parent = categories.querySelector(".active")?.textContent.trim() || "";
             const child = subcategories.querySelector(".active")?.dataset.subname || "";
             title.textContent = child ? parent + " / " + child : parent;
+            document.dispatchEvent(new CustomEvent("store:category", { detail: categoryId }));
         }
 
         async function loadProducts(append = false) {
@@ -265,6 +260,7 @@
             const link = event.target.closest(".category-link");
             if (!link) return;
             event.preventDefault();
+            closeFilters();
             selectCategory(link);
         });
 

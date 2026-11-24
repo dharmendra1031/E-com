@@ -1,77 +1,23 @@
-﻿@model List<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
-@using System.Globalization
-
-@{
-    var culture = CultureInfo.CurrentCulture;
-    bool isArabic = culture.TextInfo.IsRightToLeft;
-}
-<style>
-    #SubCategoryContainer .title { gap: 12px; flex-wrap: wrap; margin-block-end: 12px; }
-    #SubCategoryContainer .Categoryname { font-size: 1.125rem; color: #111; overflow-wrap: anywhere; }
-    #SubCategoryContainer .sort-select { width: auto; max-width: 100%; min-height: 40px; font-size: .875rem; }
-    #SubCategoryContainer .itemli { width: 108px; }
-    #SubCategoryContainer .imgdiv { display: flex; justify-content: center; align-items: center; min-height: 50px; }
-    #SubCategoryContainer .itemimg { width: 50px; height: 36px; object-fit: contain; }
-    #SubCategoryContainer .imgname { font-size: .8rem; line-height: 1.35; overflow-wrap: anywhere; }
-    #SubCategoryContainer .subcategory-link { height: 100%; }
-    #SubCategoryContainer .subcategory-link .card { border: 1px solid #e2e8f0 !important; }
-    #SubCategoryContainer .subcategory-link.active .card { background: #eaf3f9; border-color: #2878ac !important; }
-    @@media (max-width: 575.98px) {
-        #SubCategoryContainer .itemli { width: 96px; }
-        #SubCategoryContainer .Categoryname { font-size: 1rem; }
-    }
-</style>
-<div class="title d-flex justify-content-between align-items-center">
-    <span class="Categoryname fw-bold" id="breadcrumbTitle">
-       @*  Category → SubCategory *@
-    </span>
-    
-@if (isArabic)
-{
-        <select class="form-select sort-select" id="sortProducts" aria-label="@(isArabic ? "الترتيب حسب" : "Sort by")">
-            <option value="newest">الترتيب حسب: الافتراضي</option>
-            <option value="low-high">السعر من الأقل إلى الأعلى</option>
-            <option value="high-low">السعر من الأعلى إلى الأقل</option>
-        </select>
-}
-else
-{
-        <select class="form-select sort-select" id="sortProducts" aria-label="@(isArabic ? "الترتيب حسب" : "Sort by")">
-            <option value="newest">Sort by: Default</option>
-            <option value="low-high">Price Low to High</option>
-            <option value="high-low">Price High to Low</option>
-        </select>
-}
-   
-
+@model List<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
+@{ var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
+<div class="catalog-heading">
+    <h1 id="breadcrumbTitle" class="catalog-title"></h1>
+    <select class="form-select sort-select" id="sortProducts" aria-label="@(ar ? "الترتيب حسب" : "Sort by")">
+        <option value="newest">@(ar ? "الأحدث" : "Sort: Newest")</option>
+        <option value="low-high">@(ar ? "السعر من الأقل إلى الأعلى" : "Price: Low to high")</option>
+        <option value="high-low">@(ar ? "السعر من الأعلى إلى الأقل" : "Price: High to low")</option>
+    </select>
 </div>
-<div class="mb-4">
-    <div class="d-flex flex-nowrap overflow-auto gap-2 pb-2" style="scrollbar-width: thin">
+@if (Model.Any())
+{
+    <div class="catalog-subcategories">
+        <a href="#" class="subcategory-link active" data-subid="" data-subname="" aria-current="true">@(ar ? "الكل" : "All")</a>
         @foreach (var item in Model)
         {
-            <div class="itemli flex-shrink-0">
-                <a href="javascript:void(0)"
-                   class="subcategory-link text-decoration-none d-block"
-                   data-subid="@item.SubCategoryId"
-                   data-subname="@item.SCName">
-
-                    <div class="card text-center h-100 border-0 shadow-sm rounded-3">
-                        <!-- Compact image -->
-                        <div class="imgdiv p-2" style=" ">
-                            <img src="@item.SubCategoryImageBase64"
-                                 class="img-fluid itemimg"
-                                 style=""
-                                 alt="@item.SCName" loading="lazy" decoding="async" />
-                        </div>
-
-                        <!-- 2-line text limit -->
-                        <div class="imgname px-1 pb-2 fw-semibold text-dark"
-                             style="">
-                            @item.SCName
-                        </div>
-                    </div>
-                </a>
-            </div>
+            <a href="#" class="subcategory-link" data-subid="@item.SubCategoryId" data-subname="@item.SCName">
+                <img src="@item.SubCategoryImageBase64" alt="" loading="lazy" decoding="async" />
+                <span>@item.SCName</span>
+            </a>
         }
     </div>
-</div>
+}

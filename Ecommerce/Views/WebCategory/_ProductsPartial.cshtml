@@ -1,102 +1,46 @@
-﻿@using System.Globalization
+@using System.Globalization
 @model List<EcommerceWebApplication.Models.ViewModels.ProductListViewModel>
-@{ var isArabic = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
-
+@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
 <div class="cart-grid-container" data-next-page="@ViewBag.NextPage" data-total-products="@ViewBag.TotalProducts">
     <div class="store-product-grid">
-        @if (Model != null && Model.Any())
+        @foreach (var item in Model)
         {
-            foreach (var item in Model)
-            {
-                <div class="cart-item-col">
-                    <div class="cart-item-card" data-productid="@item.ProductId">
-                        <!-- Clickable area for product details -->
-                        <a href="@Url.Action("SingleProduct", "WebSingleProduct", new { id = item.ProductId })"
-                           class="product-link-area">
-                            <!-- Image at the top -->
-                            <div class="cart-image-container">
-                                @if (item.ProductImageId.HasValue || !string.IsNullOrEmpty(item.ProductImageBase64))
-                                {
-                                    <img src="@(item.ProductImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = item.ProductImageId }) : item.ProductImageBase64)" alt="@item.Name" loading="lazy" decoding="async" />
-                                }
-                                else
-                                {
-                                    <span class="text-secondary small">@(isArabic ? "لا توجد صورة" : "No image")</span>
-                                }
-                    </div>
-
-                    <!-- Product info -->
-                    <div class="cart-product-info">
-                        <!-- Product Name -->
-                        <h5 class="product-name">
-                            @item.Name
-                        </h5>
-
-                                <!-- Stock Status -->
-                                <div class="stock-status @(item.Stock > 0 ? "in-stock" : "out-of-stock")">
-                                    @(item.Stock > 0 ? (isArabic ? "متوفر" : "In stock") : (isArabic ? "غير متوفر" : "Out of stock"))
-                                </div>
-
-                                <!-- Rating Stars -->
-                                <div class="rating-container">
-                                    <div class="rating-stars">
-                                @{
-                                            // Calculate rating (you can replace with actual rating from your model)
-                                            var rating = item.AverageRating ?? item.Rating;
-                                            var fullStars = (int)rating;
-                                            var hasHalfStar = rating - fullStars >= 0.5;
-
-                                            for (int i = 0; i < 5; i++)
-                                            {
-                                                if (i < fullStars)
-                                                {
-                                                    <i class="fas fa-star"></i>
-                                                }
-                                                else if (i == fullStars && hasHalfStar)
-                                                {
-                                                    <i class="fas fa-star-half-alt"></i>
-                                                }
-                                                else
-                                                {
-                                                    <i class="far fa-star"></i>
-                                                }
-                                            }
-                                        }
-                                    </div>
-                                    <span class="rating-count">(@rating.ToString("F1", CultureInfo.InvariantCulture)/5.0) @(item.ReviewCount.HasValue ? $"({item.ReviewCount})" : "")</span>
-                                </div>
-                            </div>
-                        </a>
-
-                        <!-- Footer with price and add button -->
-                        <div class="cart-item-footer">
-                            <!-- Price on the left -->
-                            <div class="product-price" dir="ltr">
-                                <span class="currency">KD</span> @item.Price.ToString("F3", CultureInfo.InvariantCulture)
-                            </div>
-
-                            <!-- Plus button on the right -->
-                            <button type="button" class="add-to-cart-btn @(item.Stock > 0 ? "" : "disabled")"
-                                    data-productid="@item.ProductId"
-                                    @(item.Stock <= 0 ? "disabled" : "")>
-                                <i class="fas fa-plus" aria-hidden="true"></i>
-                                <span>@(item.Stock > 0 ? (isArabic ? "أضف للسلة" : "Add to cart") : (isArabic ? "غير متوفر" : "Unavailable"))</span>
-                            </button>
+            var rating = item.AverageRating ?? item.Rating;
+            <article class="cart-item-col">
+                <div class="cart-item-card" data-productid="@item.ProductId">
+                    <a href="@Url.Action("SingleProduct", "WebSingleProduct", new { id = item.ProductId })" class="product-link-area">
+                        <div class="cart-image-container">
+                            @if (item.ProductImageId.HasValue || !string.IsNullOrEmpty(item.ProductImageBase64))
+                            {
+                                <img src="@(item.ProductImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = item.ProductImageId }) : item.ProductImageBase64)" alt="@item.Name" loading="lazy" decoding="async" />
+                            }
+                            else { <span class="text-secondary small">@(ar ? "لا توجد صورة" : "No image")</span> }
                         </div>
+                        <div class="cart-product-info">
+                            <h2 class="product-name">@item.Name</h2>
+                            <div class="rating-container">
+                                @if (rating > 0)
+                                {
+                                    <span class="rating-stars" aria-hidden="true">★</span><span dir="ltr">@rating.ToString("F1", CultureInfo.InvariantCulture) / 5</span>
+                                    @if (item.ReviewCount.HasValue) { <span class="rating-count">(@item.ReviewCount)</span> }
+                                }
+                                else { <span class="rating-count">@(ar ? "لا توجد تقييمات" : "No reviews yet")</span> }
+                            </div>
+                            <div class="stock-status @(item.Stock > 0 ? "in-stock" : "out-of-stock")">@(item.Stock > 0 ? (ar ? "متوفر" : "In stock") : (ar ? "غير متوفر" : "Out of stock"))</div>
+                        </div>
+                    </a>
+                    <div class="cart-item-footer">
+                        <div class="product-price" dir="ltr"><span class="currency">KD</span> @item.Price.ToString("F3", CultureInfo.InvariantCulture)</div>
+                        <button type="button" class="add-to-cart-btn" data-productid="@item.ProductId" disabled="@(item.Stock <= 0)">
+                            <i class="bi bi-cart-plus" aria-hidden="true"></i><span>@(item.Stock > 0 ? (ar ? "أضف للسلة" : "Add to cart") : (ar ? "غير متوفر" : "Unavailable"))</span>
+                        </button>
                     </div>
                 </div>
-            }
+            </article>
         }
-        else
+        @if (!Model.Any())
         {
-            <div class="noproduct col-12 text-center text-muted py-5">
-                <div class="display-1 mb-3">
-                    <i class="fas fa-box-open"></i>
-                </div>
-                <span>@(isArabic ? "لا توجد منتجات" : "No products found")</span>
-            </div>
+            <div class="noproduct text-center py-5"><i class="bi bi-box-seam fs-2 text-secondary" aria-hidden="true"></i><h2 class="h5 mt-3">@(ar ? "لا توجد منتجات" : "No products found")</h2><p class="text-secondary">@(ar ? "جرب تغيير الفلاتر أو اختيار فئة أخرى." : "Try changing your filters or selecting another category.")</p></div>
         }
     </div>
 </div>
-
-

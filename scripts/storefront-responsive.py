@@ -91,6 +91,8 @@ with sync_playwright() as pw:
                             page.wait_for_function("!document.querySelector('#ProductContainer').hasAttribute('aria-busy')")
                             if cards.count() <= before or not page.evaluate("window.__loadMoreProbe === true"):
                                 row["issues"].append("load more did not append in place")
+                        if width < 992:
+                            page.locator("[data-bs-target='#catalogFilterDrawer'][data-bs-toggle='offcanvas']").click()
                         page.locator("#inStock").check()
                         page.locator("#catalogFilters button[type=submit]").click()
                         page.wait_for_function("!document.querySelector('#ProductContainer').hasAttribute('aria-busy')")
@@ -116,11 +118,11 @@ with sync_playwright() as pw:
                         const search=document.querySelector('#searchInput');
                         const rect=el=>el?.getBoundingClientRect();
                         const controls = [...document.querySelectorAll("#siteHeader .store-header-action, #siteHeader .header-actions > .btn, .store-product-grid .add-to-cart-btn")].filter(el=>rect(el).width && rect(el).height && (rect(el).width<43.5 || rect(el).height<43.5)).map(el=>el.className);
-                        const badImages = [...document.querySelectorAll(".store-product-grid .cart-image-container")].filter(el=>rect(el).height && Math.abs(rect(el).width/rect(el).height-4/3)>.05).length;
+                        const badImages = [...document.querySelectorAll(".store-product-grid .cart-image-container")].filter(el=>rect(el).height && Math.abs(Math.min(rect(el).width*3/4,parseFloat(getComputedStyle(el).maxHeight)||Infinity)-rect(el).height)>2).length;
                         const clippedCards = [...document.querySelectorAll(".store-product-grid .cart-item-card, .store-product-grid .cart-item-footer, .store-product-grid .product-price")].filter(el=>el.scrollWidth>el.clientWidth+2).length;
                         const overflow=[...document.querySelectorAll('body *')].filter(el=>{
                           if (!el.getClientRects().length || getComputedStyle(el).visibility==='hidden') return false;
-                          if (el.closest('.overflow-auto,.category-scroll,.category-list,.storefront-brands,.product-thumbnails,.store-detail-thumbnails,.table-responsive,.carousel,.offcanvas,.dropdown-menu')) return false;
+                          if (el.closest('.overflow-auto,.catalog-subcategories,.category-scroll,.category-list,.storefront-brands,.product-thumbnails,.store-detail-thumbnails,.table-responsive,.carousel,.offcanvas,.offcanvas-lg,.dropdown-menu')) return false;
                           const r=rect(el);
                           return r.width>0 && r.height>0 && (r.right>innerWidth+2 || r.left< -2);
                         }).slice(0,12).map(el=>el.tagName+'.'+String(el.className).slice(0,100));

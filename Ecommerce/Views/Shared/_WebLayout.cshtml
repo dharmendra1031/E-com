@@ -214,7 +214,7 @@
         .category-scroll { min-width: 0; }
         #siteHeader .toggleRTL { white-space: nowrap; }
         @@media (max-width: 767.98px) {
-            #siteHeader #hcompanyLogo { max-width: 80px !important; max-height: 44px !important; }
+            
             #siteHeader .header-actions { gap: 6px !important; flex-wrap: wrap; }
             #siteHeader .header-user-name { display: none; }
             
@@ -251,7 +251,7 @@
 					<!-- LOGO -->
 					<div class="store-logo">
 						<a href="~/WebHome/Index" class="text-decoration-none">
-							<img id="hcompanyLogo" src="/images/download.png" class="img img-fluid" style="max-height:60px; max-width:100%; width:auto;" alt="Raqmikart" />
+							<img id="hcompanyLogo" src="/images/download.png" class="img img-fluid" alt="Raqmikart" />
 						</a>
 					</div>
 
@@ -281,7 +281,7 @@
 								   data-bs-toggle="dropdown"
 								   aria-expanded="false">
 
-									<i class="fa fa-user d-md-none" aria-hidden="true"></i><span class="header-user-name">@fullName</span>
+									<i class="bi bi-person" aria-hidden="true"></i><span class="header-user-name">@fullName</span>
 								</a>
 
 								<!-- DROPDOWN MENU -->
@@ -301,7 +301,7 @@
 						else
 						{
 							<a asp-controller="UserAccount" asp-action="Login" class="text-white store-header-action" aria-label="@(lang == "ar" ? "تسجيل الدخول" : "Login")">
-								<i class="fa fa-user"></i>
+								<i class="bi bi-person" aria-hidden="true"></i><span class="store-action-label">@(lang == "ar" ? "الحساب" : "Account")</span>
 							</a>
 						}
 
@@ -311,9 +311,9 @@
 
 						<!-- Shopping Cart Icon with Badge -->
 						<a href="~/WebCart/Cart" class="text-white position-relative store-header-action" aria-label="@(lang == "ar" ? "سلة التسوق" : "Shopping cart")">
-							<i class="fa fa-shopping-cart fs-5"></i>
+							<i class="bi bi-cart3" aria-hidden="true"></i><span class="store-action-label">@(lang == "ar" ? "السلة" : "Cart")</span>
 							<span id="cartCount"
-								  class="badge bg-warning text-dark position-absolute top-0 start-100 translate-middle">
+								  class="store-cart-count">
 								0
 							</span>
 						</a>
@@ -321,7 +321,7 @@
 						<!-- Language Button -->
 						@*  <a href="#" class="btn btn-light btn-sm px-3">العربية</a> *@
 						<button type="button" class="header-icon dib toggleRTL store-header-action" aria-label="@(lang == "ar" ? "English" : "العربية")">
-							<i class="fa fa-language text-white"></i>
+							<i class="bi bi-globe2" aria-hidden="true"></i>
 							<span class="user-avatar">@(lang == "ar" ? "EN" : "العربية")</span>
 						</button>
 
@@ -342,7 +342,7 @@
 		</header>
 
 		<!-- CATEGORY BAR START -->
-		<div class="py-0 border-top border-bottom" style="background-color:#eef1f5;">
+		<div class="store-nav-bar border-bottom">
 
 			<div class="mx-3">
 
@@ -351,7 +351,7 @@
 					<!-- All Categories (Always Visible) -->
 					<div class="dropdown me-2 flex-shrink-0">
 						<button type="button" class="btn btn-link fw-semibold text-primary text-decoration-none dropdown-toggle store-categories-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-							<img src="/Images/options-lines.png" class="category-menu-icon" />
+							<i class="bi bi-list" aria-hidden="true"></i>
 							@_localizer["All Categories"]
 						</button>
 
@@ -361,9 +361,11 @@
 					</div>
 
 					<!-- Scrollable Categories -->
-					<div class="flex-grow-1 text-primary category-scroll">
+					<button type="button" class="store-nav-arrow" id="navPrevious" aria-label="@(lang == "ar" ? "الفئات السابقة" : "Previous categories")"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                    <div class="flex-grow-1 category-scroll" id="categoryScroll">
 						<ul class="nav flex-nowrap" id="topCategoryList"></ul>
 					</div>
+                    <button type="button" class="store-nav-arrow" id="navNext" aria-label="@(lang == "ar" ? "الفئات التالية" : "Next categories")"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
 				</div>
 
 			</div>
@@ -568,7 +570,28 @@
                 emptyMessage(topList, ar ? "تعذر تحميل الفئات" : "Unable to load categories");
             }
         }
-        loadCategories();
+        const scroll = document.getElementById("categoryScroll");
+        let activeId = new URLSearchParams(location.search).get("categoryId");
+        function highlight() {
+            for (const link of topList.querySelectorAll("a")) {
+                const active = new URL(link.href).searchParams.get("categoryId") === activeId;
+                if (active) link.setAttribute("aria-current","page"); else link.removeAttribute("aria-current");
+            }
+        }
+        document.addEventListener("store:category", event => { activeId = event.detail; highlight(); });
+        const previous = document.getElementById("navPrevious"), next = document.getElementById("navNext");
+        function syncArrows() {
+            const overflow = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
+            const offset = Math.abs(scroll.scrollLeft);
+            previous.disabled = offset < 2;
+            next.disabled = offset >= overflow - 2;
+        }
+        function move(direction) { scroll.scrollBy({left:direction * (ar ? -1 : 1) * Math.max(120, scroll.clientWidth * .65), behavior:"auto"}); }
+        previous.addEventListener("click", () => move(-1));
+        next.addEventListener("click", () => move(1));
+        scroll.addEventListener("scroll", syncArrows, {passive:true});
+        window.addEventListener("resize", syncArrows);
+        loadCategories().then(() => { highlight(); syncArrows(); });
     })();
     </script>
 	<script>
