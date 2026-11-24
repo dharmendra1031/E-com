@@ -6,7 +6,7 @@
 	Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="main-content">
+<div class="main-content admin-master-editor admin-product-editor">
 	<div class="row">
 		<div class="col-lg-12">
 			<div class="card alert">
@@ -42,7 +42,7 @@
 								<div class="col-md-6">
 									<div class="form-group">
 										<label class="fw-bold">@_localizer["Sub-Category Name (AR)"] <span style="color:red">*</span></label>
-										<input asp-for="SCNameArb" class="form-control input-default focusOnEnter" />
+										<input asp-for="SCNameArb" dir="rtl" class="form-control input-default focusOnEnter" />
 										<span asp-validation-for="SCNameArb" class="text-danger"></span>
 									</div>
 								</div>
@@ -54,7 +54,7 @@
 								<div class="col-md-4">
 									<div class="form-group">
 										<label class="fw-bold">@_localizer["Sub-Category Name (EN)"]<span style="color:red">*</span></label>
-										<input asp-for="SCName" class="form-control input-default focusOnEnter" />
+										<input asp-for="SCName" dir="ltr" class="form-control input-default focusOnEnter" />
 										<span asp-validation-for="SCName" class="text-danger"></span>
 									</div>
 								</div>
@@ -100,13 +100,13 @@
 							<div class="col-md-12">
 								<div class="form-group">
 									<label class="fw-bold">@_localizer["Description[AR]"]</label>
-									<textarea asp-for="SCDescriptionArb" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
+									<textarea asp-for="SCDescriptionArb" dir="rtl" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
 								</div>
 							</div>
 							<div class="col-md-12">
 								<div class="form-group">
 									<label class="fw-bold">@_localizer["Description[EN]"]</label>
-									<textarea asp-for="SCDescription" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
+									<textarea asp-for="SCDescription" dir="ltr" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
 								</div>
 							</div>
 							<!-- Show In Navigation -->
@@ -126,7 +126,7 @@
 								</div>
 							</div>
 							<!-- Submit -->
-							<button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Save"]</button>
+							<div class="admin-form-actions"><a asp-action="List" class="btn btn-default">@_localizer["Cancel"]</a><button type="submit" class="btn btn-primary">@_localizer["Save"]</button></div>
 						</form>
 					</div>
 				</div>

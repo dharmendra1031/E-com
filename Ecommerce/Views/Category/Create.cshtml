@@ -5,12 +5,12 @@
     ViewData["Title"] = "Create Category";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<div class="main-content">
+<div class="main-content admin-master-editor admin-product-editor">
     <div class="row">
         <div class="col-lg-12">
             <div class="card alert">
                 <div class="card-header ">
-                    <div class="row pb-5 ">
+                    <div class="row admin-master-heading">
                         <h4>@_localizer["Create New Category"]</h4>
                         <div class="card-header-right-icon">
                             <ul>
@@ -25,12 +25,12 @@
                         <form asp-controller="Category" id="NavigationKey" asp-action="Create" method="post" enctype="multipart/form-data">
                             @Html.AntiForgeryToken()
 
-                            <div class="row p-5">
+                            <div class="row">
                                 <!-- Arabic Name -->
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Category Name (AR)"]<span style="color:red">*</span></label>
-                                        <input asp-for="CNameArb" class="form-control input-default focusOnEnter" />
+                                        <input asp-for="CNameArb" dir="rtl" class="form-control input-default focusOnEnter" />
                                         <span asp-validation-for="CNameArb" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -38,7 +38,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Category Name (EN)"] <span style="color:red">*</span></label>
-                                        <input asp-for="CName" class="form-control input-default focusOnEnter" />
+                                        <input asp-for="CName" dir="ltr" class="form-control input-default focusOnEnter" />
                                         <span asp-validation-for="CName" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -101,18 +101,18 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="fw-bold">@_localizer["Description[AR]"]</label>
-                                    <textarea asp-for="CDescriptionArbic" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
+                                    <textarea asp-for="CDescriptionArbic" dir="rtl" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="fw-bold">@_localizer["Description[EN]"]</label>
-                                    <textarea asp-for="CDescription" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
+                                    <textarea asp-for="CDescription" dir="ltr" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
                                 </div>
                             </div>
 
                             <!-- Submit -->
-                            <button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Save"]</button>
+                            <div class="admin-form-actions"><a asp-action="Index" class="btn btn-default">@_localizer["Cancel"]</a><button type="submit" class="btn btn-primary">@_localizer["Save"]</button></div>
                         </form>
                     </div>
                 </div>

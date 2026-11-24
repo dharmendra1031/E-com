@@ -122,3 +122,28 @@
  .admin-workspace .admin-compact-dialog { max-width:calc(100% - 24px); margin:24px auto; }
  .admin-workspace .admin-register-filters > .form-group { flex-basis:calc(50% - 12px); }
 }
+
+/* Catalog masters and customer register use the same admin controls. */
+.admin-workspace .admin-master-register .admin-register-filters .card-header-right-icon { position:static; }
+.admin-workspace .admin-master-register .admin-register-filters .row > div:last-child { align-self:flex-end; }
+.admin-workspace .admin-master-register .admin-register-filters { margin-bottom:16px; }
+.admin-workspace .admin-master-register .admin-table-scroll td:last-child { white-space:nowrap; }
+.admin-workspace .admin-master-register .admin-empty-state { text-align:center; padding:32px 12px; color:var(--admin-muted); }
+.admin-workspace .admin-master-register .admin-table-scroll td:nth-child(3) { min-width:150px; overflow-wrap:anywhere; }
+.admin-workspace .admin-master-editor .basic-form { width:100%; padding:12px; }
+.admin-workspace .admin-master-editor .card-header { padding-bottom:16px; border-bottom:1px solid var(--admin-border); margin-bottom:16px; }
+.admin-workspace .admin-master-editor .admin-master-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; width:100%; margin:0; }
+.admin-workspace .admin-master-editor img[id*="Preview"],.admin-workspace .admin-master-editor img[id*="preview"] { object-fit:contain; background:#fff; max-width:150px; max-height:150px; }
+.admin-workspace .admin-top-category-card { border:1px solid var(--admin-border); border-radius:8px; box-shadow:none; }
+.admin-workspace .admin-customer-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); align-items:end; }
+.admin-workspace .admin-customer-filters > .row { display:contents; }
+.admin-workspace .admin-customer-filters .form-group { margin:0!important; min-width:0; }
+.admin-workspace .admin-customer-filters .form-control { width:100%!important; }
+.admin-workspace .admin-customer-filters > .row > .btn { justify-self:start; }
+@media(max-width:767px) {
+ .admin-workspace .admin-master-register .admin-register-filters .row > div { width:100%; }
+ .admin-workspace .admin-master-register .admin-register-filters .row > div:last-child { justify-content:flex-start!important; }
+ .admin-workspace .admin-master-editor .basic-form { padding:4px; }
+ .admin-workspace .admin-customer-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:359px) { .admin-workspace .admin-customer-filters { grid-template-columns:1fr; } }

@@ -11,7 +11,7 @@
 <div class="row">
     <div class="col-lg-12">
         <div class="panel panel-default">
-            <div class="panel-heading text-center">
+            <div class="panel-heading">
                 <h4>@_localizer["Top-Categories"]</h4>
             </div>
 
@@ -28,7 +28,7 @@
                         ? "data:image/png;base64," + Convert.ToBase64String(item.TopCategoryImage)
                         : "";
                         <div class="col-md-4">
-                            <div class="panel panel-default" style="border-radius: 8px;">
+                            <div class="panel panel-default admin-top-category-card">
                                 <div class="panel-body" id="NavigationKey">
                                     <h5 class="text-center mb-3">@_localizer["Top Category"] @(i + 1)</h5>
 
@@ -53,28 +53,28 @@
                                         <!-- Title Arabic -->
                                         <div class="form-group">
                                             <label>@_localizer["Title (Arb)"] <span style="color:red">*</span></label>
-                                            <input type="text" name="TitleArbic" class="form-control input-sm" value="@item.TitleArbic" />
+                                            <input type="text" name="TitleArbic" dir="rtl" class="form-control input-sm" value="@item.TitleArbic" />
                                             <span class="text-danger field-validation-error" data-valmsg-for="TitleArbic" style="display:none;"></span>
                                         </div>
 
                                         <!-- Title English -->
                                         <div class="form-group">
                                             <label>@_localizer["Title (Eng)"] <span style="color:red">*</span></label>
-                                            <input type="text" name="Title" class="form-control input-sm" value="@item.Title" />
+                                            <input type="text" name="Title" dir="ltr" class="form-control input-sm" value="@item.Title" />
                                             <span class="text-danger field-validation-error" data-valmsg-for="Title" style="display:none;"></span>
                                         </div>
 
                                         <!-- SubTitle Arabic -->
                                         <div class="form-group">
                                             <label>@_localizer["Sub Title (AR)"] <span style="color:red">*</span></label>
-                                            <input type="text" name="SubTitleArbic" class="form-control input-sm" value="@item.SubTitleArbic" />
+                                            <input type="text" name="SubTitleArbic" dir="rtl" class="form-control input-sm" value="@item.SubTitleArbic" />
                                             <span class="text-danger field-validation-error" data-valmsg-for="SubTitleArbic" style="display:none;"></span>
                                         </div>
 
                                         <!-- SubTitle English -->
                                         <div class="form-group">
                                             <label>@_localizer["SubTitle (EN)"] <span style="color:red">*</span></label>
-                                            <input type="text" name="SubTitle" class="form-control input-sm" value="@item.SubTitle" />
+                                            <input type="text" name="SubTitle" dir="ltr" class="form-control input-sm" value="@item.SubTitle" />
                                             <span class="text-danger field-validation-error" data-valmsg-for="SubTitle" style="display:none;"></span>
                                         </div>
 
