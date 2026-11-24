@@ -75,6 +75,8 @@ namespace EcommerceWebApplication.Controllers
                     DeliveryCharge=request.DeliveryCharge,
                     DeliveryAddress = request.DeliveryAddress
                 }, transactionid);
+                if (result is not OkObjectResult)
+                    return result;
               
                 //if (result is OkObjectResult okResult)
                 //{
@@ -272,7 +274,8 @@ namespace EcommerceWebApplication.Controllers
             public decimal FinalTotal { get; set; }
         }
 
-        public async Task<IActionResult> SaveOrderAsync(PlaceOrderDto orderRequest,string transactionid)
+        [NonAction]
+        private async Task<IActionResult> SaveOrderAsync(PlaceOrderDto orderRequest,string transactionid)
         {
             if (orderRequest == null || orderRequest.Items == null || !orderRequest.Items.Any())
                 return BadRequest(new { message = "Invalid order request" });
