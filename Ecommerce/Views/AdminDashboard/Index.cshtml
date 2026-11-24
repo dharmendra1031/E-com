@@ -1,89 +1,305 @@
-@using System.Globalization
+﻿@using System.Globalization
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+<!-- /# row -->
 @{
-    var orders = ViewBag.OrderItems as List<EcommerceWebApplication.Models.OrderItemViewModel>;
-    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    var money = Convert.ToDecimal(ViewBag.TodayPayments).ToString("F3",CultureInfo.InvariantCulture);
-    var totalPayments = Convert.ToDecimal(ViewBag.TotalSales).ToString("F3",CultureInfo.InvariantCulture);
-    var metrics = new[] {
-        new { Label = ar ? "مدفوعات اليوم" : "Payments today", Value = "KD " + money, Href = "", Detail = ar ? "المدفوعات المسجلة كمدفوعة" : "Recorded paid payments" },
-        new { Label = ar ? "طلبات اليوم" : "Orders today", Value = Convert.ToString(ViewBag.TodayOrders), Href = Url.Action("PendingOrder","ManageOrders",new {startDate=DateTime.Today.ToString("dd-MM-yyyy"),endDate=DateTime.Today.ToString("dd-MM-yyyy")}), Detail = "" },
-        new { Label = _localizer["Pending Orders"].Value, Value = Convert.ToString(ViewBag.PendingOrders), Href = Url.Action("PendingOrder","ManageOrders",new {status=1}), Detail = ar ? "تحتاج إلى متابعة" : "Requires attention" },
-        new { Label = _localizer["Stock Alert"].Value, Value = Convert.ToString(ViewBag.LowStock), Href = Url.Action("Index","ProductStock"), Detail = ar ? "المخزون المتاح 10 أو أقل" : "Available stock 10 or less" }
-    };
-    var statusCards = new[] {
-        new {Label = _localizer["Accepted Orders"].Value, Value = Convert.ToString(ViewBag.AcceptedOrders), Status = 2},
-        new {Label = _localizer["Completed Orders"].Value, Value = Convert.ToString(ViewBag.CompletedOrders), Status = 5},
-        new {Label = _localizer["Cancelled Orders"].Value, Value = Convert.ToString(ViewBag.CancelledOrders), Status = 4}
-    };
-    var masters = new[] {
-        new {Label = _localizer["Total Customers"].Value, Value = Convert.ToString(ViewBag.customerCount), Href = Url.Action("CustomerList","ManageCustomer")},
-        new {Label = _localizer["Total Products"].Value, Value = Convert.ToString(ViewBag.ProductsCount), Href = Url.Action("ProductList","Products")},
-        new {Label = _localizer["Total Categories"].Value, Value = Convert.ToString(ViewBag.categoryCount), Href = Url.Action("Index","Category")},
-        new {Label = _localizer["Sub Categories"].Value, Value = Convert.ToString(ViewBag.SubCategoriesCount), Href = Url.Action("List","SubCategory")},
-        new {Label = _localizer["Total Area"].Value, Value = Convert.ToString(ViewBag.TotalArea), Href = Url.Action("AreaList","Areas")}
-    };
+    var orderItems = ViewBag.OrderItems as List<EcommerceWebApplication.Models.OrderItemViewModel>;
 }
 <style>
-    .admin-overview { color:#111; min-width:0; }
-    .admin-overview h1,.admin-overview h2 { color:#111; font-weight:700; }
-    .admin-overview .overview-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:12px; }
-    .admin-overview .overview-card { display:flex; flex-direction:column; gap:8px; padding:16px; background:#fff; border:1px solid #dce3e9; border-radius:10px; min-width:0; color:#111; text-decoration:none; overflow-wrap:anywhere; }
-    .admin-overview a.overview-card:hover { border-color:#075a96; }
-    .admin-overview .overview-value { font-size:clamp(1.25rem,2.2vw,1.75rem); font-weight:700; color:#111; }
-    .admin-overview .overview-label { color:#334155; font-size:.9rem; font-weight:600; }
-    .admin-overview .overview-detail { color:#475569; font-size:.8rem; }
-    .admin-overview .overview-section { margin-block:20px; }
-    .admin-overview .overview-table { border:1px solid #dce3e9; background:#fff; border-radius:10px; padding:16px; }
-    .admin-overview th { font-weight:600; color:#111; background:#f6f8fb; }
-    .admin-overview td { color:#111; vertical-align:middle; }
-    .admin-overview .overview-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-block-end:12px; }
+    .bold-text {
+        font-weight: bold;
+    }
 </style>
-<div class="main-content admin-overview">
-    <div class="overview-heading">
-        <div><h1 class="h4 mb-1">@(ar ? "نظرة عامة على الأعمال" : "Business overview")</h1><div class="text-muted small" dir="ltr">@DateTime.Today.ToString("dd MMM yyyy",CultureInfo.InvariantCulture)</div></div>
-        <a class="btn btn-primary" href="@Url.Action("PendingOrder","ManageOrders")">@(ar ? "إدارة الطلبات" : "Manage orders")</a>
-    </div>
-    <div class="overview-grid">
-        @foreach(var m in metrics)
-        {
-            @if(!string.IsNullOrEmpty(m.Href))
-            {
-                <a class="overview-card" href="@m.Href"><span class="overview-label">@m.Label</span><strong class="overview-value" dir="ltr">@m.Value</strong><span class="overview-detail">@m.Detail</span></a>
-            }
-            else
-            {
-                <div class="overview-card"><span class="overview-label">@m.Label</span><strong class="overview-value" dir="ltr">@m.Value</strong><span class="overview-detail">@m.Detail</span></div>
-            }
-        }
-    </div>
-    <section class="overview-section">
-        <h2 class="h5">@(ar ? "حالة الطلبات" : "Order status")</h2>
-        <div class="overview-grid">
-            @foreach(var m in statusCards)
-            {
-                <a class="overview-card" href="@Url.Action("PendingOrder","ManageOrders",new {status=m.Status})"><span class="overview-label">@m.Label</span><strong class="overview-value">@m.Value</strong></a>
-            }
-            <div class="overview-card"><span class="overview-label">@(ar ? "إجمالي المدفوعات المسجلة" : "Total recorded payments")</span><strong class="overview-value" dir="ltr">KD @totalPayments</strong></div>
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="row">
+
+                <div class="col-lg-3">
+                    <a href="~/ManageCustomer/CustomerList" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-primary">
+                                    <i class="ti-user"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Total Customers"]</div>
+                                    <div class="stat-digit">@ViewBag.customerCount</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-lg-3">
+                    <a href="~/Category/Index" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-info">
+                                    <i class="ti-layout-grid2"></i> <!-- Total Categories -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text bold-text">@_localizer["Total Categories"]</div>
+                                    <div class="stat-digit">@ViewBag.categoryCount</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-lg-3">
+                    <a href="~/SubCategory/List" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-warning">
+                                    <i class="ti-menu-alt"></i> <!-- Sub Categories -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text bold-text">@_localizer["Sub Categories"]</div>
+                                    <div class="stat-digit">@ViewBag.SubCategoriesCount</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-lg-3">
+                    <a href="~/Products/ProductList" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-success">
+                                    <i class="ti-package"></i> <!-- Total Products -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Total Products"]</div>
+                                    <div class="stat-digit">@ViewBag.ProductsCount</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
         </div>
-    </section>
-    <section class="overview-section overview-table">
-        <div class="overview-heading"><h2 class="h5 mb-0">@(ar ? "أحدث الطلبات" : "Recent orders")</h2><a href="@Url.Action("PendingOrder","ManageOrders")">@(ar ? "عرض الكل" : "View all")</a></div>
-        @if(orders?.Any()==true)
-        {
-            <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>@_localizer["Order ID"]</th><th>@_localizer["Customer Name"]</th><th>@_localizer["Order Status"]</th><th>@_localizer["Payment type"]</th><th>@_localizer["Date/Time"]</th><th>@_localizer["Total Price"]</th></tr></thead>
-            <tbody>@foreach(var o in orders)
-            {
-                <tr><td>#@o.OrderId</td><td>@o.FullName</td><td>@o.OrderStatus</td><td>@o.Paytype</td><td dir="ltr">@o.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td><td dir="ltr">KD @Convert.ToDecimal(o.TotalPrice).ToString("F3",CultureInfo.InvariantCulture)</td></tr>
-            }</tbody></table></div>
-        }
-        else { <p class="text-muted mb-0">@(ar ? "لا توجد طلبات" : "No orders yet")</p> }
-    </section>
-    <section class="overview-section">
-        <h2 class="h5">@(ar ? "البيانات الأساسية" : "Master data")</h2>
-        <div class="overview-grid">@foreach(var m in masters)
-        {
-            <a class="overview-card" href="@m.Href"><span class="overview-label">@m.Label</span><strong class="overview-value">@m.Value</strong></a>
-        }</div>
-    </section>
+
+        <div class="col-lg-12">
+            <div class="row">
+                <div class="col-lg-3">
+                    <a href="~/ManageOrders/PendingOrder" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-warning">
+                                    <i class="ti-timer"></i> <!-- Pending Orders -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Pending Orders"]</div>
+                                    <div class="stat-digit">@ViewBag.PendingOrders</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-lg-3">
+                    <a href="~/ManageOrders/PendingOrder" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-primary">
+                                    <i class="ti-check-box"></i> <!-- Accepted Orders -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Accepted Orders"]</div>
+                                    <div class="stat-digit">@ViewBag.AcceptedOrders</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-lg-3">
+                    <a href="~/ManageOrders/PendingOrder" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-success">
+                                    <i class="ti-check"></i> <!-- Completed Orders -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Completed Orders"]</div>
+                                    <div class="stat-digit">@ViewBag.CompletedOrders</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-lg-3">
+                    <a href="~/ManageOrders/PendingOrder" class="text-decoration-none text-dark">
+                        <div class="card p-0 clickable-card" style="cursor: pointer;">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-danger">
+                                    <i class="ti-close"></i> <!-- Cancelled Orders -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Cancelled Orders"]</div>
+                                    <div class="stat-digit">@ViewBag.CancelledOrders</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-12">
+            <div class="row">
+                <div class="col-lg-3">
+                    <a href="~/Areas/AreaList" class="text-decoration-none text-dark">
+                        <div class="card p-0">
+                            <div class="stat-widget-three">
+                                <div class="stat-icon bg-info">
+                                    <i class="ti-map-alt"></i> <!-- Total Area -->
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text bold-text">@_localizer["Total Area"]</div>
+                                    <div class="stat-digit"> @ViewBag.TotalArea </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-lg-3">
+                    <div class="card p-0">
+                        <div class="stat-widget-three">
+                            <div class="stat-icon bg-warning">
+                                <i class="ti-wallet"></i> <!-- Total Sales -->
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-text bold-text">@_localizer["Total Sales"]</div>
+                                <div class="stat-digit" id="totalSales">@Convert.ToDecimal(ViewBag.TotalSales).ToString("F3", CultureInfo.InvariantCulture)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="card p-0">
+                        <div class="stat-widget-three">
+                            <div class="stat-icon @(ViewBag.LowStock > 0 ? "bg-danger" : "bg-success")">
+                                <i class="ti-alert"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-text bold-text">@_localizer["Stock Alert"]</div>
+                                <div class="stat-digit">
+                                    @ViewBag.LowStock
+                                    @if (ViewBag.LowStock > 20)
+                                    {
+                                        <span style="color:red">@_localizer["(Low!)"]</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @*  <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        let el = document.getElementById("totalSales");
+                        if (el && el.innerText.trim() !== "") {
+                            // Convert text to number first (handle comma/dot from culture)
+                            let num = parseFloat(el.innerText.replace(",", "."));
+                            if (!isNaN(num)) {
+                                // Force format with 3 decimals and dot as separator
+                                el.innerText = num.toFixed(3);
+                            }
+                        }
+                    });
+                </script> *@
+                @* Commented sections untouched *@
+                @* 
+        <div class="col-lg-6">
+            <div class="card bg-success">
+                <div class="stat-widget-six">
+                    <div class="stat-icon p-15">
+                        <i class="ti-stats-up"></i>
+                    </div>
+                    <div class="stat-content p-t-12 p-b-12">
+                        <div class="text-left dib">
+                            <div class="stat-heading">Daily sales</div>
+                            <div class="stat-text">Total: 9765</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card bg-primary">
+                <div class="stat-widget-six">
+                    <div class="stat-icon p-15">
+                        <i class="ti-stats-down"></i>
+                    </div>
+                    <div class="stat-content p-t-12 p-b-12">
+                        <div class="text-left dib">
+                            <div class="stat-heading">Daily Expense</div>
+                            <div class="stat-text">Total: 6765</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        *@
+            </div>
+        </div>
+
+
+        <!-- /# column -->
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4 class="stat-text bold-text">@_localizer["LastT"]</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover mb-0">
+                            <thead style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                <tr>
+
+                                    <th style="text-align:center;">@_localizer["SN"]</th>
+                                    <th style="text-align:center;">@_localizer["Order ID"]</th>
+                                    <th style="text-align:center;">@_localizer["Payment type"]</th>
+
+                                    <th style="text-align:center;">@_localizer["Order Status"]</th>
+                                    <th style="text-align:center;">@_localizer["Date/Time"]</th>
+                                    <th style="text-align:center;">@_localizer["Customer Name"]</th>
+
+
+                                    <th style="text-align:center;">@_localizer["Total Price"]</th>
+                                </tr>
+                            </thead>
+                            <tbody style="direction: ltr;">
+                                @if (orderItems != null)
+                                {
+                                    var serial = 1; // initialize serial number
+                                    foreach (var item in orderItems)
+                                    {
+                                        <tr>
+                                            <td style="text-align:center;">@serial</td> <!-- Serial Number -->
+                                            <td style="text-align:center;">@item.OrderId</td>
+                                            <td style="text-align:center;">@item.Paytype</td>
+                                            <td style="text-align:center;">@item.OrderStatus</td>
+                                            <td style="text-align:center;">  @item.CreatedAt.ToString("dd-MM-yyyy hh:mm tt")</td>
+                                            <td style="text-align:center;">@item.FullName</td>
+                                            <td style="text-align:center;">@Convert.ToDecimal(item.TotalPrice).ToString("F3", CultureInfo.InvariantCulture)</td>
+                                        </tr>
+                                        serial++; // increment serial number
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- /# column -->
+    </div>
+
 </div>
+
+
+
+
