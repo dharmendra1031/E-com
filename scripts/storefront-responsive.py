@@ -118,6 +118,7 @@ with sync_playwright() as pw:
                         const search=document.querySelector('#searchInput');
                         const rect=el=>el?.getBoundingClientRect();
                         const controls = [...document.querySelectorAll("#siteHeader .store-header-action, #siteHeader .header-actions > .btn, .store-product-grid .add-to-cart-btn")].filter(el=>rect(el).width && rect(el).height && (rect(el).width<43.5 || rect(el).height<43.5)).map(el=>el.className);
+                        const gridColumns = [...document.querySelectorAll(".store-product-grid")].map(el=>getComputedStyle(el).gridTemplateColumns.split(" ").length);
                         const badImages = [...document.querySelectorAll(".store-product-grid .cart-image-container")].filter(el=>rect(el).height && Math.abs(Math.min(rect(el).width*3/4,parseFloat(getComputedStyle(el).maxHeight)||Infinity)-rect(el).height)>2).length;
                         const clippedCards = [...document.querySelectorAll(".store-product-grid .cart-item-card, .store-product-grid .cart-item-footer, .store-product-grid .product-price")].filter(el=>el.scrollWidth>el.clientWidth+2).length;
                         const overflow=[...document.querySelectorAll('body *')].filter(el=>{
@@ -127,7 +128,7 @@ with sync_playwright() as pw:
                           return r.width>0 && r.height>0 && (r.right>innerWidth+2 || r.left< -2);
                         }).slice(0,12).map(el=>el.tagName+'.'+String(el.className).slice(0,100));
                         return {lang:root.lang,dir:root.dir||getComputedStyle(root).direction,
-                          viewport:root.clientWidth,scrollWidth:root.scrollWidth, controls,badImages,clippedCards,
+                          viewport:root.clientWidth,scrollWidth:root.scrollWidth, controls,badImages,clippedCards,gridColumns,
                           headerHeight:rect(header)?.height||0,
                           headerOverlaps:header && body && getComputedStyle(header).position==='fixed'
                             ? rect(body).top+parseFloat(getComputedStyle(body).paddingTop)<rect(header).bottom-2:false,
@@ -144,6 +145,8 @@ with sync_playwright() as pw:
                         if not metrics["searchVisible"]: row["issues"].append("search hidden")
                         if metrics["controls"]: row["issues"].append("undersized touch targets")
                         if metrics["badImages"]: row["issues"].append("product image aspect ratio")
+                        expected_columns = 2 if width < 768 else 3 if width < 1200 else 4 if width < 1440 else 5 if width < 2000 else 6
+                        if any(n != expected_columns for n in metrics["gridColumns"]): row["issues"].append("unexpected product grid column count")
                         if metrics["clippedCards"]: row["issues"].append("product card clipping")
                     page.screenshot(path=str(args.output/f"{args.browser}-{language}-{width}x{height}-{name}.png"), full_page=False, animations="disabled")
                 except Exception as error:

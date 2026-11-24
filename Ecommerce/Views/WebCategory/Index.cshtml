@@ -5,7 +5,7 @@
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
 <div class="container-fluid store-wide store-catalog">
-    <nav class="store-breadcrumb" aria-label="@_localizer["SHOP"]"><a href="~/WebHome/Index">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الرئيسية" : "Home")</a><span aria-hidden="true">/</span><span>@_localizer["SHOP"]</span></nav>
+    <nav class="store-breadcrumb" aria-label="@_localizer["SHOP"]"><a href="~/WebHome/Index">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الرئيسية" : "Home")</a><span aria-hidden="true">/</span><span id="catalogBreadcrumb" aria-current="page">@_localizer["SHOP"]</span></nav>
     <div id="SubCategoryContainer"></div>
     <div class="catalog-layout">
         <aside class="catalog-sidebar offcanvas-lg offcanvas-start" id="catalogFilterDrawer" tabindex="-1" aria-labelledby="filterDrawerTitle">
@@ -20,12 +20,14 @@
                     <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العلامة التجارية" : "Brand")
                         <select id="filterBrand" class="form-select"><option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "All brands")</option></select>
                     </label>
-                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أدنى سعر (د.ك)" : "Min price (KD)")
+                    <div class="store-price-range">
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "من (د.ك)" : "Min (KD)")
                         <input id="minPrice" type="number" min="0" step="0.001" inputmode="decimal" class="form-control" />
                     </label>
-                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أعلى سعر (د.ك)" : "Max price (KD)")
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إلى (د.ك)" : "Max (KD)")
                         <input id="maxPrice" type="number" min="0" step="0.001" inputmode="decimal" class="form-control" />
                     </label>
+                    </div>
                     <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "التقييم" : "Rating")
                         <select id="minRating" class="form-select">
                             <option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "Any rating")</option>
@@ -40,10 +42,6 @@
                 </div>
                 <p id="filterError" class="small text-danger mb-0" role="status"></p>
             </form>
-                <details class="store-category-disclosure">
-                    <summary>@_localizer["Top Categories"]</summary>
-                    <div id="categoryContainer"></div>
-                </details>
             </div>
         </aside>
         <main class="catalog-main">
@@ -61,7 +59,7 @@
 </div>
 <script>
     (() => {
-        const categories = document.getElementById("categoryContainer");
+        let categories = [];
         const subcategories = document.getElementById("SubCategoryContainer");
         const products = document.getElementById("ProductContainer");
         const arabic = document.documentElement.lang === "ar";
@@ -161,16 +159,16 @@
         }
 
         function findCategory(id) {
-            return Array.from(categories.querySelectorAll(".category-link"))
-                .find(item => item.dataset.categoryid === id);
+            return categories.find(item => String(item.categoryId) === String(id));
         }
 
         function updateHeading() {
             const title = document.getElementById("breadcrumbTitle");
             if (!title) return;
-            const parent = categories.querySelector(".active")?.textContent.trim() || "";
+            const parent = findCategory(categoryId)?.cName || "";
             const child = subcategories.querySelector(".active")?.dataset.subname || "";
-            title.textContent = child ? parent + " / " + child : parent;
+            title.textContent = child || parent;
+            document.getElementById("catalogBreadcrumb").textContent = child ? parent + " / " + child : parent;
             document.dispatchEvent(new CustomEvent("store:category", { detail: categoryId }));
         }
 
@@ -222,16 +220,16 @@
         }
         more.addEventListener("click", () => loadProducts(true));
 
-        async function selectCategory(link, initialSubcategory = "", historyMode = "push") {
+        async function selectCategory(category, initialSubcategory = "", historyMode = "push") {
             categoryRequest?.abort();
             productRequest?.abort();
             const request = new AbortController();
             categoryRequest = request;
-            categoryId = link.dataset.categoryid;
+            categoryId = String(category.categoryId);
             subcategoryId = "";
             brandRequest?.abort();
             resetFilterValues();
-            setActive(categories, link);
+
             status(subcategories, arabic ? "جارٍ التحميل…" : "Loading…");
             products.textContent = "";
             products.removeAttribute("aria-busy");
@@ -255,14 +253,6 @@
                 if (error.name !== "AbortError") status(subcategories, arabic ? "تعذر التحميل." : "Unable to load categories.");
             }
         }
-
-        categories.addEventListener("click", event => {
-            const link = event.target.closest(".category-link");
-            if (!link) return;
-            event.preventDefault();
-            closeFilters();
-            selectCategory(link);
-        });
 
         subcategories.addEventListener("click", event => {
             const link = event.target.closest(".subcategory-link");
@@ -307,13 +297,16 @@
             if (link) selectCategory(link, params.get("subCategoryId") || "", "none");
         });
 
-        getPartial("/WebCategory/CategoryPartial").then(html => {
-            categories.innerHTML = html;
-            const links = Array.from(categories.querySelectorAll(".category-link"));
-            const link = findCategory(selectedCategory) || links[0];
-            if (link) selectCategory(link, selectedSubcategory, "replace");
+        // The header already fetches active categories; reuse that result rather than loading a second menu.
+        document.addEventListener("store:categories-ready", event => {
+            categories = event.detail;
+            const category = findCategory(selectedCategory) || categories[0];
+            if (category) selectCategory(category, selectedSubcategory, "replace");
             else status(products, arabic ? "لا توجد فئات" : "No categories found");
-        }).catch(() => status(categories, arabic ? "تعذر التحميل." : "Unable to load categories."));
+        }, { once: true });
+        document.addEventListener("store:categories-error", () => {
+            status(products, arabic ? "تعذر تحميل الفئات. أعد تحميل الصفحة." : "Unable to load categories. Refresh the page to retry.");
+        }, { once: true });
     })();
 </script>
 

@@ -80,13 +80,13 @@ namespace EcommerceWebApplication.Controllers
                 .Select(p => new ProductListViewModel
                 {
                     ProductId = p.ProductId,
-                    Name = isArabic ? p.NameArb : p.Name,
+                    Name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
                     Price = p.Price,
                     AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
                     ReviewCount = p.ProductReviews.Count(),
                     Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
                         - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
-                    ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
+                    ProductImageId = p.ProductImages.Where(img => img.ImageData != null).OrderByDescending(img => img.IsPrimary == true).ThenBy(img => img.ImageId)
                         .Select(img => (int?)img.ImageId).FirstOrDefault()
                 }).ToList();
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;

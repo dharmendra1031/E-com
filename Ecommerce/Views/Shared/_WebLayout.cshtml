@@ -519,6 +519,7 @@
                 topList.replaceChildren();
                 if (!data.length) {
                     emptyMessage(dropdown, ar ? "لا توجد فئات" : "No categories");
+                    document.dispatchEvent(new CustomEvent("store:categories-ready", { detail: [] }));
                     return;
                 }
                 for (const item of data) {
@@ -565,7 +566,9 @@
                     });
                     row.addEventListener("mouseleave", () => { hovered = false; submenu.style.display = "none"; });
                 }
+                document.dispatchEvent(new CustomEvent("store:categories-ready", { detail: data }));
             } catch {
+                document.dispatchEvent(new Event("store:categories-error"));
                 emptyMessage(dropdown, ar ? "تعذر تحميل الفئات" : "Unable to load categories");
                 emptyMessage(topList, ar ? "تعذر تحميل الفئات" : "Unable to load categories");
             }
