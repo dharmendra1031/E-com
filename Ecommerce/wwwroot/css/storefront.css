@@ -294,7 +294,7 @@
 @media(max-width:991.98px) { .store-home-hero { grid-template-columns:minmax(0,1fr); } .store-hero-copy { padding:20px; } .store-footer-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:575.98px) { .store-product-grid .product-name { font-size:.9rem; } .store-product-grid .add-to-cart-btn { font-size:.85rem; padding-inline:6px; } .store-footer-grid { grid-template-columns:minmax(0,1fr); } }
 
-.store-search-submit { position:absolute; inset-block-start:4px; inset-inline-end:4px; width:44px; height:40px; border:0; border-radius:5px; background:var(--store-blue); color:#fff; font-size:1.1rem; }
+.store-search-submit { position:absolute; inset-block-start:2px; inset-inline-end:2px; width:44px; height:44px; border:0; border-radius:5px; background:var(--store-blue); color:#fff; font-size:1.1rem; }
 .store-search-submit:hover { background:var(--store-blue-dark); }
 .store-search-all { text-align:center; font-weight:600; color:var(--store-blue); padding:12px; }
 .store-card-brand { font-size:.78rem; font-weight:600; color:var(--store-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

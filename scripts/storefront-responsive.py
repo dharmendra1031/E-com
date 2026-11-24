@@ -21,6 +21,7 @@ SIZES = [(320,568),(360,800),(390,844),(430,932),(844,390),
          (1440,900),(1920,1080),(2560,1440),(3840,2160)]
 ROUTES = [("home","/WebHome/Index"),("catalog","/WebCategory/Index"),
           ("brands","/BrandWiseProducts/Index"),("deals","/Wekenddealwiseproducts/Index"),
+          ("search","/WebCategory/Search?term=router"),
           ("cart","/WebCart/Cart"),("login","/UserAccount/Login"),
           ("register","/UserAccount/Register"),("contact","/WebContact/Contact")]
 parser = argparse.ArgumentParser(description=__doc__)
@@ -109,6 +110,19 @@ with sync_playwright() as pw:
                         page.locator("#ProductContainer .cart-grid-container").wait_for(state="visible", timeout=15000)
                         if cards.count() > 24 or page.locator("#ProductContainer .out-of-stock").count():
                             row["issues"].append("stock filter did not reset/filter the catalog")
+                    if not args.reference and name=="search":
+                        page.locator(".cart-grid-container").wait_for(state="visible")
+                        if page.locator(".cart-item-col").count() > 24:
+                            row["issues"].append("search page exceeds 24 products")
+                        page.locator("#searchInput").fill("TP-Link")
+                        page.locator("#searchInput").press("Enter")
+                        page.wait_for_url("**/WebCategory/Search?term=TP-Link")
+                        page.locator(".cart-grid-container").wait_for(state="visible")
+                        page.locator("input[name=inStock]").check()
+                        page.locator(".store-search-toolbar button[type=submit]").click()
+                        page.locator(".cart-grid-container").wait_for(state="visible")
+                        if page.locator(".out-of-stock").count():
+                            row["issues"].append("search stock filter returned unavailable products")
                     if not args.reference and name=="product":
                         main = page.locator("#mainImg")
                         if main.count():
@@ -128,7 +142,7 @@ with sync_playwright() as pw:
                         const body=document.querySelector('#pageContent');
                         const search=document.querySelector('#searchInput');
                         const rect=el=>el?.getBoundingClientRect();
-                        const controls = [...document.querySelectorAll("#siteHeader .store-header-action, #siteHeader .header-actions > .btn, .store-product-grid .add-to-cart-btn")].filter(el=>rect(el).width && rect(el).height && (rect(el).width<43.5 || rect(el).height<43.5)).map(el=>el.className);
+                        const controls = [...document.querySelectorAll("#siteHeader .store-header-action, #siteHeader .header-actions > .btn, #siteHeader .store-search-submit, .store-product-grid .add-to-cart-btn")].filter(el=>rect(el).width && rect(el).height && (rect(el).width<43.5 || rect(el).height<43.5)).map(el=>el.className);
                         const gridColumns = [...document.querySelectorAll(".store-product-grid")].map(el=>getComputedStyle(el).gridTemplateColumns.split(" ").length);
                         const badImages = [...document.querySelectorAll(".store-product-grid .cart-image-container")].filter(el=>rect(el).height && Math.abs(Math.min(rect(el).width*3/4,parseFloat(getComputedStyle(el).maxHeight)||Infinity)-rect(el).height)>2).length;
                         const clippedCards = [...document.querySelectorAll(".store-product-grid .cart-item-card, .store-product-grid .cart-item-footer, .store-product-grid .product-price")].filter(el=>el.scrollWidth>el.clientWidth+2).length;

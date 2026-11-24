@@ -110,7 +110,9 @@ namespace EcommerceWebApplication.Controllers
                 .Select(p => new ProductListViewModel
                 {
                     ProductId = p.ProductId,
-                    BrandId = p.BrandId,
+                    BrandName = _context.Brand.Where(b => b.BrandId == p.BrandId)
+                        .Select(b => isArabic && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn)
+                        .FirstOrDefault(),
                     Name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
                     Price = p.Price,
                     AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
@@ -123,15 +125,6 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
             ViewBag.TotalProducts = query.Count();
             var items = products.Take(pageSize).ToList();
-            var brandIds = items.Where(p => p.BrandId.HasValue).Select(p => p.BrandId.Value).Distinct().ToList();
-            if (brandIds.Count > 0)
-            {
-                var names = _context.Brand.AsNoTracking().Where(b => brandIds.Contains(b.BrandId))
-                    .Select(b => new { b.BrandId, Name = isArabic && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn })
-                    .ToDictionary(b => b.BrandId, b => b.Name);
-                foreach (var item in items)
-                    if (item.BrandId.HasValue && names.TryGetValue(item.BrandId.Value, out var name)) item.BrandName = name;
-            }
             if (searchPage) return View("Search", items);
             return PartialView("_ProductsPartial", items);
         }
