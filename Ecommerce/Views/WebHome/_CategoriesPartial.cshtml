@@ -1,50 +1,22 @@
-﻿@{
-    var categories = ViewBag.Categories as List<Category>;
-}
-
-<div class="container my-4 col-md-11">
-
-
-    <!-- SLIDER -->
-    <div class="position-relative">
-
-        
-
-        <!-- VIEWPORT -->
-        <div class="home-category-viewport">
-            <div id="categoryTrack">
-
-                @if (categories != null && categories.Count > 0)
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{ var categories = ViewBag.Categories as List<Category>; }
+@if (categories?.Any() == true)
+{
+    <section class="col-12 col-md-11 px-3 px-md-0">
+        <div class="store-home-section">
+            <div class="store-section-heading"><h2 class="h4 mb-0">@_localizer["All Categories"]</h2></div>
+            <div id="categoryTrack" class="store-category-grid">
+                @foreach (var cat in categories)
                 {
-                    foreach (var cat in categories)
-                    {
-                        <div class="category-item text-center">
-
-                            <a href="/WebCategory/Index?categoryId=@cat.CategoryId"
-                               class="text-decoration-none text-dark">
-
-                                <img src="@cat.ImageBase64"
-                                     class="category-img rounded-circle p-2" alt="" loading="lazy" decoding="async" />
-
-                                <p class="fw-bold mt-2 small">@cat.CName</p>
-                            </a>
-
-                        </div>
-                    }
+                    <a href="@Url.Action("Index", "WebCategory", new { categoryId = cat.CategoryId })" class="store-category-tile text-decoration-none">
+                        @if (!string.IsNullOrEmpty(cat.ImageBase64) && !cat.ImageBase64.Contains("default-category.png"))
+                        {
+                            <img src="@cat.ImageBase64" alt="" loading="lazy" decoding="async" />
+                        }
+                        <span>@cat.CName</span>
+                    </a>
                 }
-
             </div>
         </div>
-
-        
-
-    </div>
-</div>
-
-
-<style>
-    #categoryTrack { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr)); gap: 12px; }
-    #categoryTrack .category-item { min-width: 0; padding: 8px; }
-    #categoryTrack .category-img { width: min(100%, 108px); aspect-ratio: 1; object-fit: contain; border: 1px solid #e2e8f0; }
-    #categoryTrack p { overflow-wrap: anywhere; color: #111; margin-block-end: 0; }
-</style>
+    </section>
+}

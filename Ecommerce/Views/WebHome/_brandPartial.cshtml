@@ -1,76 +1,23 @@
-﻿@using EcommerceWebApplication.Models.ViewModels
+@using EcommerceWebApplication.Models.ViewModels
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-@{
-    var brands = ViewBag.Brands as List<BrandViewModel>;
-}
-<div class="container my-4 col-md-11">
-
-    <!-- TITLE -->
-    <div class="p-4 rounded mb-3" id="brandHeader"
-         style="background: linear-gradient(to right, #14a2d7, #f9f1d7);">
-        <h2 class="text-center fw-bold">
-            @_localizer["BRANDS WE"] <span style="color:#0d466f;">&#10084;</span>
-        </h2>
-    </div>
-
-    <!-- SLIDER -->
-    <div class="position-relative">
-
-        
-
-        <!-- VIEWPORT -->
-        <div class="home-brand-viewport">
-            <div id="brandTrack">
-                @if (brands != null && brands.Count > 0)
+@{ var brands = ViewBag.Brands as List<BrandViewModel>; }
+@if (brands?.Any() == true)
+{
+    <section class="col-12 col-md-11 px-3 px-md-0">
+        <div class="store-home-section">
+            <div class="store-section-heading"><h2 class="h4 mb-0">@_localizer["BRANDS WE"]</h2></div>
+            <div id="brandTrack" class="store-brand-grid">
+                @foreach (var brand in brands)
                 {
-                    foreach (var brand in brands)
-                    {
-                        <a href="/BrandWiseProducts/Index?brandId=@brand.BrandId"
-                               class="text-decoration-none text-dark">
-                        <div class="brand-item text-center">
-                            <img src="@brand.BrandlogoBase64"
-                                 alt="@brand.BrandNameAEn"
-                                 title="@brand.BrandNameAEn" loading="lazy" decoding="async" />
-                        </div>
-                        </a>
-                    }
+                    <a href="@Url.Action("Index", "BrandWiseProducts", new { brandId = brand.BrandId })" class="store-brand-tile text-decoration-none">
+                        @if (!string.IsNullOrEmpty(brand.BrandlogoBase64) && !brand.BrandlogoBase64.Contains("default-brand.png"))
+                        {
+                            <img src="@brand.BrandlogoBase64" alt="" loading="lazy" decoding="async" />
+                        }
+                        <span>@brand.BrandNameAEn</span>
+                    </a>
                 }
             </div>
         </div>
-
-        
-
-    </div>
-</div>
-
-<style>
-    #brandTrack { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap: 12px; }
-    #brandTrack > a { min-width: 0; }
-    #brandTrack .brand-item { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
-    #brandTrack img { width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: contain; }
-</style>
-<script>
-
-    $(document).ready(function () {
-
-        $.ajax({
-            url: '/Changecolors/GetColor',
-            type: 'GET',
-            success: function (res) {
-
-                if (res.success && res.color) {
-
-                    let dynamicColor = res.color;
-
-                   
-                    $("#brandHeader").css(
-                        "background",
-                        `linear-gradient(to right, ${dynamicColor}, #f9f1d7)`
-                    );
-                }
-            }
-        });
-
-    });
-
-</script>
+    </section>
+}

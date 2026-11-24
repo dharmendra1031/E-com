@@ -4,8 +4,8 @@
 }
 
 <div class="col-12 col-md-11">
-    <div id="homeBannerCarousel" class="carousel slide" data-bs-ride="carousel">
-        <div class="carousel-inner shadow rounded-4">
+    <div id="homeBannerCarousel" class="carousel slide" data-bs-interval="false">
+        <div class="carousel-inner rounded-3">
             @if (banners != null && banners.Count > 0)
             {
                 @for (int i = 0; i < banners.Count; i++)
@@ -25,12 +25,15 @@
             }
         </div>
 
-        <button class="carousel-control-prev" type="button" data-bs-target="#homeBannerCarousel" data-bs-slide="prev">
+        @if (banners?.Count > 1)
+        {
+        <button class="carousel-control-prev" type="button" data-bs-target="#homeBannerCarousel" data-bs-slide="prev" aria-label="@(arabic ? "السابق" : "Previous banner")">
             <span class="carousel-control-prev-icon rounded-circle p-3 bg-dark"></span>
         </button>
 
-        <button class="carousel-control-next" type="button" data-bs-target="#homeBannerCarousel" data-bs-slide="next">
+        <button class="carousel-control-next" type="button" data-bs-target="#homeBannerCarousel" data-bs-slide="next" aria-label="@(arabic ? "التالي" : "Next banner")">
             <span class="carousel-control-next-icon rounded-circle p-3 bg-dark"></span>
         </button>
+        }
     </div>
 </div>

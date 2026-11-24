@@ -130,7 +130,9 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTopRatedProducts()
         {
+            bool isArabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var topProducts = await _context.ProductReviews
+                .Where(r => r.Product.IsActive)
                 .GroupBy(r => r.ProductId)
                 .Select(g => new
                 {
@@ -140,28 +142,27 @@ namespace EcommerceWebApplication.Controllers
                 })
                 .OrderByDescending(x => x.AverageRating)
                 .ThenByDescending(x => x.TotalReviews)
+                .ThenBy(x => x.ProductId)
                 .Take(4)
-                .Join(
-                    _context.Products.Where(p => p.IsActive),
-                    review => review.ProductId,
-                    product => product.ProductId,
+                .Join(_context.Products.Where(p => p.IsActive),
+                    review => review.ProductId, product => product.ProductId,
                     (review, product) => new
                     {
                         product.ProductId,
-                        product.Name,
+                        Name = isArabic ? product.NameArb : product.Name,
+                        product.Price,
                         review.AverageRating,
                         review.TotalReviews,
-
-                        // ImageUrl => imageUrl (camelCase) — taaki JS mein easily access ho sake
-                        imageUrl = product.ProductImages.Any()
-                    ? "/StoreImage/Product/" + product.ProductImages.OrderBy(img => img.ImageId).Select(img => img.ImageId).FirstOrDefault()
-                     : "/images/default-focus.png"
-
-                    }
-                )
+                        ImageId = product.ProductImages.OrderBy(img => img.ImageId)
+                            .Select(img => (int?)img.ImageId).FirstOrDefault()
+                    })
                 .ToListAsync();
 
-            return Ok(topProducts);
+            return Ok(topProducts.Select(p => new
+            {
+                p.ProductId, p.Name, p.Price, p.AverageRating, p.TotalReviews,
+                imageUrl = p.ImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = p.ImageId }) : null
+            }));
         }
         [HttpGet]
         public async Task<IActionResult> search([FromQuery] string term, [FromQuery] string lang = "en")

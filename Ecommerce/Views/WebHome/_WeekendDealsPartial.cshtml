@@ -1,168 +1,127 @@
-﻿@using System.Globalization
+@using System.Globalization
 @model HomeViewModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-@{
-    var targetDate = DateTime.Today.AddDays(1).AddHours(18); 
-}
-
-<div class="container my-2 col-md-11">
-    <div class="row">
-
-        <!-- LEFT SECTION: Weekend Deals -->
-        <div class="col-lg-6 col-md-12 mb-4 bg-white border rounded-3 shadow-sm p-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
-                <h4 class="fw-bold">@_localizer["Weekend Deals"]</h4>
-
-                <!-- TIMER BOX using Bootstrap -->
-                <div class="d-flex gap-2 d-none">
-                    <div class="bg-dark text-white text-center p-1 rounded" style="min-width:50px; font-size:14px;">
-                        <div id="hours">00</div>
-                        <small>Hrs</small>
-                    </div>
-                    <div class="bg-dark text-white text-center p-1 rounded" style="min-width:50px; font-size:14px;">
-                        <div id="minutes">00</div>
-                        <small>Min</small>
-                    </div>
-                    <div class="bg-dark text-white text-center p-1 rounded" style="min-width:50px; font-size:14px;">
-                        <div id="seconds">00</div>
-                        <small>Sec</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-2">
-                @if (Model.WeekendDeals != null && Model.WeekendDeals.Any())
+@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
+<div class="col-12 col-md-11 px-3 px-md-0">
+    <section class="store-home-section">
+        <div class="store-section-heading">
+            <h2 class="h4 mb-0">@_localizer["Weekend Deals"]</h2>
+            <a href="~/Wekenddealwiseproducts/Index" class="fw-semibold text-decoration-none">@_localizer["View All"]</a>
+        </div>
+        <div class="store-home-grid">
+            @if (Model.WeekendDeals != null && Model.WeekendDeals.Any())
+            {
+                foreach (var deal in Model.WeekendDeals)
                 {
-                    foreach (var deal in Model.WeekendDeals)
-                    {
-                       
-                        <div class="col-6 col-xl-4">
-                            <a href="@Url.Action("SingleProduct", "WebSingleProduct", new { id = deal.ProductId })" class="text-decoration-none text-dark">
-
-                            <div class="card h-100 shadow-sm position-relative overflow-hidden transition" style="font-size:0.85rem; cursor:pointer;"
-                                 >
-                                <span class="badge bg-danger position-absolute top-0 start-0 m-1">@deal.DiscPer% OFF</span>
-                                <img src="@(deal.ProductImagesBase64 != null && deal.ProductImagesBase64.Any() ? deal.ProductImagesBase64.First() : "/images/default-product.png")"
-                                     class="card-img-top" style="aspect-ratio:4/3; object-fit:contain;" alt="@deal.ProductName" loading="lazy" decoding="async" />
-                                <div class="card-body p-2">
-                                    <p class="card-title fw-semibold mb-1" style="font-size:0.9rem;">
-                                        @(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft? deal.ProductNameAr: deal.ProductName)
-                                    </p>
-
-                                        @if (deal.ProductPrice > 0 && deal.OfferPrice > 0)
-                                    {
-                                        <p class="text-muted mb-1 text-decoration-line-through" style="font-size:0.8rem;">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</p>
-                                            <p class="fw-bold mb-0" style="font-size:0.9rem;"> @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture) KD</p>
-                                    }
-                                </div>
+                    <a class="store-home-product text-decoration-none" href="@Url.Action("SingleProduct", "WebSingleProduct", new { id = deal.ProductId })">
+                        <div class="store-home-image">
+                            @if (deal.ProductImagesBase64?.Any() == true)
+                            {
+                                <img src="@deal.ProductImagesBase64.First()" alt="" loading="lazy" decoding="async" />
+                            }
+                            else
+                            {
+                                <span class="text-secondary small">@(ar ? "لا توجد صورة" : "No image")</span>
+                            }
+                            <span class="store-offer-badge" dir="ltr">@deal.DiscPer% @(ar ? "خصم" : "OFF")</span>
+                        </div>
+                        <div class="store-home-product-body">
+                            <h3>@(ar ? deal.ProductNameAr : deal.ProductName)</h3>
+                            <div class="mt-auto">
+                                <s class="small text-secondary" dir="ltr">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</s>
+                                <div class="store-home-price" dir="ltr">KD @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture)</div>
                             </div>
-                            </a>
                         </div>
-                       
-                    }
+                    </a>
                 }
-                else
-                {
-                    <div class="col-12 text-muted">
-                        @_localizer["No weekend deals available"]
-                    </div>
-                }
-            </div>
-
-           @*  <div class="text-center mt-2">
-                <button class="btn btn-dark btn-sm px-4" id="viewAllDeals" asp-action="Index" asp-controller="Wekenddealwiseproducts">View All</button>
-            </div> *@
-           <div class="text-center mt-2">
-                <a href="/Wekenddealwiseproducts/Index" class="btn btn-dark btn-sm px-4">@_localizer["View All"]</a>
-            </div> 
-        </div>
-
-        <!-- RIGHT SECTION: In Focus -->
-        <div class="col-lg-6 col-md-12 mb-4 bg-white border rounded-3 shadow-sm p-3">
-            <h4 class="fw-bold">@_localizer["In Focus"]</h4>
-
-            <div id="in-focus-container" class="row">
-
-                <div class="text-muted">@_localizer["Loading"]...</div>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-<script>
-    $(document).ready(function () {
-        // AJAX In Focus Products
-        $.ajax({
-            url: '/WebHome/GetTopRatedProducts',
-            type: 'GET',
-            success: function (data) {
-                var container = $('#in-focus-container');
-                container.empty();
-
-                if (!data || data.length === 0) {
-                    container.append('<div class="text-muted">@_localizer["No items in focus"]</div>');
-                    return;
-                }
-
-                data.slice(0, 2).forEach(function (item) {
-                    var html = `
-                        <div class="col-6 mb-2">
-                             <a href="/WebSingleProduct/SingleProduct?id=${item.productId}"
-       class="text-decoration-none text-dark">
-        <div class="card h-100 shadow-sm overflow-hidden transition"
-             style="font-size:0.85rem; cursor:pointer;"
-             >
-
-            <img src="${item.imageUrl}"
-                 class="card-img-top rounded"
-                 style="aspect-ratio:4/3; object-fit:contain;" loading="lazy" decoding="async" alt="" />
-
-            <div class="card-body p-2">
-                <p class="fw-bold mb-1" style="font-size:0.9rem;">
-                    ${item.name}
-                </p>
-                <small class="text-muted">
-                    ⭐ ${item.averageRating.toFixed(1)} (${item.totalReviews} Reviews)
-                </small>
-            </div>
-        </div>
-    </a>
-
-                        </div>
-                    `;
-                    container.append(html);
-                });
-            },
-            error: function (err) {
-                $('#in-focus-container').html('<div class="text-danger">Failed to load top products</div>');
-                console.error(err);
             }
-        });
-
-        // Countdown Timer
-        function startCountdown() {
-            var target = new Date('@targetDate.ToString("yyyy-MM-ddTHH:mm:ss")').getTime();
-            var interval = setInterval(function () {
-                var now = new Date().getTime();
-                var distance = target - now;
-
-                if (distance < 0) {
-                    clearInterval(interval);
-                    $('#hours, #minutes, #seconds').text('00');
-                    return;
+            else
+            {
+                <p class="store-home-empty">@_localizer["No weekend deals available"]</p>
+            }
+        </div>
+    </section>
+    <section class="store-home-section mt-4">
+        <div class="store-section-heading"><h2 class="h4 mb-0">@_localizer["In Focus"]</h2></div>
+        <div id="in-focus-container" class="store-home-grid" aria-live="polite" aria-busy="true">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="store-home-skeleton" aria-hidden="true"></div>
+            }
+        </div>
+    </section>
+</div>
+<script>
+(() => {
+    const container = document.getElementById("in-focus-container");
+    const ar = document.documentElement.lang === "ar";
+    function showMessage(text) {
+        const message = document.createElement("p");
+        message.className = "store-home-empty";
+        message.textContent = text;
+        container.replaceChildren(message);
+    }
+    async function loadFeatured() {
+        try {
+            const response = await fetch("/WebHome/GetTopRatedProducts");
+            if (!response.ok) throw new Error("Unable to load featured products");
+            const data = await response.json();
+            if (!Array.isArray(data) || !data.length) {
+                showMessage(ar ? "لا توجد منتجات مميزة" : "No featured products available");
+                return;
+            }
+            container.replaceChildren();
+            for (const item of data) {
+                const card = document.createElement("a");
+                card.className = "store-home-product text-decoration-none";
+                card.href = "/WebSingleProduct/SingleProduct/" + encodeURIComponent(item.productId);
+                const media = document.createElement("div");
+                media.className = "store-home-image";
+                if (item.imageUrl) {
+                    const image = document.createElement("img");
+                    image.src = item.imageUrl;
+                    image.alt = "";
+                    image.loading = "lazy";
+                    image.decoding = "async";
+                    media.append(image);
+                } else {
+                    const placeholder = document.createElement("span");
+                    placeholder.className = "text-secondary small";
+                    placeholder.textContent = ar ? "لا توجد صورة" : "No image";
+                    media.append(placeholder);
                 }
-
-                var hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
-                var minutes = Math.floor((distance / (1000 * 60)) % 60);
-                var seconds = Math.floor((distance / 1000) % 60);
-
-                $('#hours').text(hours < 10 ? '0' + hours : hours);
-                $('#minutes').text(minutes < 10 ? '0' + minutes : minutes);
-                $('#seconds').text(seconds < 10 ? '0' + seconds : seconds);
-            }, 1000);
-        }
-
-        startCountdown();
-    });
+                const body = document.createElement("div");
+                body.className = "store-home-product-body";
+                const name = document.createElement("h3");
+                name.textContent = item.name || "";
+                const rating = document.createElement("div");
+                rating.className = "small text-secondary";
+                rating.textContent = "★ " + Number(item.averageRating).toFixed(1) + " (" + item.totalReviews + ")";
+                const price = document.createElement("bdi");
+                price.className = "store-home-price mt-auto";
+                price.textContent = "KD " + Number(item.price).toFixed(3);
+                body.append(name,rating,price);
+                card.append(media,body);
+                container.append(card);
+            }
+        } catch {
+            showMessage(ar ? "تعذر تحميل المنتجات." : "Unable to load featured products.");
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "btn btn-outline-primary";
+            retry.textContent = ar ? "إعادة المحاولة" : "Try again";
+            retry.addEventListener("click", () => { retry.disabled = true; container.setAttribute("aria-busy","true"); loadFeatured(); }, {once:true});
+            container.append(retry);
+        } finally { container.removeAttribute("aria-busy"); }
+    }
+    if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) {
+                observer.disconnect();
+                loadFeatured();
+            }
+        }, {rootMargin:"200px"});
+        observer.observe(container);
+    } else loadFeatured();
+})();
 </script>
