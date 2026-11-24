@@ -415,10 +415,10 @@
 					</p>
 
 					<div class="d-flex gap-3">
-						<a id="fbLink" href="#" class="text-white fs-5"><i class="fab fa-facebook-f"></i></a>
-						<a id="twLink" href="#" class="text-white fs-5"><i class="fab fa-x-twitter"></i></a>
-						<a id="igLink" href="#" class="text-white fs-5"><i class="fab fa-instagram"></i></a>
-						<a id="lnLink" href="#" class="text-white fs-5"><i class="fab fa-linkedin-in"></i></a>
+						<a id="fbLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-facebook-f"></i></a>
+						<a id="twLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-x-twitter"></i></a>
+						<a id="igLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-instagram"></i></a>
+						<a id="lnLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-linkedin-in"></i></a>
 					</div>
 
 				</div>
@@ -430,7 +430,7 @@
 						<li><a href="~/AboutCompany/About" class="text-white text-decoration-none">@_localizer["About"]</a></li>
 						<li><a href="~/WebBlog/WebBlog" class="text-white text-decoration-none">@_localizer["Blog"]</a></li>
 						<a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a>
-						<li><a href="#" class="text-white text-decoration-none">@_localizer["FAQ"]</a></li>
+						
 						<li>
 							<a href="@Url.Action("Contact", "WebContact")" class="text-white text-decoration-none">@_localizer["Contact Us"]</a>
 						</li>
@@ -444,15 +444,7 @@
 						@_localizer["Download Our App"]
 					</h6>
 
-					<div class="col-md-6 col-lg-5 text-start about-img-left d-flex flex-column gap-2 align-items-left align-items-md-start">
-
-						<!-- Apple App Store -->
-						<a href="https://play.google.com/store/apps/details?id=com.raqmikarts" class="d-inline-block">
-							<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
-								 alt="Download on the App Store"
-								 class="img-fluid px-2" height="45" width="120"
-								 style="object-fit: contain;">
-						</a>
+					<div class="d-flex flex-column gap-2 align-items-start">
 
 						<!-- Google Play Store -->
 						<a href="https://play.google.com/store/apps/details?id=com.raqmikarts" class="d-inline-block">
@@ -475,9 +467,9 @@
 							<a href="@Url.Action("Login", "UserAccount")" class="text-white text-decoration-none">@_localizer["Login"]</a>
 						</li>
 
-						<li><a href="#" class="text-white text-decoration-none">@_localizer["My Account"]</a></li>
+						<li><a href="~/UserProfile/Profile" class="text-white text-decoration-none">@_localizer["My Account"]</a></li>
 						<li><a href="~/Term_Condition/Index" class="text-white text-decoration-none">@_localizer["Terms & Conditions"]</a></li>
-						<li><a href="#" class="text-white text-decoration-none">@_localizer["Promotional Offers"]</a></li>
+						<li><a href="~/Wekenddealwiseproducts/Index" class="text-white text-decoration-none">@_localizer["Promotional Offers"]</a></li>
 					</ul>
 				</div>
 
@@ -730,10 +722,10 @@
 					document.getElementById('companyPhone').innerText = data.phone;
 					document.getElementById('companyEmail').innerText = data.email;
 
-					document.getElementById('fbLink').href = data.facebook || '#';
-					document.getElementById('twLink').href = data.twitter || '#';
-					document.getElementById('igLink').href = data.instagram || '#';
-					document.getElementById('lnLink').href = data.linkedIn || '#';
+					if (data.facebook) { const link = document.getElementById('fbLink'); link.href = data.facebook; link.classList.remove('d-none'); }
+					if (data.twitter) { const link = document.getElementById('twLink'); link.href = data.twitter; link.classList.remove('d-none'); }
+					if (data.instagram) { const link = document.getElementById('igLink'); link.href = data.instagram; link.classList.remove('d-none'); }
+					if (data.linkedIn) { const link = document.getElementById('lnLink'); link.href = data.linkedIn; link.classList.remove('d-none'); }
 				})
 				.catch(err => console.error("Company load error", err));
 
@@ -830,27 +822,12 @@
 
 
 			function loadCartCount() {
-		$.ajax({
-		url: '/WebCart/GetCart',
-		method: 'GET',
-		success: function (data) {
-		let totalCount = 0;
+            return $.get('/WebCart/GetCartCount').done(data => {
+                $('#cartCount').text(data.count);
+            });
+        }
 
-		if (data && data.length > 0) {
-		$.each(data, function (index, item) {
-		totalCount += parseInt(item.quantity);
-		});
-		}
-
-		$('#cartCount').text(totalCount);
-		},
-		error: function () {
-		$('#cartCount').text('0');
-		}
-		});
-		}
-
-	</script>
+    </script>
 
 
 	<div class="offcanvas offcanvas-start bg-white text-dark offcanvasstart"

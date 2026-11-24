@@ -38,7 +38,9 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.CancelledOrders = _context.Orders.Where(o => o.Status == 4).Count();
             ViewBag.TotalArea = _context.Area.Count();
             ViewBag.TotalSales = _context.Payments.Where(p => p.PaymentStatus == 1).Sum(p => (decimal?)p.AmountPaid);
-            ViewBag.LowStock = 21;
+            ViewBag.LowStock = _context.Products.Where(p => p.IsActive)
+                .Count(p => (_context.ProductStocks.Where(st => st.ProductId == p.ProductId).Sum(st => (int?)st.StockQty) ?? 0)
+                    - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0) <= 10);
             var data = (from o in _context.Orders
                         join u in _context.Customers on o.CustomerId equals u.UserId
                        

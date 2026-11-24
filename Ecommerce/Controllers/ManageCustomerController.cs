@@ -50,10 +50,13 @@ namespace EcommerceWebApplication.Controllers
                 usersQuery = usersQuery.Where(u => u.Phone.Contains(mobile));
 
            
-            usersQuery = usersQuery.OrderByDescending(u => u.CreatedAt);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = usersQuery.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            usersQuery = usersQuery.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.UserId);
 
            
-            var users = usersQuery.Select(u => new CustomerGridViewModel
+            var pagedData = usersQuery.Skip((page - 1) * pageSize).Take(pageSize).Select(u => new CustomerGridViewModel
             {
                 UserId = u.UserId,
                 FullName = u.FullName,
@@ -62,11 +65,7 @@ namespace EcommerceWebApplication.Controllers
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             }).ToList();
-            int totalItems = users.Count;
-            var pagedData = users
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+
 
             var pagedModel = new PagedResult<CustomerGridViewModel>
             {

@@ -70,9 +70,7 @@ namespace EcommerceWebApplication.Controllers
             }
 
             // Sort descending by Order Date
-            query = query.OrderByDescending(x => x.Orderdate);
-
-            var data = query.ToList();
+            query = query.OrderByDescending(x => x.Orderdate).ThenByDescending(x => x.OrderId);
 
 
             ViewBag.StatusList = _context.OrderStatus
@@ -91,8 +89,10 @@ namespace EcommerceWebApplication.Controllers
                     Selected = (paymentstatus.HasValue && s.PaymentstatusId == paymentstatus.Value)
                 }).ToList();
 
-            int totalItems = data.Count;
-            var pagedData = data
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = query.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();

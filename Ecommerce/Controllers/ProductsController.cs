@@ -30,20 +30,9 @@ namespace EcommerceWebApplication.Controllers
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
 
-            var productsQuery = _context.Products
-                .Include(p => p.Category)
-                .Include(p => p.SubCategory)
-                .Include(p => p.ProductImages)
-                .AsQueryable();
+            var productsQuery = _context.Products.AsNoTracking().AsQueryable();
 
-            // 👇 Identify if any filter is applied
-            bool isFilterApplied =
-                !string.IsNullOrEmpty(name) ||
-                !string.IsNullOrEmpty(category) ||
-                price.HasValue ||
-                HttpContext.Request.Query.ContainsKey("status");
-
-            // 👇 Apply filters
+            // Apply filters
             if (!string.IsNullOrEmpty(name))
                 productsQuery = productsQuery.Where(p => p.Name.Contains(name) || p.NameArb.Contains(name));
 
@@ -85,13 +74,11 @@ namespace EcommerceWebApplication.Controllers
 
 
 
-            // 👇 Only sort descending when no filters applied
-            if (!isFilterApplied)
-            {
-                productsQuery = productsQuery.OrderByDescending(p => p.ProductId);
-            }
-
-            var products = productsQuery.Select(p => new ProductListViewModel
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = productsQuery.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = productsQuery.OrderByDescending(p => p.ProductId)
+                .Skip((page - 1) * pageSize).Take(pageSize).Select(p => new ProductListViewModel
             {
                 ProductId = p.ProductId,
               
@@ -113,12 +100,7 @@ namespace EcommerceWebApplication.Controllers
                     .FirstOrDefault()
             }).ToList();
 
-            // 🔹 Pagination
-            int totalItems = products.Count;
-            var pagedData = products
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+
 
             var pagedModel = new PagedResult<ProductListViewModel>
             {

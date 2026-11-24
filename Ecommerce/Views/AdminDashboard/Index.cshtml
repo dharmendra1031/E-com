@@ -185,7 +185,7 @@
                                 <div class="stat-text bold-text">@_localizer["Stock Alert"]</div>
                                 <div class="stat-digit">
                                     @ViewBag.LowStock
-                                    @if (ViewBag.LowStock > 20)
+                                    @if (ViewBag.LowStock > 0)
                                     {
                                         <span style="color:red">@_localizer["(Low!)"]</span>
                                     }

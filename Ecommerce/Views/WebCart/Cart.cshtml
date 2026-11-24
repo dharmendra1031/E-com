@@ -1,194 +1,156 @@
-﻿@{
+@{
     ViewData["Title"] = "Cart";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 }
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-
 <div class="container py-3 py-md-4 customer-cart">
-    <div>
-
-        <!-- HEADER -->
-        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold mb-0">@_localizer["Your cart"]</h2>
-            <a href="~/WebCategory/Index" class="fw-semibold text-decoration-none">
-                @_localizer["Continue shopping"]
-            </a>
-        </div>
-
-        <!-- TABLE HEADER -->
-        <div class="row fw-semibold border-bottom pb-2 mb-3 d-none d-md-flex">
-            <div class="col-md-6">@_localizer["Product"]</div>
-            <div class="col-md-3 text-center">@_localizer["Qty"]</div>
-            <div class="col-md-3 text-end">@_localizer["Total"]</div>
-        </div>
-
-        <!-- CART LIST -->
-        <div id="cartList"></div>
-
-        <!-- BOTTOM SECTION -->
-        <div class="row mt-5">
-
-            <!-- LEFT (EMPTY / FUTURE USE) -->
-            <div class="col-md-6"></div>
-
-            <!-- RIGHT -->
-            <div class="col-md-6 text-md-end mt-4 mt-md-0">
-
-                <input type="hidden" id="OrderAmount" value="0" />
-
-                <h5 class="fw-bold">
-                    @_localizer["Subtotal"]:
-                    <span class="text-primary" id="cartSubtotal">0.000 KD</span>
-                </h5>
-
-                <a asp-action="Index"
-                   asp-controller="WebCheckout"
-                   class="btn btn-warning px-5 py-2 fw-semibold mt-3">
-                    @_localizer["Check out"]
-                </a>
-
-               @*  <div class="fst-italic text-muted mt-2">
-                    This order will earn you <strong>94 Re Rewards</strong>
-                </div> *@
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <h1 class="h3 fw-bold mb-0">@_localizer["Your cart"]</h1>
+        <a href="~/WebCategory/Index" class="fw-semibold text-decoration-none">@_localizer["Continue shopping"]</a>
+    </div>
+    <div class="row g-3 g-lg-4 align-items-start">
+        <section class="col-lg-8">
+            <div class="store-cart-panel p-3">
+                <div id="cartList" aria-busy="true" aria-live="polite">
+                    <p class="mb-0">@(ar ? "جارٍ تحميل السلة…" : "Loading cart…")</p>
+                </div>
+                <p id="cartMessage" class="text-danger mt-2 mb-0" role="status"></p>
+                <button type="button" id="retryCart" class="btn btn-outline-primary d-none">@(ar ? "إعادة المحاولة" : "Try again")</button>
             </div>
-        </div>
+        </section>
+        <aside class="col-lg-4">
+            <div class="store-cart-panel p-3 p-md-4">
+                <h2 class="h5 fw-bold mb-3">@_localizer["Order Summary"]</h2>
+                <div class="d-flex justify-content-between gap-2 mb-3">
+                    <span>@_localizer["Subtotal"]</span><strong id="cartSubtotal" dir="ltr">—</strong>
+                </div>
+                <p class="small text-secondary">@(ar ? "تُحسب رسوم التوصيل والضرائب عند الدفع." : "Delivery and taxes are calculated at checkout.")</p>
+                <button type="button" id="checkoutCart" class="btn btn-primary w-100" disabled>@_localizer["Check out"]</button>
+            </div>
+        </aside>
     </div>
 </div>
-
-<style>
-    .customer-cart .cart-product { min-width: 0; overflow-wrap: anywhere; }
-    .customer-cart .cart-product img { flex: 0 0 72px; width: 72px; height: 72px; object-fit: contain; }
-    .customer-cart .cart-product > div { min-width: 0; }
-    .customer-cart .cart-quantity button { min-height: 44px; min-width: 40px; }
-    .customer-cart .cart-total { white-space: nowrap; font-size: clamp(.8rem, 2.5vw, 1rem); }
-</style>
 <script>
-    function loadCart() {
+(() => {
+    const ar = document.documentElement.lang === "ar";
+    const list = document.getElementById("cartList");
+    const subtotal = document.getElementById("cartSubtotal");
+    const checkout = document.getElementById("checkoutCart");
+    const message = document.getElementById("cartMessage");
+    const retry = document.getElementById("retryCart");
+    let busy = false, loaded = false, hasItems = false;
+    const failure = ar ? "تعذر تحديث السلة. حاول مرة أخرى." : "Unable to update cart. Please try again.";
+    const money = value => "KD " + Number(value).toFixed(3);
 
-        $.get('/WebCart/GetCart', function (response) {
-
-            let cart = response.cart || response;
-            let html = '';
-            let subtotal = 0;
-
-            if (!cart || cart.length === 0) {
-                $('#cartList').html(`<p class="text-muted text-center">${document.documentElement.lang === "ar" ? "السلة فارغة" : "Cart is empty"}</p>`);
-                $('#cartSubtotal').text('0.000 KD');
-                $('#OrderAmount').val(0);
-                return;
-            }
-
-            cart.forEach(item => {
-
-                let unitPrice = item.price || item.unitPrice || 0;
-                let qty = item.quantity;
-                let total = unitPrice * qty;
-
-                subtotal += total;
-
-                html += `
-                <div class="row align-items-center gy-3 py-3 border-bottom" data-productid="${item.productId}">
-                    <div class="col-12 col-md-6 d-flex gap-3 cart-product">
-                        <img src="${item.imageBase64 ?? 'https://via.placeholder.com/80'}"
-                             class="img-fluid rounded" alt="" loading="lazy">
-                        <div>
-                            <div class="fw-semibold">${item.productName}</div>
-                            <small class="text-muted">${unitPrice.toFixed(3)} KD</small>
-                        </div>
-                    </div>
-
-                    <div class="col-8 col-md-3 text-start text-md-center cart-quantity">
-                        <button class="btn btn-light qty-minus">−</button>
-                        <span class="qty px-2">${qty}</span>
-                        <button class="btn btn-light qty-plus">+</button>
-                           <button class="btn btn-link text-danger p-0 ms-2 delete-item">
-                        <i class="bi bi-trash fs-5"></i>
-                    </button>
-                    </div>
-
-
-                    <div class="col-4 col-md-3 text-end fw-semibold cart-total" dir="ltr">
-                        ${total.toFixed(3)} KD
-                    </div>
-                </div>`;
-            });
-
-            $('#cartList').html(html);
-            $('#cartSubtotal').text(`${subtotal.toFixed(3)} KD`);
-            $('#OrderAmount').val(subtotal.toFixed(3));
+    function syncControls() {
+        checkout.disabled = busy || !loaded || !hasItems;
+        list.setAttribute("aria-busy", String(busy));
+        list.querySelectorAll("button").forEach(button => {
+            button.disabled = busy || (button.dataset.action === "minus" && Number(button.closest("[data-quantity]").dataset.quantity) <= 1);
         });
     }
-
-    // INITIAL LOAD
-    $(document).ready(function () {
-        loadCart();
-        loadCartCount();
-    });
-
-    // PLUS
-    $(document).on('click', '.qty-plus', function () {
-        let productId = $(this).closest('[data-productid]').data('productid');
-        updateQty(productId, 1);
-    });
-
-    // MINUS
-    $(document).on('click', '.qty-minus', function () {
-        let row = $(this).closest('[data-productid]');
-        let productId = row.data('productid');
-        let currentQty = parseInt(row.find('.qty').text());
-
-        if (currentQty > 1) {
-            updateQty(productId, -1);
+    function render(items) {
+        list.replaceChildren();
+        hasItems = items.length > 0;
+        let total = 0, count = 0;
+        for (const item of items) {
+            const qty = Number(item.quantity), price = Number(item.price ?? item.unitPrice ?? 0);
+            total += price * qty;
+            count += qty;
+            const row = document.createElement("div");
+            row.className = "store-cart-row";
+            row.dataset.productid = item.productId;
+            row.dataset.quantity = qty;
+            const product = document.createElement("a");
+            product.className = "store-cart-product text-decoration-none";
+            product.href = "/WebSingleProduct/SingleProduct/" + encodeURIComponent(item.productId);
+            const img = document.createElement("img");
+            img.src = item.imageBase64 || "/images/default-product.png";
+            img.alt = "";
+            img.loading = "lazy";
+            const details = document.createElement("div");
+            const name = document.createElement("div");
+            name.className = "fw-semibold text-dark";
+            name.textContent = item.productName || "";
+            const unit = document.createElement("bdi");
+            unit.textContent = money(price);
+            details.append(name, unit);
+            product.append(img, details);
+            const controls = document.createElement("div");
+            controls.className = "store-cart-controls";
+            for (const [action, label, accessible] of [["minus","−", ar ? "تقليل الكمية" : "Decrease quantity"],["quantity",String(qty),""],["plus","+",ar ? "زيادة الكمية" : "Increase quantity"],["remove","×",ar ? "إزالة المنتج" : "Remove item"]]) {
+                if (action === "quantity") {
+                    const value = document.createElement("span");
+                    value.textContent = label;
+                    controls.append(value);
+                } else {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = action === "remove" ? "btn btn-outline-danger" : "btn btn-outline-secondary";
+                    button.dataset.action = action;
+                    button.textContent = label;
+                    button.setAttribute("aria-label", accessible);
+                    controls.append(button);
+                }
+            }
+            const lineTotal = document.createElement("bdi");
+            lineTotal.className = "fw-bold store-cart-total";
+            lineTotal.textContent = money(price * qty);
+            row.append(product, controls, lineTotal);
+            list.append(row);
         }
-    });
-
-    // DELETE
-    $(document).on('click', '.delete-item', function () {
-        let productId = $(this).closest('[data-productid]').data('productid');
-        removeFromCart(productId);
-    });
-
-    // function updateQty(productId, change) {
-    //     $.post('/WebCart/AddOrUpdateCart', {
-    //         productId: productId,
-    //         qty: change
-    //     }, function () {
-    //         loadCart();
-    //         loadCartCount();
-    //     });
-    // }
-        function updateQty(productId, change) {
-        $.post('/WebCart/AddOrUpdateCart', {
-            productId: productId,
-            qty: change
-        }, function (response) {
-               if (response && response.success === false && response.notStock) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Out of stock',
-            text: response.message,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#f0ad4e'
-        });
-        return;
+        if (!hasItems) {
+            const empty = document.createElement("div");
+            empty.className = "text-center py-5";
+            const title = document.createElement("h2");
+            title.className = "h5";
+            title.textContent = ar ? "السلة فارغة" : "Your cart is empty";
+            const link = document.createElement("a");
+            link.href = "/WebCategory/Index";
+            link.className = "btn btn-primary mt-2";
+            link.textContent = ar ? "تسوق الآن" : "Start shopping";
+            empty.append(title, link);
+            list.append(empty);
+        }
+        subtotal.textContent = money(total);
+        document.getElementById("cartCount").textContent = String(count);
+        loaded = true;
     }
-
-            if (response && response.success) {
-                loadCart();
-                loadCartCount();
+    async function readCart() {
+        const result = await $.get("/WebCart/GetCart");
+        const items = result.cart || result;
+        if (!Array.isArray(items)) throw new Error("Invalid cart response");
+        render(items);
+    }
+    async function refresh() {
+        if (busy) return;
+        busy = true; loaded = false; message.textContent = ""; retry.classList.add("d-none");
+        syncControls();
+        try { await readCart(); }
+        catch { list.textContent = failure; retry.classList.remove("d-none"); }
+        finally { busy = false; syncControls(); }
+    }
+    retry.addEventListener("click", refresh);
+    checkout.addEventListener("click", () => {
+        if (!checkout.disabled) location.href = "/WebCheckout/Index";
+    });
+    list.addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button || busy || button.disabled) return;
+        const id = button.closest("[data-productid]").dataset.productid;
+        busy = true; message.textContent = ""; syncControls();
+        try {
+            if (button.dataset.action === "remove") await $.post("/WebCart/RemoveFromCart", { productId: id });
+            else {
+                const result = await $.post("/WebCart/AddOrUpdateCart", {productId: id, qty: button.dataset.action === "plus" ? 1 : -1});
+                if (!result.success) { message.textContent = result.message || failure; return; }
             }
-        })
-        .fail(function () {
-            alert("Something went wrong. Please try again.");
-        });
-    }
-
-    function removeFromCart(productId) {
-        $.post('/WebCart/RemoveFromCart', {
-            productId: productId
-        }, function () {
-            loadCart();
-            loadCartCount();
-        });
-    }
+            loaded = false;
+            await readCart();
+        } catch { loaded = false; message.textContent = failure; retry.classList.remove("d-none"); }
+        finally { busy = false; syncControls(); }
+    });
+    refresh();
+})();
 </script>

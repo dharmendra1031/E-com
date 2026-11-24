@@ -225,6 +225,20 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public IActionResult GetCartCount()
+        {
+            int userId = HttpContext.Features.Get<ISessionFeature>() != null
+                ? HttpContext.Session.GetInt32("UserId") ?? 0 : 0;
+            string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
+            int count = _context.CartItems
+                .Where(c => (userId > 0 && c.UserId == userId) ||
+                            (userId == 0 && c.DeviceId == deviceId && c.UserId == 0))
+                .Sum(c => (int?)c.Quantity) ?? 0;
+            return Ok(new { count });
+        }
+
+        [HttpGet]
         public IActionResult GetCart()
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;

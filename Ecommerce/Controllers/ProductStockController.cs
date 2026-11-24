@@ -53,7 +53,7 @@ namespace EcommerceWebApplication.Controllers.Admin
             {
                 products = products
                     .Where(p => p.ProductName.Contains(name))
-                    .OrderBy(p => p.ProductName);
+                    .OrderBy(p => p.ProductName).ThenBy(p => p.ProductId);
             }
             else
             {
@@ -76,12 +76,10 @@ namespace EcommerceWebApplication.Controllers.Admin
                     products = products.Where(p => p.RemainingQty == 0);
                 }
             }
-            // 🔹 Convert to list
-            var productList = products.ToList();
-
-            // 🔹 Pagination
-            int totalItems = productList.Count;
-            var pagedData = productList
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = products.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = products
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
