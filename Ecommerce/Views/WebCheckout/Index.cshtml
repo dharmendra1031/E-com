@@ -6,7 +6,6 @@
     ViewData["Title"] = "Checkout";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
-<script src="~/js/navigation.js"></script>
 <style>
     .form-label.required::after {
         content: " *";
@@ -65,7 +64,7 @@
 
                     <!-- Dropdown -->
                     <!-- ADDRESS DROPDOWN -->
-                    <select id="addressDropdown" class="form-select">
+                    <select id="addressDropdown" class="form-select" aria-label="@_localizer["Select Saved Address"]">
                         <option value=""> @_localizer["Select Address"]</option>
 
                         @foreach (var addr in Model.AddressList)
@@ -103,21 +102,21 @@
             else
             {
                 <!-- ❌ USER NOT LOGGED IN → NEW ADDRESS FORM -->
-                <form id="guestAddressForm">
-                    <div class="row" id="NavigationKey">
+                <form id="guestAddressForm" onsubmit="return false;">
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label required"> @_localizer["Full Name"]</label>
-                            <input id="fullName" class="form-control" placeholder="@_localizer["Full Name"]">
+                            <input id="fullName" autocomplete="name" class="form-control" placeholder="@_localizer["Full Name"]">
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label required"> @_localizer["Email"]</label>
-                            <input id="email" class="form-control" placeholder="@_localizer["Email"]">
+                            <input id="email" type="email" autocomplete="email" class="form-control" placeholder="@_localizer["Email"]">
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label required"> @_localizer["Mobile No"]</label>
-                            <input id="mobile" class="form-control" maxlength="8">
+                            <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" class="form-control" maxlength="8" pattern="[0-9]{8}">
                         </div>
 
                         <div class="col-md-6 mb-3">
@@ -194,9 +193,7 @@
                                  width="45" height="45">
                             <div>
                                 <div class="fw-semibold">
-                                    @(item.ProductName != null && item.ProductName.Length > 30
-                                                                    ? item.ProductName.Substring(0, 30) + "..."
-                                                                    : item.ProductName)
+                                    @item.ProductName
                                 x @item.Quantity
                             </div>
 
@@ -233,8 +230,8 @@
                 </div>
 
                 <div class="d-flex justify-content-between text-primary mb-2">
-                    <span>@_localizer["VAT"] (0%):</span>
-                    <span>+ @Model.VatPercentage?.ToString("F2", CultureInfo.InvariantCulture)</span>
+                    <span>@_localizer["VAT"] (@Model.VatPercentage?.ToString("0.##", CultureInfo.InvariantCulture)%):</span>
+                    <span id="vatAmount" dir="ltr">—</span>
                 </div>
 
                 <div class="d-flex justify-content-between mb-2">
@@ -258,12 +255,11 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <!-- Modal of Address -->
 <div class="modal fade" id="addAddressModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" id="NavigationKey">
+        <div class="modal-content">
 
             <!-- HEADER -->
             <div class="modal-header">
@@ -282,14 +278,14 @@
 
                     <div class="col-md-3">
                         <label class="form-label required">@_localizer["Area"]</label>
-                        <select class="form-control required-field" name="Area" id="ddlArea">
+                        <select class="form-control required-field" name="Area" id="modalArea">
                             <option value="">Select Area</option>
                         </select>
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label required">@_localizer["Block"]</label>
-                        <select class="form-control required-field" name="Block" id="ddlBlock">
+                        <select class="form-control required-field" name="Block" id="modalBlock">
                             <option value="">Select Block</option>
                         </select>
                     </div>
@@ -347,295 +343,134 @@
     </div>
 </div>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const modal = document.getElementById("addAddressModal");
-
-        // Modal ke andar saare focusable inputs/selects
-        function getFocusableElements() {
-            return modal.querySelectorAll(
-                'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
-            );
-        }
-
-        // 🔥 Modal open → first field focus
-        modal.addEventListener("shown.bs.modal", function () {
-            const fields = getFocusableElements();
-            if (fields.length > 0) {
-                fields[0].focus(); // Title
-            }
-        });
-
-        // 🔥 ENTER key navigation
-        modal.addEventListener("keydown", function (e) {
-
-            if (e.key !== "Enter") return;
-
-            e.preventDefault(); // ❌ default submit / reload band
-
-            const fields = Array.from(getFocusableElements());
-            const saveBtn = document.getElementById("saveAddressBtn");
-
-            const currentIndex = fields.indexOf(document.activeElement);
-
-           
-            if (currentIndex > -1) {
-                const nextIndex = currentIndex + 1;
-
-                // ✅ Next field exist karta hai
-                if (nextIndex < fields.length) {
-                    fields[nextIndex].focus();
-                }
-                // ✅ Last field ke baad → Save button
-                else {
-                    saveBtn.focus();
-                }
-            }
-            // 👉 Agar Save button pe Enter
-            else if (document.activeElement === saveBtn) {
-                saveBtn.click(); // 🔥 SAVE
-            }
-        });
-
-    });
-</script>
-
-<script>
-
-    $('#applyCouponBtn').click(function () {
-        debugger;
-        let code = $('#couponCode').val().trim();
-        let subtotal = parseFloat('@Model.CartTotal');
-
-        if (!code) {
-            alert('Enter coupon code');
-            return;
-        }
-
-        $.ajax({
-            url: '/WebCheckout/ApplyCoupon',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                code: code,
-                orderAmount: subtotal
-            }),
-            success: function (res) {
-
-                if (res.success) {
-
-                    debugger
-                    $('#discountAmount').text(res.discountApplied.toFixed(3));
-                    $('#finalAmount').text(res.finalAmount.toFixed(3) + ' KD');
-
-                    $('#discountRow').removeClass('d-none');
-                }
-                else {
-                    alert(res.message);
-                }
-            },
-            error: function () {
-                alert('Something went wrong');
-            }
-        });
-    });
-
+    const checkoutArabic = document.documentElement.lang === "ar";
+    const checkoutError = checkoutArabic ? "حدث خطأ. حاول مرة أخرى." : "Something went wrong. Please try again.";
+    const subtotal = @(Model.CartTotal.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
+    const vatRate = @(Model.VatPercentage.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
+    const delivery = @(Model.DeliveryCharge.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
+    let couponPending = false;
+    let orderPending = false;
+    function syncPaymentButton() {
+        $('#payNowBtn').prop('disabled', couponPending || orderPending || @(!Model.CartItems.Any() ? "true" : "false"));
+    }
     function calculateFinalTotal() {
-        debugger;
-        let subtotal = parseFloat('@Model.CartTotal') || 0;
-        let discount = parseFloat($('#discountAmount').text()) || 0;
-        let vat = parseFloat('@Model.VatPercentage') || 0;
-        let delivery = parseFloat('@Model.DeliveryCharge') || 0;
-
-        // after coupon
-        let afterDiscount = subtotal - discount;
-        if (afterDiscount < 0) afterDiscount = 0;
-
-        // VAT amount (percentage)
-        let vatAmount = (afterDiscount * vat) / 100;
-
-        // FINAL TOTAL
-        let finalTotal = afterDiscount + vatAmount + delivery;
-
-        $('#grandTotal').text('KD ' + finalTotal.toFixed(3));
+        const discount = Number($('#discountAmount').text()) || 0;
+        const afterDiscount = Math.max(subtotal - discount, 0);
+        const vatAmount = afterDiscount * vatRate / 100;
+        $('#vatAmount').text('KD ' + vatAmount.toFixed(3));
+        $('#grandTotal').text('KD ' + (afterDiscount + vatAmount + delivery).toFixed(3));
     }
-
-    // call on page load
-    $(document).ready(function () {
-        calculateFinalTotal();
-    });
-
-    // call again after coupon applied
-    $('#applyCouponBtn').click(function () {
-        setTimeout(calculateFinalTotal, 300);
-    });
-</script>
-
-<script>
-    document.getElementById("saveAddressBtn").addEventListener("click", function () {
-        let isValid = true;
-
-        document.querySelectorAll("#addAddressModal .required-field").forEach(field => {
-            field.classList.remove("is-invalid");
-            if (!field.value || field.value.trim() === "") {
-                field.classList.add("is-invalid");
-                isValid = false;
-            }
-        });
-
-        if (!isValid) return; // stop if required fields not filled
-
-        const formData = {
-            Title: document.querySelector('[name="Title"]').value,
-            Area: document.getElementById("ddlArea").value,
-            Block: document.getElementById("ddlBlock").value,
-            Street: document.querySelector('[name="Street"]').value,
-            HouseNo: document.querySelector('[name="HouseNo"]').value,
-            Floor: document.querySelector('[name="Floor"]').value,
-            Phone: document.querySelector('[name="Phone"]').value,
-            Landmark: document.querySelector('[name="Landmark"]').value
-        };
-
-        fetch('/WebCheckout/AddAddress', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(
-                    document.getElementById("addAddressModal")
-                ).hide();
-
-                alert("Address saved successfully ✅");
-                location.reload();
-            } else {
-                alert(data.message);
-            }
-        });
-    });
-</script>
-
-<script>
-    function openAddressModal() {
-
-        loadAreaBlockDropdown(); // ✅ SAME FUNCTION
-
-        const modal = new bootstrap.Modal(
-            document.getElementById('addAddressModal')
-        );
-        modal.show();
-    }
-</script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        loadAreaBlockDropdown(); // ✅ SAME DROPDOWN ON PAGE
-    });
-</script>
-
-<script>
-    let allBlocks = [];
-
-    // 🔹 Load Area & Block (Reusable)
-    function loadAreaBlockDropdown(areaId = null, blockId = null) {
-
-        fetch('/WebCheckout/GetAreaBlockData')
-            .then(res => res.json())
-            .then(data => {
-
-                const areaDDL = document.getElementById("ddlArea");
-                const blockDDL = document.getElementById("ddlBlock");
-
-                // ---- AREA ----
-                areaDDL.innerHTML = `<option value="">Select Area</option>`;
-                data.areas.forEach(a => {
-                    areaDDL.innerHTML +=
-                        `<option value="${a.id}">${a.areaName}</option>`;
-                });
-
-                // ---- BLOCK ----
-                allBlocks = data.blocks;
-                blockDDL.innerHTML = `<option value="">Select Block</option>`;
-
-                // 🔹 Preselect (optional)
-                if (areaId) {
-                    areaDDL.value = areaId;
-                    bindBlocks(areaId, blockId);
-                }
-            });
-    }
-
-    // 🔹 Bind Block on Area change
-    function bindBlocks(areaId, selectedBlockId = null) {
-
-        const blockDDL = document.getElementById("ddlBlock");
-        blockDDL.innerHTML = `<option value="">Select Block</option>`;
-
-        if (!areaId) return;
-
-        allBlocks
-            .filter(b => b.areaId == areaId)
-            .forEach(b => {
-                blockDDL.innerHTML +=
-                    `<option value="${b.id}">${b.blockName}</option>`;
-            });
-
-        if (selectedBlockId) {
-            blockDDL.value = selectedBlockId;
-        }
-    }
-
-    // 🔁 Area → Block change (Common)
-    document.getElementById("ddlArea").addEventListener("change", function () {
-        bindBlocks(this.value);
-    });
-</script>
-
-<script>
-    function showSelectedAddress(addressId) {
-        const display = document.getElementById("addressText");
-
-        if (!addressId) {
-            display.innerHTML = "<strong>Address:</strong> --";
+    $('#applyCouponBtn').on('click', async function () {
+        if (couponPending || orderPending) return;
+        const code = $('#couponCode').val().trim();
+        if (!code) {
+            Swal.fire({icon:'warning',text:checkoutArabic ? 'أدخل رمز الخصم' : 'Enter coupon code'});
             return;
         }
-
-        fetch(`/WebCheckout/GetAddressById/${addressId}`)
-            .then(res => res.json())
-            .then(addr => {
-                if (addr) {
-                    const parts = [
-                        addr.areaName,
-                        addr.blockName,
-                        addr.street,
-                        addr.houseNo
-                    ].filter(p => p && p.trim() !== "");
-
-                    display.innerHTML =
-                        "<strong>Address:</strong> " + parts.join(", ");
-                } else {
-                    display.innerHTML = "<strong>Address:</strong> --";
-                }
-            })
-            .catch(() => {
-                display.innerHTML = "<strong>Address:</strong> --";
-            });
-    }
-
-    const dropdown = document.getElementById("addressDropdown");
-
-    // ✅ CHANGE EVENT (already correct)
-    dropdown.addEventListener("change", function () {
-        showSelectedAddress(this.value);
+        couponPending = true;
+        $(this).prop('disabled', true);
+        syncPaymentButton();
+        try {
+            const res = await $.ajax({url:'/WebCheckout/ApplyCoupon',type:'POST',contentType:'application/json',
+                data:JSON.stringify({code,orderAmount:subtotal})});
+            if (res.success) {
+                $('#discountAmount').text(Number(res.discountApplied).toFixed(3));
+                $('#finalAmount').text(Number(res.finalAmount).toFixed(3) + ' KD');
+                $('#discountRow').removeClass('d-none');
+                calculateFinalTotal();
+            } else {
+                Swal.fire({icon:'warning',text:res.message || checkoutError});
+            }
+        } catch { Swal.fire({icon:'error',text:checkoutError}); }
+        finally { couponPending = false; $(this).prop('disabled', false); syncPaymentButton(); }
     });
+    calculateFinalTotal();
+    syncPaymentButton();
 
-    // ✅ PAGE LOAD → show selected address automatically
-    document.addEventListener("DOMContentLoaded", function () {
-        if (dropdown.value) {
-            showSelectedAddress(dropdown.value);
+    const savedAddresses = document.getElementById("addressDropdown");
+    const addressText = document.getElementById("addressText");
+    let addressRequest;
+    async function showSelectedAddress(id) {
+        if (!addressText) return;
+        addressRequest?.abort();
+        const request = new AbortController();
+        addressRequest = request;
+        addressText.textContent = id ? (checkoutArabic ? "جارٍ تحميل العنوان…" : "Loading address…") : "—";
+        if (!id) return;
+        try {
+            const response = await fetch("/WebCheckout/GetAddressById/" + encodeURIComponent(id), {signal:request.signal});
+            if (!response.ok) throw new Error("Address unavailable");
+            const address = await response.json();
+            if (!request.signal.aborted) addressText.textContent = address ?
+                [checkoutArabic ? address.areaNameArb || address.areaName : address.areaName,
+                 checkoutArabic ? address.blockNameArb || address.blockName : address.blockName,
+                 address.street,address.houseNo].filter(Boolean).join(", ") : "—";
+        } catch(error) {
+            if (error.name !== "AbortError") addressText.textContent = checkoutError;
         }
+    }
+    savedAddresses?.addEventListener("change", () => showSelectedAddress(savedAddresses.value));
+    if (savedAddresses?.value) showSelectedAddress(savedAddresses.value);
+
+    let areaData;
+    async function getAreaData() {
+        if (!areaData) areaData = fetch('/WebCheckout/GetAreaBlockData')
+            .then(response => { if (!response.ok) throw new Error("Address data unavailable"); return response.json(); })
+            .catch(error => { areaData = null; throw error; });
+        return areaData;
+    }
+    async function setupAreaFields(area, block) {
+        const selectArea = checkoutArabic ? "اختر المنطقة" : "Select area";
+        const selectBlock = checkoutArabic ? "اختر القطعة" : "Select block";
+        area.disabled = true;
+        block.disabled = true;
+        try {
+            const data = await getAreaData();
+            area.replaceChildren(new Option(selectArea, ""));
+            block.replaceChildren(new Option(selectBlock, ""));
+            for (const a of data.areas) area.add(new Option(checkoutArabic ? a.areaNameArb || a.areaName : a.areaName, a.id));
+            area.onchange = () => {
+                block.replaceChildren(new Option(selectBlock, ""));
+                for (const b of data.blocks.filter(b => String(b.areaId) === area.value))
+                    block.add(new Option(checkoutArabic ? b.blockNameArb || b.blockName : b.blockName, b.id));
+                block.disabled = !area.value;
+            };
+            area.disabled = false;
+        } catch { Swal.fire({icon:"error",text:checkoutError}); }
+    }
+    const guestArea = document.getElementById("ddlArea");
+    if (guestArea) setupAreaFields(guestArea, document.getElementById("ddlBlock"));
+
+    function openAddressModal() {
+        const modal = document.getElementById("addAddressModal");
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+        const area = document.getElementById("modalArea");
+        if (area.options.length <= 1) setupAreaFields(area, document.getElementById("modalBlock"));
+    }
+    document.getElementById("saveAddressBtn").addEventListener("click", async function () {
+        const modal = document.getElementById("addAddressModal");
+        const fields = [...modal.querySelectorAll(".required-field")];
+        let valid = true;
+        for (const field of fields) {
+            const invalid = !field.value.trim() || !field.checkValidity();
+            field.classList.toggle("is-invalid", invalid);
+            if (invalid) valid = false;
+        }
+        if (!valid) { modal.querySelector(".is-invalid")?.focus(); return; }
+        this.disabled = true;
+        const formData = {};
+        for (const field of modal.querySelectorAll("input[name], select[name]")) formData[field.name] = field.value;
+        try {
+            const response = await fetch('/WebCheckout/AddAddress', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(formData)});
+            const result = await response.json();
+            if (!response.ok || !result.success || !result.addressId) throw new Error(result.message || checkoutError);
+            savedAddresses.add(new Option(result.title || formData.Title || (checkoutArabic ? "عنوان جديد" : "New address"), result.addressId));
+            savedAddresses.value = String(result.addressId);
+            showSelectedAddress(savedAddresses.value);
+            bootstrap.Modal.getInstance(modal).hide();
+            Swal.fire({toast:true,position:"bottom-end",icon:"success",text:checkoutArabic ? "تم حفظ العنوان" : "Address saved",showConfirmButton:false,timer:1800});
+        } catch(error) { Swal.fire({icon:"error",text:error.message || checkoutError}); }
+        finally { this.disabled = false; }
     });
 </script>
 <script>
@@ -663,24 +498,27 @@
         requiredFields.forEach(id => {
             const field = document.getElementById(id);
             if (!field || !field.value || field.value.trim() === '') {
-                field.classList.add('is-invalid');
+                field?.classList.add('is-invalid');
                 isValid = false;
             }
         });
 
         // mobile length check
         const mobile = document.getElementById('mobile');
-        if (mobile && mobile.value.length !== 8) {
+        if (mobile && !/^[0-9]{8}$/.test(mobile.value)) {
             mobile.classList.add('is-invalid');
             isValid = false;
         }
 
+        const email = document.getElementById('email');
+        if (email && !email.checkValidity()) { email.classList.add('is-invalid'); isValid = false; }
+        if (!isValid) document.querySelector('#guestAddressForm .is-invalid')?.focus();
         return isValid;
     }
 </script>
 <script>
     $('#payNowBtn').click(function () {
-
+        if (orderPending || couponPending) return;
         let items = [];
 
         @foreach (var item in Model.CartItems)
@@ -689,7 +527,7 @@
                         items.push({
                             productId: @item.ProductId,
                             quantity: @item.Quantity,
-                            price: @item.Price
+                            price: @item.Price.ToString(CultureInfo.InvariantCulture)
                         });
                     </text>
         }
@@ -736,7 +574,10 @@
             orderData.deliveryAddress = parseInt(addressId);
         }
 
-        // 🔹 PLACE ORDER
+        // Prevent duplicate clicks while the server processes the order.
+        orderPending = true;
+        syncPaymentButton();
+        $('#applyCouponBtn').prop('disabled', true);
         $.ajax({
             url: '/WebCheckout/PlaceOrder',
             type: 'POST',
@@ -745,8 +586,8 @@
               success: function (res) {
         Swal.fire({
             icon: 'success',
-            title: 'Success',
-            text: res.message,
+            title: checkoutArabic ? 'تم تسجيل الطلب' : 'Order received',
+            text: (checkoutArabic ? 'رقم الطلب: ' : 'Order number: ') + res.orderId,
             confirmButtonText: 'OK',
              width: '500px',
               Height: '500px'
@@ -761,11 +602,18 @@
 
         Swal.fire({
             icon: 'error',
-            title: 'Stock Issue',
+            title: checkoutArabic ? 'تعذر تسجيل الطلب' : 'Unable to place order',
             text: msg,
             confirmButtonText: 'OK',
             width: '500px'
         });
+    },
+    complete: function (xhr) {
+        if (xhr.status < 200 || xhr.status >= 300) {
+            orderPending = false;
+            syncPaymentButton();
+            $('#applyCouponBtn').prop('disabled', false);
+        }
     }
         });
     });

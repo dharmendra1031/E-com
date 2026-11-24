@@ -164,6 +164,10 @@ namespace EcommerceWebApplication.Controllers
 
             if (userId == null)
                 return Json(new { success = false, message = "User not logged in." });
+            if (model == null || !int.TryParse(model.Area, out int areaId) || !int.TryParse(model.Block, out int blockId) ||
+                !_context.Block.Any(b => b.Id == blockId && b.AreaId == areaId) ||
+                string.IsNullOrWhiteSpace(model.Street) || string.IsNullOrWhiteSpace(model.Phone))
+                return BadRequest(new { success = false, message = "Invalid address details." });
 
             model.UserId = userId.Value;
             model.CreatedAt = DateTime.Now;
@@ -180,7 +184,7 @@ namespace EcommerceWebApplication.Controllers
             _context.UserAddresses.Add(model);
             _context.SaveChanges();
 
-            return Json(new { success = true });
+            return Json(new { success = true, addressId = model.AddressId, title = model.Title });
         }
 
         [HttpPost]
@@ -524,7 +528,7 @@ namespace EcommerceWebApplication.Controllers
                                on ua.Area equals ar.Id.ToString()
                            join bl in _context.Block
                                on ua.Block equals bl.Id.ToString()
-                           where ua.AddressId == id && ua.UserId == userId.Value
+                           where ua.AddressId == id && ua.UserId == userId.Value && ua.isdeleted == 0
                            select new
                            {
                                AreaId = ar.Id,
