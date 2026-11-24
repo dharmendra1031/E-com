@@ -4,16 +4,6 @@
     ViewData["Title"] = "Send Notification";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- Loader -->
-<div id="loader" style="display:none; position:fixed; top:0; left:0;
-     width:100%; height:100%; background:rgba(255,255,255,0.8);
-     z-index:9999; text-align:center; padding-top:200px; font-size:24px;">
-    <div class="spinner-border text-primary" role="status" style="width: 5rem; height: 5rem;">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-    <p>Please wait, sending mail...</p>
-</div>
 <div class="main-content">
     <div class="row">
         <div class="col-lg-12">
@@ -25,39 +15,17 @@
                     <form asp-action="SaveNotification" method="post" id="NavigationKey">
                         @Html.AntiForgeryToken()
 
-                        <!-- Hidden field for selected emails -->
-                        <input type="hidden" name="UserEmails" id="UserEmails" />
                         <!-- Select All Users -->
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <div class="form-group">
                                     <input type="checkbox" id="selectAllUsers"
-                                           style="width:20px; height:20px; margin-right:8px;"asp-for="Customertype" value="AllUsers"/>
+                                           class="form-check-input" name="Customertype" value="AllUsers" />
                                     <label class="mb-0" for="selectAllUsers">
                                         @_localizer["Select All Users"] <span style="color:red;">*</span>
                                     </label>
                                 </div>
                             </div>
-                            <!--May be use in future-->
-                            <!--<div class="col-md-3">
-                                <div class="form-group">
-                                    <input type="checkbox" id="selectFrequentlyreview"
-                                           style="width:20px; height:20px; margin-right:8px;" asp-for="Customertype" value="Frequentlyreview" />
-                                    <label class="mb-0" for="selectFrequentlyreview">
-                                        @_localizer["Select Frequently review"] <span style="color:red;">*</span>
-                                    </label>
-                                </div>
-                            </div> 
-                           <div class="col-md-3">
-                                <div class="form-group">
-                                    <input type="checkbox" id="selectInactiveUsers"
-                                           style="width:20px; height:20px; margin-right:8px;" asp-for="Customertype" value="selectInactiveUsers" />
-                                    <label class="mb-0" for="selectInactiveUsers">
-                                        @_localizer["Select Inactive Users"] <span style="color:red;">*</span>
-                                    </label>
-                                </div>
-                             </div> -->
-
                         </div>
                         <!-- Subject -->
                         <div class="row mb-3">
@@ -90,41 +58,15 @@
     </div>
 </div>
 
-<!-- Script to push emails in hidden -->
-<script>
-    document.getElementById("selectAllUsers").addEventListener("change", function () {
-        if (this.checked) {
-            let emails = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-                                                      Model.UserEmails.Select(u => u.Email).ToList()));
-            document.getElementById("UserEmails").value = emails.join(",");
-        } else {
-            document.getElementById("UserEmails").value = "";
-        }
-    });
-
-
-
-</script>
-
-
-<script>
-    document.getElementById("NavigationKey").addEventListener("submit", function (e) {
-      
-        if ($("#NavigationKey").valid()) {
-            
-            Swal.fire({
-                title: 'Sending...',
-                text: 'Please wait, sending mail...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-        } else {
-           
-            e.preventDefault(); 
-        }
-    });
-</script>
-
+@section Scripts {
+    <script>
+        document.getElementById("NavigationKey").addEventListener("submit", function (e) {
+            if (!document.getElementById("selectAllUsers").checked ||
+                !document.getElementById("EmailSubject").value.trim() ||
+                !document.getElementById("Body").value.trim()) {
+                e.preventDefault();
+                AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "حدد المستلمين وأدخل الموضوع والرسالة." : "Select recipients and enter the subject and message.");
+            }
+        });
+    </script>
+}

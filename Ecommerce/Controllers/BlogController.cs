@@ -11,7 +11,7 @@ using System.Drawing.Imaging;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BlogController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -35,6 +35,7 @@ namespace EcommerceWebApplication.Controllers
             return View(blog); // Edit mode
         }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateOrUpdate(blogMaster model, IFormFile? BlogImageFile)
         {
             if (!ModelState.IsValid)
@@ -45,6 +46,11 @@ namespace EcommerceWebApplication.Controllers
 
             var existingBlog = await _context.blogmaster.FirstOrDefaultAsync(b => b.BlogId == model.BlogId);
 
+            if (model.BlogId > 0 && existingBlog == null)
+            {
+                TempData["Error"] = "Blog not found.";
+                return RedirectToAction("BlogList");
+            }
             if (existingBlog == null)
             {
                 // New blog
@@ -83,7 +89,7 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 _context.blogmaster.Add(newBlog);
-                TempData["Success"] = "Blog created successfully.";
+
             }
             else
             {
@@ -118,11 +124,11 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 _context.blogmaster.Update(existingBlog);
-                TempData["Success"] = "Blog updated successfully.";
+
             }
 
             await _context.SaveChangesAsync();
-
+            TempData["Success"] = "Blog saved successfully.";
             return RedirectToAction("BlogList");
         }
        
@@ -162,6 +168,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
         {
             try

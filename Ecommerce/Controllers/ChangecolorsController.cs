@@ -2,6 +2,8 @@
 using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Text.RegularExpressions;
 
 namespace EcommerceWebApplication.Controllers
 {
@@ -13,14 +15,17 @@ namespace EcommerceWebApplication.Controllers
         {
             _context = context;
         }
+        [Authorize(Roles = "Admin")]
         public IActionResult Index()
         {
             return View();
         }
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public IActionResult SaveUpdate(ColorsModel model)
         {
-            if (model == null)
+            if (model == null || string.IsNullOrWhiteSpace(model.Colorcode) || !Regex.IsMatch(model.Colorcode, @"\A#[0-9a-fA-F]{6}\z"))
                 return Json(new { success = false, message = "Invalid data" });
 
             try
@@ -50,7 +55,7 @@ namespace EcommerceWebApplication.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "Unable to save color." });
             }
         }
         [HttpGet]

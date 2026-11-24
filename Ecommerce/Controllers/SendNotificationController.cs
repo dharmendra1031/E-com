@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class SendNotificationController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -20,93 +20,55 @@ namespace EcommerceWebApplication.Controllers
             _context = context;
             _emailService = emailService;
         }
-        public IActionResult Index()
-        {
-            var model = new SendNotificationModel
-            {
-                UserEmails = _context.Customers
-                    .Where(u => !string.IsNullOrEmpty(u.Email))
-                    .Select(u => new Customers
-                    {
-                        UserId = u.UserId,
-                        Email = u.Email
-                    })
-                    .ToList()
-            };
+        public IActionResult Index() => View(new SendNotificationModel());
 
-            return View(model);
-        }
         [HttpPost]
-        public IActionResult SaveNotification(SendNotificationModel model, string UserEmails)
+        [ValidateAntiForgeryToken]
+        public IActionResult SaveNotification(SendNotificationModel model)
         {
-
-            if (!string.IsNullOrEmpty(UserEmails))
+            if (model.Customertype != "AllUsers" || string.IsNullOrWhiteSpace(model.EmailSubject) ||
+                string.IsNullOrWhiteSpace(model.Body))
             {
-                var emailList = UserEmails
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(email => email.Trim())
-                    .ToList();
-
-                try
-                {
-                    _emailService.SendBulkEmails(emailList, model.EmailSubject, model.Body);
-
-                    // ✅ Save to Database
-                    var notification = new SendNotificationModel
-                    {
-                        Customertype=model.Customertype,
-                        EmailSubject = model.EmailSubject,
-                        Body = model.Body,
-                        CreatedAt = DateTime.Now,
-                        CreatedBy = 1
-                    };
-
-                    _context.SendNotification.Add(notification);
-                    _context.SaveChanges();
-                    TempData["Success"] = "Notification sent and saved successfully.";
-                    //if (culture == "en")
-                    //{
-                    //    TempData["Success"] = "Notification sent and saved successfully.";
-
-                    //}
-                    //else
-                    //{
-                    //    TempData["Success"] = "تم إرسال الإشعار وحفظه بنجاح.";
-                    //}
-
-                }
-                catch (Exception ex)
-                {
-                    //if (culture == "en")
-                    //{
-                    //    TempData["Error"] = "Failed to send or save notification: " + ex.Message;
-
-                    //}
-                    //else
-                    //{
-                    //    TempData["Error"] = "فشل في إرسال أو حفظ الإشعار:" + ex.Message;
-                    //}
-                    TempData["Error"] = "Failed to send or save notification: " + ex.Message;
-
-                }
+                TempData["Error"] = "Select recipients and enter the subject and message.";
+                return RedirectToAction("Index");
             }
-            else
+
+            // Resolve recipients on the server; never accept arbitrary email addresses from a form.
+            var emailList = _context.Customers
+                .Where(u => !string.IsNullOrEmpty(u.Email))
+                .Select(u => u.Email.Trim())
+                .Distinct()
+                .ToList();
+
+            if (emailList.Count == 0)
             {
-                //if (culture == "en")
-                //{
-                //    TempData["Error"] = "Please select users before sending the notification.";
+                TempData["Error"] = "No recipients found.";
+                return RedirectToAction("Index");
+            }
 
-                //}
-                //else
-                //{
-                //    TempData["Error"] = "يرجى تحديد المستخدمين قبل إرسال الإشعار.";
-                //}
-                TempData["Error"] = "Please select users before sending the notification.";
-
+            try
+            {
+                _emailService.SendBulkEmails(emailList, model.EmailSubject, model.Body);
+                var notification = new SendNotificationModel
+                {
+                    Customertype = model.Customertype,
+                    EmailSubject = model.EmailSubject,
+                    Body = model.Body,
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = int.TryParse(User.FindFirst("UserId")?.Value, out var id) ? id : 1
+                };
+                _context.SendNotification.Add(notification);
+                _context.SaveChanges();
+                TempData["Success"] = "Notification sent and saved successfully.";
+            }
+            catch (Exception ex)
+            {
+                HttpContext.RequestServices.GetRequiredService<ILogger<SendNotificationController>>()
+                    .LogError(ex, "Notification send or save failed.");
+                TempData["Error"] = "Delivery may be incomplete. Check the result before sending again.";
             }
 
             return RedirectToAction("Index");
         }
-
     }
 }

@@ -141,7 +141,8 @@
             </div>
 
             <div class="row mt-4 align-items-center">
-                <form id="colorForm" class="d-flex w-100">
+                <form id="colorForm" class="d-flex flex-wrap w-100" method="post">
+                    @Html.AntiForgeryToken()
 
                     <input type="hidden" asp-for="Id" />
 
@@ -186,44 +187,19 @@
     }
 
     //  FORM SUBMIT
-    $("#colorForm").submit(function (e) {
+    $("#colorForm").submit(async function (e) {
         e.preventDefault();
-
-        var color = $("#selectedColor").val().trim();
-
-        if (color === "") {
-            $("#colorError").show();
-            return false;
-        } else {
-            $("#colorError").hide();
+        const color = $("#selectedColor").val().trim();
+        if (!/^#[0-9a-f]{6}$/i.test(color)) {
+            AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "أدخل رمز لون صحيحاً." : "Enter a valid six-digit hexadecimal color.");
+            return;
         }
-
-        var formData = $(this).serialize();
-
-        $.ajax({
-            url: '/ChangeColors/SaveUpdate',
-            type: 'POST',
-            data: formData,
-            success: function (res) {
-
-                if (res.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: res.message
-                    });
-                }
-                else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: res.message
-                    });
-                }
-            }
+        $("#colorError").hide();
+        await AdminFeedback.post('@Url.Action("SaveUpdate","Changecolors")', {
+            method: "POST",
+            body: new URLSearchParams(new FormData(this))
         });
     });
-
 
     //  PAGE LOAD
     $(document).ready(function () {
@@ -257,6 +233,7 @@
         $(this).addClass("selected");
 
         let color = $(this).data("color");
+        if (!color) return;
 
         $("#selectedColor").val(color);
         updatePreview(color);

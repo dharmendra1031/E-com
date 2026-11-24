@@ -8,7 +8,7 @@ using System.Drawing.Imaging;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class AboutUsController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -65,7 +65,7 @@ namespace EcommerceWebApplication.Controllers
                 existingAbout.UpdatedBy = 1; // 🔐 AdminUserId lagao agar session me ho
 
                 _context.AboutUs.Update(existingAbout);
-                TempData["Success"] = "About Us updated successfully.";
+
             }
             else
             {
@@ -76,10 +76,11 @@ namespace EcommerceWebApplication.Controllers
                 //model.IsActive = true;
 
                 _context.AboutUs.Add(model);
-                TempData["Success"] = "About Us created successfully.";
+
             }
 
             _context.SaveChanges();
+            TempData["Success"] = "About Us saved successfully.";
             return RedirectToAction("UpdateAbout");
         }
 
