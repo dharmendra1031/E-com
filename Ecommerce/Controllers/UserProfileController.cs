@@ -3,16 +3,27 @@ using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
+    [Authorize(Roles = "Customer")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public class UserProfileController : Controller
     {
         private readonly EcommerceDbContext _context;
         public UserProfileController(EcommerceDbContext context)
         {
             _context = context;
+        }
+        public override void OnActionExecuting(ActionExecutingContext context)
+        {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (!userId.HasValue || User.FindFirst("UserId")?.Value != userId.Value.ToString())
+                context.Result = RedirectToAction("Login", "UserAccount", new { returnUrl = "/UserProfile/Profile" });
+            base.OnActionExecuting(context);
         }
         public IActionResult Profile()
         {
@@ -212,12 +223,13 @@ namespace EcommerceWebApplication.Controllers
 
         public JsonResult GetBlocksByArea(int areaId)
         {
+            bool ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var blocks = _context.Block
                             .Where(b => b.AreaId == areaId)
                             .Select(b => new
                             {
                                 b.Id,
-                                b.BlockName
+                                BlockName = ar ? b.BlockNameArb : b.BlockName
                             }).ToList();
 
             return Json(blocks);
@@ -225,34 +237,29 @@ namespace EcommerceWebApplication.Controllers
 
 
 
-        public IActionResult MyOrdersPartial()
+        public IActionResult MyOrdersPartial(int page = 1)
         {
+            const int pageSize = 10;
             var userId = HttpContext.Session.GetInt32("UserId");
-
-            if (userId == null)
-            {
-                return PartialView("_MyOrdersPartial",
-                    new List<OrderItemViewModel>());
-            }
-
-            var orders = (from o in _context.Orders
-                          join os in _context.OrderStatus
-                               on o.Status equals os.OrderstatusId
-                          join ps in _context.PaymentStatus
-                               on o.PaymentStatus equals ps.PaymentstatusId
-                          where o.CustomerId == userId.Value
-                          orderby o.CreatedAt descending
-                          select new OrderprofileViewModel
-                          {
-                              OrderId = o.OrderId,
-                              CreatedAt = o.CreatedAt,
-                              OrderStatusName = os.OrderstatusName,
-                              PaymentStatusName = ps.PaymentstatusName,
-                              TotalAmount = o.TotalAmount,
-                              paytype = o.PaymentType
-                          }).ToList();
-
-            return PartialView("_MyOrdersPartial", orders);
+            bool ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var query = from o in _context.Orders.AsNoTracking()
+                        join os in _context.OrderStatus on o.Status equals os.OrderstatusId
+                        join ps in _context.PaymentStatus on o.PaymentStatus equals ps.PaymentstatusId
+                        where o.CustomerId == userId
+                        orderby o.CreatedAt descending, o.OrderId descending
+                        select new OrderprofileViewModel
+                        {
+                            OrderId = o.OrderId, CreatedAt = o.CreatedAt,
+                            OrderStatusName = ar ? os.OrderStatusNameArb : os.OrderstatusName,
+                            PaymentStatusName = ar ? ps.PaymentStatusNameArb : ps.PaymentstatusName,
+                            TotalAmount = o.TotalAmount, paytype = o.PaymentType
+                        };
+            int total = query.Count();
+            int pages = Math.Max(1, (int)Math.Ceiling((double)total / pageSize));
+            page = Math.Clamp(page, 1, pages);
+            ViewBag.Page = page;
+            ViewBag.TotalPages = pages;
+            return PartialView("_MyOrdersPartial", query.Skip((page - 1) * pageSize).Take(pageSize).ToList());
         }
 
         public IActionResult PersonalInformation()
@@ -295,6 +302,9 @@ namespace EcommerceWebApplication.Controllers
             // Validate current password
             if (customer.PasswordHash != CurrentPassword) // Simple example; hash check if used
                 return Json(new { success = false, message = "Current password is incorrect." });
+
+            if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword.Length < 8 || NewPassword.Length > 50)
+                return Json(new { success = false, message = "Use 8–50 characters." });
 
             if (NewPassword != ConfirmPassword)
                 return Json(new { success = false, message = "New password and confirmation do not match." });
@@ -348,7 +358,8 @@ namespace EcommerceWebApplication.Controllers
             return Json(new { success = true, message = "Profile updated successfully" });
         }
 
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult SoftDeleteUser()
         {
             var userId = HttpContext.Session.GetInt32("UserId");

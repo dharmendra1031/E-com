@@ -1134,6 +1134,10 @@ namespace EcommerceWebApplication.Controllers
 
         public async Task<IActionResult> OrderInvoicePrint(int orderId, string format = "PDF")
         {
+            if (!User.IsInRole("Admin") &&
+                (!User.IsInRole("Customer") || !int.TryParse(User.FindFirst("UserId")?.Value, out var customerId) ||
+                 !await _context.Orders.AnyAsync(o => o.OrderId == orderId && o.CustomerId == customerId)))
+                return Forbid();
             try
             {
                 var culture = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;

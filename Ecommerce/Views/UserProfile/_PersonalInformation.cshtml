@@ -1,15 +1,6 @@
-﻿@model EcommerceWebApplication.Models.UserProfileViewModel
+@model EcommerceWebApplication.Models.UserProfileViewModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-<style>
-    .ui-datepicker {
-        z-index: 99999 !important;
-    }
-</style>
-
-
-
-<!-- 3. jQuery UI JS -->
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<h2 class="h5 fw-bold mb-3">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "معلومات الحساب" : "Profile information")</h2>
 <form id="profileForm">
 
     <!-- Full Name -->
@@ -17,7 +8,7 @@
         <div class="col-md-12">
             <label class="fw-semibold">@_localizer["Full Name"]</label>
             <input class="form-control valuefont"
-                   name="FullName"
+                   name="FullName" autocomplete="name" required
                    value="@Model.User?.FullName" />
         </div>
     </div>
@@ -27,7 +18,7 @@
         <div class="col-md-4">
             <label class="fw-semibold">@_localizer["Email"]</label>
             <input class="form-control valuefont"
-                   name="Email"
+                   name="Email" type="email" readonly
                    value="@Model.User?.Email" />
         </div>
 
@@ -38,25 +29,20 @@
                 <span class="input-group-text">+965</span>
 
                  <input class="form-control valuefont"
-                       name="Phone"
+                       name="Phone" type="tel" autocomplete="tel-national" required
                        maxlength="8"
                        inputmode="numeric"
                        pattern="[0-9]{8}"
                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                       value="@Model.User?.Phone" />
+                       value="@(Model.User?.Phone?.Length >= 8 ? Model.User.Phone.Substring(Model.User.Phone.Length-8) : Model.User?.Phone)" />
             </div>
         </div>
 
 
         @*  <div class="col-md-4">
             <label class="fw-semibold">@_localizer["Birth Date"]</label>
-            <input type="text"
-                   class="form-control valuefont"
-                   id="BirthDate"
-                   name="BirthDate"
-                   autocomplete="off"
-                 
-                   value="@(Model.User?.BirthDate?.ToString("dd-MM-yyyy"))" />
+            <input type="date" class="form-control valuefont" id="BirthDate" name="BirthDate"
+                   max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@(Model.User?.BirthDate?.ToString("yyyy-MM-dd"))" />
         </div> *@
         <div class="col-md-4">
             <label class="fw-semibold">@_localizer["Birth Date"]</label>
@@ -79,65 +65,4 @@
     </div>
 
 </form>
-
-<script>
-    $(document).on("submit", "#profileForm", function (e) {
-        e.preventDefault();
-
-        $.post("/UserProfile/UpdateProfile", $(this).serialize(), function (res) {
-            if (res.success) {
-                Swal.fire("Success", res.message, "success");
-            } else {
-                Swal.fire("Error", res.message, "error");
-            }
-        });
-    });
-
-</script>
-<script>
-    $(document).on("focus", "#BirthDate", function () {
-
-        if (!$(this).hasClass("hasDatepicker")) {
-
-            $(this).datepicker({
-                dateFormat: "dd-mm-yy",
-                changeMonth: true,
-                changeYear: true,
-                yearRange: "1950:2030",
-                maxDate: 0
-            });
-
-            $(this).datepicker("show"); // 🔥 direct open
-        }
-
-    });
-</script>
-<script>
-    $(document).ready(function () {
-
-        // 🔥 Default focus on first visible input
-        $("#profileForm")
-            .find("input:visible, select:visible, textarea:visible")
-            .first()
-            .focus();
-
-    });
-
-    $(document).on("keydown", "#profileForm input, #profileForm select, #profileForm textarea", function (e) {
-
-        if (e.key === "Enter") {
-            e.preventDefault();
-
-            var fields = $("#profileForm")
-                .find("input:visible, select:visible, textarea:visible");
-
-            var index = fields.index(this);
-
-            if (index > -1 && index + 1 < fields.length) {
-                fields.eq(index + 1).focus();
-            }
-        }
-    });
-</script>
-
 

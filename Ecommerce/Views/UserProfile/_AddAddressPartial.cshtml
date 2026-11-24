@@ -24,7 +24,7 @@
 
             <div class="col-md-6">
                 <label class="valuefont">@_localizer["Block"] <span class="text-danger">*</span></label>
-                <select class="form-select valuefont" name="Block" id="BlockDropdown" required>
+                <select class="form-select valuefont" name="Block" id="BlockDropdown" required disabled>
                     <option value=""></option>
                 </select>
             </div>
@@ -66,7 +66,7 @@
                     <!-- Phone Number Input -->
                     <input class="form-control valuefont"
                            name="Phone"
-                           value="@Model.Phone"
+                           value="@(Model.Phone?.Length >= 8 ? Model.Phone.Substring(Model.Phone.Length - 8) : Model.Phone)"
                            required
                            maxlength="8"
                            inputmode="numeric"
@@ -90,63 +90,3 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-
-<script>
-    $(document).on("keydown", "#addAddressForm input, #addAddressForm select, #addAddressForm textarea", function (e) {
-
-        if (e.key === "Enter") {
-            e.preventDefault();
-
-           
-            var fields = $("#addAddressForm")
-                .find("input:visible:not([readonly]):not([disabled]), " +
-                      "select:visible:not([disabled]), " +
-                      "textarea:visible:not([readonly]):not([disabled])");
-
-            var index = fields.index(this);
-
-            if (index > -1 && index + 1 < fields.length) {
-                fields.eq(index + 1).focus();
-            }
-        }
-    });
-</script>
-
-
-<script>
-    $("#AreaDropdown").change(function () {
-
-        var areaId = $(this).val();
-
-        $("#BlockDropdown").empty();
-        $("#BlockDropdown").append('<option value="">-- Select Block --</option>');
-
-        if (areaId != "") {
-
-            $.get("/UserProfile/GetBlocksByArea",
-                { areaId: areaId },
-                function (data) {
-
-                    $.each(data, function (index, item) {
-                        $("#BlockDropdown").append(
-                            '<option value="' + item.id + '">' + item.blockName + '</option>'
-                        );
-                    });
-                });
-        }
-    });
-</script>
-
-<script>
-    $(document).ready(function () {
-
-
-        $("#addAddressForm")
-            .find("input:visible")
-            .first()
-            .focus();
-
-    });
-</script>

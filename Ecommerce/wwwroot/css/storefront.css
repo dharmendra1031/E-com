@@ -189,3 +189,14 @@
 .store-auth .store-otp { text-align: center; letter-spacing: .35em; font-size: 1.4rem; }
 .store-auth .validation-summary-valid { display: none; }
 .store-auth .validation-summary-errors ul { padding-inline-start: 20px; }
+
+.store-account-panel { background:#fff; border:1px solid #e2e8f0; border-radius:12px; min-width:0; overflow-wrap:anywhere; }
+.store-account-nav { display:grid; gap:4px; }
+.store-account-nav .btn { min-height:44px; display:flex; align-items:center; gap:8px; white-space:normal; }
+.store-account-nav [aria-current=true] { background:#eaf3f9; color:#075a96; font-weight:600; }
+.store-order-list,.store-address-grid { display:grid; gap:12px; }
+.store-order-card,.store-address-card { border:1px solid #e2e8f0; border-radius:8px; padding:12px; }
+.store-order-card { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,115px),1fr)); align-items:center; gap:12px; }
+.store-address-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
+.store-account-panel :is(.btn,.form-control,.form-select) { min-height:44px; }
+@media(max-width:767.98px) { .store-account-nav { grid-template-columns:repeat(2,minmax(0,1fr)); } }

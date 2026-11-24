@@ -53,7 +53,7 @@
     const fallback=ar?"تعذر إكمال الطلب. حاول مرة أخرى.":"Unable to complete request. Try again.";
     function controls() {
         const seconds=Math.max(0,Math.ceil((deadline-Date.now())/1000));
-        send.disabled=pending||!email.value||!email.checkValidity()||(email.value.trim()===sentEmail&&seconds>0)||email.value.trim()===verified;
+        send.disabled=pending||!email.value||!email.checkValidity()||email.value.trim()===verified;
         resend.disabled=pending||seconds>0; verify.disabled=pending; create.disabled=pending;
         resend.textContent=resendLabel+(seconds?" ("+seconds+"s)":"");
         if(!seconds)clearInterval(timer);
@@ -69,6 +69,7 @@
     }
     async function sendCode() {
         if(pending||!email.value||!email.checkValidity())return;
+        if (email.value.trim() === sentEmail && Date.now() < deadline) { bootstrap.Modal.getOrCreateInstance(modal).show(); return; }
         sentEmail=email.value.trim();email.readOnly=true;message.textContent="";state.textContent="";
         try {
             await post("SendOtp",{email:sentEmail});

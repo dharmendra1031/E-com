@@ -1,78 +1,32 @@
-﻿@using System.Globalization
+@using System.Globalization
 @model List<EcommerceWebApplication.Models.OrderprofileViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-
-<div class="bg-white p-4 rounded shadow-sm">
-    <h5 class="mb-3">@_localizer["My Orders"]</h5>
-
-    @if (Model != null && Model.Any())
+@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; int page = ViewBag.Page ?? 1; int pages = ViewBag.TotalPages ?? 1; }
+<h2 class="h5 fw-bold mb-3">@_localizer["My Orders"]</h2>
+@if (Model?.Any() == true)
+{
+    <div class="store-order-list">
+        @foreach (var order in Model)
+        {
+            <article class="store-order-card">
+                <div><strong>@_localizer["Order"] #@order.OrderId</strong><div class="small text-secondary" dir="ltr">@order.CreatedAt.ToString("dd-MM-yyyy")</div></div>
+                <div><div class="small text-secondary">@_localizer["Status"]</div><strong>@order.OrderStatusName</strong></div>
+                <div><div class="small text-secondary">@_localizer["Pay Status"]</div>@order.PaymentStatusName</div>
+                <div><div class="small text-secondary">@_localizer["Total"]</div><strong dir="ltr">KD @order.TotalAmount.ToString("F3",CultureInfo.InvariantCulture)</strong></div>
+                <a class="btn btn-outline-primary" href="@Url.Action("OrderInvoicePrint","Report",new { orderId=order.OrderId,format="PDF" })" target="_blank" rel="noopener">@(ar ? "الفاتورة" : "Invoice")</a>
+            </article>
+        }
+    </div>
+    @if (pages > 1)
     {
-        <div class="table-responsive" >
-            <table class="table table-bordered mb-0">
-                <thead class="table-light" >
-                    <tr>
-                        <th>@_localizer["Order"] #</th>
-                        <th>@_localizer["Date"]</th>
-                        <th>@_localizer["Status"]</th>
-                        <th>@_localizer["Pay Status"]</th>
-                        <th>@_localizer["Pay Type"]</th>
-                        <th>@_localizer["Total"]</th>
-                        <th>@_localizer["Action"]</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var order in Model)
-                    {
-                        <tr>
-                            <td>#@order.OrderId</td>
-                            <td>@order.CreatedAt.ToString("dd-MM-yyyy")</td>
-                            <td>@order.OrderStatusName</td>
-                            <td>@order.PaymentStatusName</td>
-                            <td>@order.paytype</td>
-                          @*   <td>@order.TotalAmount KD</td> *@
-                            <td class="text-center">
-                                @order.TotalAmount.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) KD
-                            </td> 
-                            <td>
-                                <button type="button"
-                                        class="btn btn-primary btn-sm"
-                                        onclick="PrintReport(@order.OrderId)">
-                                    <i class="fa fa-print"></i> @_localizer["Print"]
-                                </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" data-order-page="@(page-1)" disabled="@(page<=1)">@(ar ? "السابق" : "Previous")</button>
+            <span>@page / @pages</span>
+            <button type="button" class="btn btn-outline-secondary" data-order-page="@(page+1)" disabled="@(page>=pages)">@(ar ? "التالي" : "Next")</button>
         </div>
     }
-    else
-    {
-        <p class="text-muted">@_localizer["No orders found"].</p>
-    }
-</div>
-
-<script>
-    function PrintReport(orderId) {
-        if (!orderId || orderId === 0) {
-            alert("Invalid Order Id");
-            return;
-        }
-
-        // Agar format radio button hai
-        const format = document.querySelector("input[name='Format']:checked")?.value || "PDF";
-
-        let url = "/Report/OrderInvoicePrint?OrderId=" + encodeURIComponent(orderId);
-
-        if (format) {
-            url += "&format=" + encodeURIComponent(format);
-        }
-
-        // PDF new tab me, baaki direct
-        if (format.toUpperCase() === "PDF") {
-            window.open(url, "_blank");
-        } else {
-            window.location.href = url;
-        }
-    }
-</script>
+}
+else
+{
+    <div class="text-center py-4"><p>@_localizer["No orders found"]</p><a class="btn btn-primary" href="~/WebCategory/Index">@(ar ? "تسوق الآن" : "Start shopping")</a></div>
+}
