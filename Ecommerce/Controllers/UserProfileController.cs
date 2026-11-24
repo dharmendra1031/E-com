@@ -120,7 +120,12 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public IActionResult GetAddressById(int id)
         {
-            var addr = _context.UserAddresses.FirstOrDefault(x => x.AddressId == id && x.isdeleted == 0);
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null || User.Identity?.IsAuthenticated != true ||
+                User.FindFirst("UserId")?.Value != userId.Value.ToString() || User.IsInRole("Admin"))
+                return Unauthorized();
+
+            var addr = _context.UserAddresses.FirstOrDefault(x => x.AddressId == id && x.UserId == userId.Value && x.isdeleted == 0);
 
             if (addr == null)
                 return Json(new { success = false, message = "Address not found" });
@@ -304,7 +309,12 @@ namespace EcommerceWebApplication.Controllers
         [HttpPost]
         public IActionResult DeleteAddress(int id)
         {
-            var address = _context.UserAddresses.FirstOrDefault(x => x.AddressId == id && x.isdeleted == 0);
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null || User.Identity?.IsAuthenticated != true ||
+                User.FindFirst("UserId")?.Value != userId.Value.ToString() || User.IsInRole("Admin"))
+                return Unauthorized();
+
+            var address = _context.UserAddresses.FirstOrDefault(x => x.AddressId == id && x.UserId == userId.Value && x.isdeleted == 0);
 
             if (address == null)
                 return Json(new { success = false, message = "Address not found" });
