@@ -349,6 +349,10 @@ namespace EcommerceWebApplication.Controllers
             if (user == null)
                 return Json(new { success = false, message = "User not found" });
 
+            if (string.IsNullOrWhiteSpace(model.FullName) || string.IsNullOrWhiteSpace(model.Phone) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(model.Phone, @"^(\+965)?\d{8}$") || model.BirthDate > DateTime.Today)
+                return Json(new { success = false, message = "Check your profile details." });
+
             user.FullName = model.FullName;
             user.Phone = model.Phone;
             user.BirthDate = model.BirthDate;

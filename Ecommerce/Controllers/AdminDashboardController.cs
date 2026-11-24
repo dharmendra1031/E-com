@@ -28,7 +28,11 @@ namespace EcommerceWebApplication.Controllers
                 return RedirectToAction("AccessDenied", "Account");
             }
 
-            ViewBag.customerCount = _context.Customers.Where(u => u.RoleId == 2) .Count();
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            ViewBag.TodayOrders = _context.Orders.Count(o => o.CreatedAt >= today && o.CreatedAt < tomorrow);
+            ViewBag.TodayPayments = _context.Payments.Where(p => p.PaymentStatus == 1 && p.PaidAt >= today && p.PaidAt < tomorrow).Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+            ViewBag.customerCount = _context.Customers.Count(u => u.RoleId == 2 && u.IsDeleted == 0);
             ViewBag.categoryCount = _context.Categories.Count();
             ViewBag.SubCategoriesCount = _context.SubCategories.Count();
             ViewBag.ProductsCount = _context.Products.Count();
@@ -53,7 +57,7 @@ namespace EcommerceWebApplication.Controllers
                             Paytype = o.PaymentType,
                             CreatedAt = o.CreatedAt,
                             OrderStatus = (culture == "ar") ? st.OrderStatusNameArb : st.OrderstatusName,
-                            TotalPrice = o.TotalAmount + o.DeliveryCharge
+                            TotalPrice = o.TotalAmount
                         }).Take(10).ToList();
 
             ViewBag.OrderItems = data;

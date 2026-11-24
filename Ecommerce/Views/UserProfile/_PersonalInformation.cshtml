@@ -2,67 +2,25 @@
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 <h2 class="h5 fw-bold mb-3">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "معلومات الحساب" : "Profile information")</h2>
 <form id="profileForm">
-
-    <!-- Full Name -->
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <label class="fw-semibold">@_localizer["Full Name"]</label>
-            <input class="form-control valuefont"
-                   name="FullName" autocomplete="name" required
-                   value="@Model.User?.FullName" />
+    <div class="row g-3">
+        <div class="col-12">
+            <label for="profileName" class="form-label fw-semibold">@_localizer["Full Name"]</label>
+            <input id="profileName" class="form-control" name="FullName" autocomplete="name" value="@Model.User?.FullName" required />
         </div>
-    </div>
-
-    <!-- Email / Phone / DOB -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <label class="fw-semibold">@_localizer["Email"]</label>
-            <input class="form-control valuefont"
-                   name="Email" type="email" readonly
-                   value="@Model.User?.Email" />
+        <div class="col-12">
+            <label for="profileEmail" class="form-label fw-semibold">@_localizer["Email"]</label>
+            <input id="profileEmail" class="form-control" name="Email" type="email" readonly dir="ltr" value="@Model.User?.Email" />
         </div>
-
-        <div class="col-md-4">
-            <label class="fw-semibold">@_localizer["Mobile"]</label>
-
-            <div class="input-group">
-                <span class="input-group-text">+965</span>
-
-                 <input class="form-control valuefont"
-                       name="Phone" type="tel" autocomplete="tel-national" required
-                       maxlength="8"
-                       inputmode="numeric"
-                       pattern="[0-9]{8}"
-                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                       value="@(Model.User?.Phone?.Length >= 8 ? Model.User.Phone.Substring(Model.User.Phone.Length-8) : Model.User?.Phone)" />
+        <div class="col-md-6">
+            <label for="profilePhone" class="form-label fw-semibold">@_localizer["Mobile"]</label>
+            <div class="input-group" dir="ltr"><span class="input-group-text">+965</span>
+                <input id="profilePhone" class="form-control" name="Phone" type="tel" autocomplete="tel-national" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" required value="@(Model.User?.Phone?.Length >= 8 ? Model.User.Phone.Substring(Model.User.Phone.Length-8) : Model.User?.Phone)" />
             </div>
         </div>
-
-
-        @*  <div class="col-md-4">
-            <label class="fw-semibold">@_localizer["Birth Date"]</label>
-            <input type="date" class="form-control valuefont" id="BirthDate" name="BirthDate"
-                   max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@(Model.User?.BirthDate?.ToString("yyyy-MM-dd"))" />
-        </div> *@
-        <div class="col-md-4">
-            <label class="fw-semibold">@_localizer["Birth Date"]</label>
-            <input type="text"
-                   class="form-control valuefont"
-                   id="BirthDate"
-                   name="BirthDate" placeholder="DD-MM-YYYY"
-                   autocomplete="off"
-                   value="@(Model?.User?.BirthDate != null
-                                                         ? Model.User.BirthDate.Value.ToString("dd-MM-yyyy")
-                                                         : "")" />
+        <div class="col-md-6">
+            <label for="BirthDate" class="form-label fw-semibold">@_localizer["Birth Date"]</label>
+            <input type="date" class="form-control" id="BirthDate" name="BirthDate" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@(Model.User?.BirthDate?.ToString("yyyy-MM-dd"))" />
         </div>
+        <div class="col-12 text-end"><button type="submit" class="btn btn-primary">@_localizer["Save"]</button></div>
     </div>
-
-    <!-- Save Button -->
-    <div class="text-end">
-        <button type="submit" class="btn btn-success valuefont">
-            @_localizer["Save"]
-        </button>
-    </div>
-
 </form>
-
