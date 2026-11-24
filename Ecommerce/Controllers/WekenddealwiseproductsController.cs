@@ -37,6 +37,8 @@ namespace EcommerceWebApplication.Controllers
                                     //ProductNameAr = p.NameArb,
                                     ProductName = isArabic ? p.NameArb : p.Name,
                                     ProductPrice = p.Price,
+                                    Stock = (_context.ProductStocks.Where(st => st.ProductId == p.ProductId).Sum(st => (int?)st.StockQty) ?? 0)
+                                        - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
 
                                     DiscountAmount = (p.Price * wd.DiscPer) / 100,
                                     OfferPrice = p.Price - ((p.Price * wd.DiscPer) / 100),

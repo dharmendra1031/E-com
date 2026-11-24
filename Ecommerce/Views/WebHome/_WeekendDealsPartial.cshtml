@@ -2,7 +2,7 @@
 @model HomeViewModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
-<div class="col-12 col-md-11 px-3 px-md-0">
+<div class="mb-3">
     <section class="store-home-section">
         <div class="store-section-heading">
             <h2 class="h4 mb-0">@_localizer["Weekend Deals"]</h2>
@@ -26,7 +26,7 @@
                             <span class="store-offer-badge" dir="ltr">@deal.DiscPer% @(ar ? "خصم" : "OFF")</span>
                         </div>
                         <div class="store-home-product-body">
-                            <h3>@(ar ? deal.ProductNameAr : deal.ProductName)</h3>
+                            <h3>@(ar && !string.IsNullOrWhiteSpace(deal.ProductNameAr) ? deal.ProductNameAr : deal.ProductName)</h3>
                             <div class="mt-auto">
                                 <s class="small text-secondary" dir="ltr">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</s>
                                 <div class="store-home-price" dir="ltr">KD @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture)</div>

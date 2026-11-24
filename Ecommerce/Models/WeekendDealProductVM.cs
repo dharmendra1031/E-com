@@ -18,6 +18,7 @@ namespace EcommerceWebApplication.Models
         public string? ProductName { get; set; }
         public string? ProductNameAr { get; set; }
         public decimal ProductPrice { get; set; }
+        public int Stock { get; set; }
 
         // Calculated Fields
         public decimal? DiscountAmount { get; set; }

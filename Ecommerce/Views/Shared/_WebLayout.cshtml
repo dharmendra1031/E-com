@@ -226,8 +226,8 @@
 
 <body dir="@direction" class="storefront">
 	<div class="fixed-header" id="siteHeader">
-		<div class="py-2" style="background-color:#fff; color:#075a96; font-size:0.875rem;">
-			<div class="container text-center fw-bold text-uppercase">
+		<div class="store-maintenance" role="status">
+			<div class="container text-center">
 				@(lang == "ar" ? "الموقع قيد الإنشاء ولا يستقبل الطلبات حالياً." : "Website under construction. Orders are currently unavailable.")
 			</div>
 		</div>
@@ -243,7 +243,7 @@
 
 
 		<!-- HEADER -->
-		<header class="py-2 main-header dynamicmainHeader" style="color:#fff;">
+		<header class="main-header dynamicmainHeader store-main-header">
 		
 			<div class="container-fluid">
 				<div class="store-header-grid">
@@ -251,13 +251,13 @@
 					<!-- LOGO -->
 					<div class="store-logo">
 						<a href="~/WebHome/Index" class="text-decoration-none">
-							<img id="hcompanyLogo" src="/images/download.png" class="img img-fluid" alt="Raqmikart" />
+							<img id="hcompanyLogo" src="~/Images/download.png" alt="Raqmikart" />
 						</a>
 					</div>
 
                     <div class="store-search" id="searchForm" role="search">
                         <label class="visually-hidden" for="searchInput">@_localizer["Search"]</label>
-                        <i class="fa fa-search store-search-icon" aria-hidden="true"></i>
+                        <i class="bi bi-search store-search-icon" aria-hidden="true"></i>
                         <input type="search" id="searchInput" class="form-control"
                                placeholder="@(lang == "ar" ? "ابحث عن المنتجات" : "Search products...")"
                                autocomplete="off" aria-controls="searchDropdown" />
@@ -344,7 +344,7 @@
 		<!-- CATEGORY BAR START -->
 		<div class="store-nav-bar border-bottom">
 
-			<div class="mx-3">
+			<div class="store-nav-inner">
 
 				<div class="d-flex align-items-center">
 
@@ -382,18 +382,15 @@
 
 	<!-- FOOTER -->
 	<!-- FOOTER -->
-	<footer class="py-2 dynamicmainHeader" style="color:#fff;">
-		<div class="container">
-			<div class="row gy-4">
+	<footer class="store-footer dynamicmainHeader">
+		<div class="store-footer-inner">
+			<div class="store-footer-grid">
 
 				<!-- LEFT: LOGO + CONTACT -->
-				<div class="col-md-6 col-lg-3">
-					<div style="background-color:white !important">
-					</div>
+				<div class="store-footer-contact">
 					<img id="fcompanyLogo"
 						 src="~/Images/download.png"
-						 class="img-fluid mb-2"
-						 style="max-width:160px; background-color: transparent !important;" />
+						 class="store-footer-logo" alt="Raqmikart" />
 
 					<p class="mb-1 d-flex align-items-center gap-1 text-light">
 
@@ -417,21 +414,21 @@
 					</p>
 
 					<div class="d-flex gap-3">
-						<a id="fbLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-facebook-f"></i></a>
-						<a id="twLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-x-twitter"></i></a>
-						<a id="igLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-instagram"></i></a>
-						<a id="lnLink" href="#" class="text-white fs-5 d-none"><i class="fab fa-linkedin-in"></i></a>
+						<a id="fbLink" aria-label="Facebook" class="text-white fs-5 d-none"><i class="fab fa-facebook-f"></i></a>
+						<a id="twLink" aria-label="X" class="text-white fs-5 d-none"><i class="fab fa-x-twitter"></i></a>
+						<a id="igLink" aria-label="Instagram" class="text-white fs-5 d-none"><i class="fab fa-instagram"></i></a>
+						<a id="lnLink" aria-label="LinkedIn" class="text-white fs-5 d-none"><i class="fab fa-linkedin-in"></i></a>
 					</div>
 
 				</div>
 
 				<!-- COMPANY -->
-				<div class="col-md-6 col-lg-2">
+				<div>
 					<h6 class="fw-bold mb-3 text-white">@_localizer["Company1"]</h6>
 					<ul class="list-unstyled d-grid gap-2">
 						<li><a href="~/AboutCompany/About" class="text-white text-decoration-none">@_localizer["About"]</a></li>
 						<li><a href="~/WebBlog/WebBlog" class="text-white text-decoration-none">@_localizer["Blog"]</a></li>
-						<a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a>
+						<li><a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a></li>
 						
 						<li>
 							<a href="@Url.Action("Contact", "WebContact")" class="text-white text-decoration-none">@_localizer["Contact Us"]</a>
@@ -440,7 +437,7 @@
 					</ul>
 				</div>
 				<!-- DOWNLOAD OUR APP -->
-				<div class="col-md-6 col-lg-5 text-left text-md-start">
+				<div>
 
 					<h6 class="fw-bold mb-3 text-uppercase">
 						@_localizer["Download Our App"]
@@ -462,7 +459,7 @@
 
 				</div>
 				<!-- SERVICES -->
-				<div class="col-md-6 col-lg-2">
+				<div>
 					<h6 class="fw-bold mb-3 text-white">@_localizer["Services"]</h6>
 					<ul class="list-unstyled d-grid gap-2">
 						<li>
@@ -476,6 +473,7 @@
 				</div>
 
 			</div>
+            <div class="store-footer-bottom">© @DateTime.Now.Year Raqmikart</div>
 		</div>
 	</footer>
 	@* 	background-color:#14a2d7; *@
@@ -713,21 +711,35 @@
 
 		document.addEventListener("DOMContentLoaded", function () {
 
+            function setSocialLink(id, value) {
+                if (typeof value !== "string" || !value.trim()) return;
+                try {
+                    const raw = value.trim();
+                    const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : "https://" + raw);
+                    if (url.protocol !== "https:" && url.protocol !== "http:") return;
+                    if (!url.hostname.includes(".")) return;
+                    const link = document.getElementById(id);
+                    link.href = url.href;
+                    link.classList.remove("d-none");
+                } catch { /* Invalid configured link stays hidden. */ }
+            }
 			fetch('/WebHome/GetCompanyDetailsJson')
 				.then(res => res.json())
 				.then(data => {
 					if (!data) return;
-					document.getElementById('hcompanyLogo').src = data.logo;
-					document.getElementById('fcompanyLogo').src = data.logo;
+					if (data.logo) {
+                        document.getElementById('hcompanyLogo').src = data.logo;
+                        document.getElementById('fcompanyLogo').src = data.logo;
+                    }
 					document.getElementById('companyName').innerText = data.companyName;
 					document.getElementById('companyAddress').innerText = data.address;
 					document.getElementById('companyPhone').innerText = data.phone;
 					document.getElementById('companyEmail').innerText = data.email;
 
-					if (data.facebook) { const link = document.getElementById('fbLink'); link.href = data.facebook; link.classList.remove('d-none'); }
-					if (data.twitter) { const link = document.getElementById('twLink'); link.href = data.twitter; link.classList.remove('d-none'); }
-					if (data.instagram) { const link = document.getElementById('igLink'); link.href = data.instagram; link.classList.remove('d-none'); }
-					if (data.linkedIn) { const link = document.getElementById('lnLink'); link.href = data.linkedIn; link.classList.remove('d-none'); }
+					setSocialLink('fbLink', data.facebook);
+					setSocialLink('twLink', data.twitter);
+					setSocialLink('igLink', data.instagram);
+					setSocialLink('lnLink', data.linkedIn);
 				})
 				.catch(err => console.error("Company load error", err));
 

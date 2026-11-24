@@ -14,7 +14,7 @@
                             {
                                 <img src="@(item.ProductImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = item.ProductImageId }) : item.ProductImageBase64)" alt="@item.Name" loading="lazy" decoding="async" />
                             }
-                            else { <span class="text-secondary small">@(ar ? "لا توجد صورة" : "No image")</span> }
+                            else { <div class="image-placeholder"><i class="bi bi-image" aria-hidden="true"></i><span class="small">@(ar ? "الصورة غير متوفرة" : "Image unavailable")</span></div> }
                         </div>
                         <div class="cart-product-info">
                             <h2 class="product-name" title="@item.Name">@item.Name</h2>

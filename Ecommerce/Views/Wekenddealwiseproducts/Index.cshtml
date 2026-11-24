@@ -56,8 +56,8 @@
                             <!-- ADD TO CART -->
                             <div class="cart-item-footer">
                                 <button type="button" class="add-to-cart-btn w-100"
-                                        data-productid="@item.ProductId">
-                                    @(CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أضف للسلة" : "Add to cart")
+                                        data-productid="@item.ProductId" disabled="@(item.Stock <= 0)">
+                                    @(item.Stock <= 0 ? (CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "غير متوفر" : "Unavailable") : (CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أضف للسلة" : "Add to cart"))
                                 </button>
                             </div>
 

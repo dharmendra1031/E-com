@@ -218,7 +218,7 @@
                 nextPage = Number(incoming.dataset.nextPage) || 0;
                 const total = Number(incoming.dataset.totalProducts) || 0;
                 const shown = products.querySelectorAll(".cart-item-col").length;
-                resultCount.textContent = arabic ? shown + " من " + total : shown + " of " + total + " products";
+                resultCount.textContent = shown === total ? (arabic ? total + " منتج" : total + (total === 1 ? " product" : " products")) : (arabic ? shown + " من " + total : shown + " of " + total + " products");
                 more.classList.toggle("d-none", !nextPage);
             } catch (error) {
                 if (error.name !== "AbortError") {
