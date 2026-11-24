@@ -1,0 +1,396 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.WekendDealsModel
+
+@{
+    ViewData["Title"] = "Weekend Deals";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert" style="min-height: calc(100vh - 160px);">
+
+                <!-- HEADER -->
+                <div class="card-header">
+                    <div class="row pb-4">
+                        <h4>
+                            @(Model.WdId == 0
+                                                        ? _localizer["Create Weekend Deal"]
+                                                        : _localizer["Update Weekend Deal"])
+                        </h4>
+
+                        <div class="card-header-right-icon">
+                            <ul>
+                                <li>
+                                    <a asp-controller="WekendDeals" asp-action="WekendDealsList" class="btn btn-primary me-2">
+                                        <i class="ti-pencil-alt bg-info"></i> @_localizer["Weekend Deals List"]
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <hr />
+                </div>
+
+                <!-- FORM BODY -->
+                <div class="row">
+                    <div class="basic-form" id="NavigationKey">
+
+                        <form asp-controller="WekendDeals" asp-action="CreateDealssave" id="DealsForm" method="post">
+                            @Html.AntiForgeryToken()
+
+                            <input type="hidden" asp-for="WdId" />
+
+                            <!-- Row 1 -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Deal Name (AR)"] <span style="color:red">*</span></label>
+                                        <input asp-for="WdNameAr" class="form-control input-default" />
+                                        <span asp-validation-for="WdNameAr" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Deal Name (EN)"] <span style="color:red">*</span></label>
+                                        <input asp-for="WdNameEn" class="form-control input-default" />
+                                        <span asp-validation-for="WdNameEn" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- Row 2 -->
+                            <div class="row">
+                                @*  <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Select Product"] <span style="color:red">*</span></label>
+                                        <select asp-for="ProductId" class="form-control input-default"
+                                                asp-items="@(new SelectList(ViewBag.Products, "Value", "Text"))">
+                                            <option value=""></option>
+                                        </select>
+                                        <span asp-validation-for="ProductId" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Price"] <span style="color:red">*</span></label>
+                                        <input  id="DiscPer" class="form-control input-default"readonly
+                                               onkeypress="return ValidAmount(event, this);" maxlength="8" />
+                                        <span asp-validation-for="DiscPer" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Discount (%)"] <span style="color:red">*</span></label>
+                                        <input asp-for="DiscPer" id="DiscPer" class="form-control input-default"
+                                               onkeypress="return ValidAmount(event, this);" maxlength="8" />
+                                        <span asp-validation-for="DiscPer" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Discount Price"] <span style="color:red">*</span></label>
+                                        <input  id="DiscPer" class="form-control input-default"readonly
+                                               onkeypress="return ValidAmount(event, this);" maxlength="8" />
+                                        <span asp-validation-for="DiscPer" class="text-danger"></span>
+                                    </div>
+                                </div> *@
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Select Product"] <span style="color:red">*</span></label>
+                                        <select asp-for="ProductId" class="form-control input-default" id="ProductId"
+                                                asp-items="@(new SelectList(ViewBag.Products, "Value", "Text"))">
+                                            <option value=""></option>
+                                        </select>
+                                        <span asp-validation-for="ProductId" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Price"]</label>
+                                        <input id="Price" class="form-control input-default" readonly />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Discount (%)"] <span style="color:red">*</span></label>
+                                        <input asp-for="DiscPer" id="DiscPer" class="form-control input-default" onkeypress="return numeric(event)"/>
+                                        <span asp-validation-for="DiscPer" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Offer Price"]</label>
+                                        <input id="DiscountPrice" class="form-control input-default" readonly />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Max Quantity"]</label>
+                                        <input asp-for="MaxQuantity" type="text" class="form-control input-default"
+                                               onkeypress="return numeric(event)" maxlength="10" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["From Date"] <span style="color:red">*</span></label>
+                                        <input asp-for="FromDateStr" type="text" id="startDate" placeholder="dd-MM-yyyy" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="FromDateStr" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Valid To"] <span style="color:red">*</span></label>
+                                        <input asp-for="ToDateStr" type="text" id="endDate" placeholder="dd-MM-yyyy" class="form-control" autocomplete="off" />
+                                        <span asp-validation-for="ToDateStr" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+
+                            </div>
+
+                            <!-- Submit -->
+                            <div class="px-5 pb-4">
+                                <button type="submit" class="btn btn-primary btn-flat">
+                                    @(Model.WdId == 0 ? _localizer["Save"] : _localizer["Update"])
+                                </button>
+                            </div>
+
+                        </form>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/jquery/dist/jquery.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker3.min.css" />
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+
+        // PAGE LOAD → Discount textbox default me empty
+        $(document).ready(function () {
+            let disc = $("#DiscPer").val();
+
+            if (disc == "0" || disc == "0.00" || disc == "0.0") {
+                $("#DiscPer").val("");
+            }
+        });
+
+        // PRODUCT SELECT → Load Price
+        $("#ProductId").change(function () {
+            var productId = $(this).val();
+
+            if (productId) {
+                $.ajax({
+                    url: '/WekendDeals/GetProductPrice',
+                    type: 'GET',
+                    data: { id: productId },
+                    success: function (price) {
+
+                        $("#Price").val(price);
+
+                        // Discount empty → discount price = original price
+                        if ($("#DiscPer").val().trim() === "") {
+                            $("#DiscountPrice").val(price);
+                        } else {
+                            calculateDiscount();
+                        }
+                    }
+                });
+            } else {
+                $("#Price").val('');
+                $("#DiscountPrice").val('');
+            }
+        });
+
+        // DISCOUNT INPUT → Validation + auto calculate
+        $("#DiscPer").on("input", function () {
+            let disc = $(this).val();
+            let price = parseFloat($("#Price").val());
+
+            // empty → discount price = original price
+            if (disc === "" || disc === null) {
+                $("#DiscountPrice").val(price ? price.toFixed(2) : "");
+                return;
+            }
+
+            // > 100 not allowed
+            if (parseFloat(disc) > 100) {
+                $(this).val("");
+                $("#DiscountPrice").val(price ? price.toFixed(2) : "");
+                return;
+            }
+
+            calculateDiscount();
+        });
+
+        // CALCULATE DISCOUNT
+        function calculateDiscount() {
+            var price = parseFloat($("#Price").val());
+            var disc = parseFloat($("#DiscPer").val());
+
+            if (!isNaN(price) && !isNaN(disc)) {
+                var discountAmount = (price * disc) / 100;
+                var discountedPrice = price - discountAmount;
+                $("#DiscountPrice").val(discountedPrice.toFixed(2));
+            }
+        }
+
+        // FINAL SUBMIT VALIDATION → Discount > 0 required
+               $(document).ready(function () {
+            $("#DealsForm").on("submit", function (e) {
+                let discValue = $("#DiscPer").val().trim();
+                let disc = parseFloat(discValue);
+                let errorSpan = $("span[data-valmsg-for='DiscPer']");
+
+                errorSpan.text("");
+                errorSpan.removeClass("field-validation-valid")
+                         .addClass("field-validation-error");
+
+                if (discValue === "" || isNaN(disc) || disc <= 0) {
+                    e.preventDefault();
+                    errorSpan.text("Discount must be greater than 0.");
+                    return false;
+                }
+
+                return true;
+            });
+        });
+
+    </script>
+
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"></script>
+
+    <script>
+
+        $(function () {
+
+            // Start Date Picker
+
+            $('#startDate').datepicker({
+
+                format: 'dd-mm-yyyy',
+
+                autoclose: true,
+
+                todayHighlight: true,
+
+                clearBtn: true,
+
+                orientation: "bottom auto",
+
+                startDate: new Date()   // ✅ only today or future dates allowed
+
+            }).on('changeDate', function (e) {
+
+                // StartDate select hone ke baad EndDate ki min date set ho jaye
+
+                $('#endDate').datepicker('setStartDate', e.date);
+
+            });
+
+            // End Date Picker
+
+            $('#endDate').datepicker({
+
+                format: 'dd-mm-yyyy',
+
+                autoclose: true,
+
+                todayHighlight: true,
+
+                clearBtn: true,
+
+                orientation: "bottom auto"
+
+            }).on('changeDate', function (e) {
+
+                // EndDate select hone ke baad StartDate ki max date set ho jaye
+
+                $('#startDate').datepicker('setEndDate', e.date);
+
+            });
+
+            // ----------- EDIT MODE FIX -----------
+
+            const fromVal = $('#startDate').val();
+
+            const toVal = $('#endDate').val();
+
+            if (fromVal) {
+
+                const fromParts = fromVal.split("-");
+
+                if (fromParts.length === 3) {
+
+                    const fromDate = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
+
+                    $('#endDate').datepicker('setStartDate', fromDate);
+
+                }
+
+            }
+
+            if (toVal) {
+
+                const toParts = toVal.split("-");
+
+                if (toParts.length === 3) {
+
+                    const toDate = new Date(toParts[2], toParts[1] - 1, toParts[0]);
+
+                    $('#startDate').datepicker('setEndDate', toDate);
+
+                }
+
+            }
+
+        });
+    </script>
+    <script>
+        $("#DealsForm").on("submit", function (e) {
+
+            let disc = parseFloat($("#DiscPer").val());
+            let errorSpan = $("span[data-valmsg-for='DiscPer']");
+
+
+            errorSpan.text("");
+
+            if (disc === 0 || disc < 0 || isNaN(disc)) {
+                e.preventDefault();
+
+
+                errorSpan.text("Discount must be greater than 0.");
+
+                return false;
+            }
+
+            return true;
+        });
+    </script>
+
+
+
+}

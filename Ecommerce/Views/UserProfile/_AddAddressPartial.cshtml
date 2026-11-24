@@ -1,0 +1,152 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.ViewModels.UserAddressViewModel
+<div class="border rounded p-3 bg-light mb-3">
+    <span class="partialheader">@_localizer["Add New Address"]</span>
+
+    <form id="addAddressForm">
+        <div class="row g-3">
+            <input type="hidden" name="AddressId" id="AddressId" />
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Title"]</label>
+                <input class="form-control valuefont" name="Title" id="Title" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Area"] <span class="text-danger">*</span></label>
+                <select class="form-select valuefont" name="Area" id="AreaDropdown" required>
+                    <option value=""></option>
+                    @foreach (var area in ViewBag.AreaList)
+                    {
+                        <option value="@area.Id">@area.AreaName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Block"] <span class="text-danger">*</span></label>
+                <select class="form-select valuefont" name="Block" id="BlockDropdown" required>
+                    <option value=""></option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Street"] <span class="text-danger">*</span></label>
+                <input class="form-control valuefont" name="Street" required />
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["House"]</label>
+                <input class="form-control valuefont" name="HouseNo" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Floor"]</label>
+                <input class="form-control valuefont" name="Floor" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">@_localizer["Landmark"]</label>
+                <input class="form-control valuefont" name="Landmark" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="valuefont">
+                    @_localizer["Phone"] <span class="text-danger">*</span>
+                </label>
+
+                <div class="d-flex">
+
+                    <!-- Small Static Country Code -->
+                    <input type="text"
+                           class="form-control valuefont me-2"
+                           value="+965"
+                           style="max-width:80px;"
+                           readonly />
+
+                    <!-- Phone Number Input -->
+                    <input class="form-control valuefont"
+                           name="Phone"
+                           value="@Model.Phone"
+                           required
+                           maxlength="8"
+                           inputmode="numeric"
+                           pattern="[0-9]{8}"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                           title="Enter exactly 8 digits" />
+
+                </div>
+            </div>
+
+
+
+            <div class="col-12 text-end mt-2">
+                <button type="submit" class="btn btn-primary valuefont">
+                    @_localizer["Save"]
+                </button>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<script>
+    $(document).on("keydown", "#addAddressForm input, #addAddressForm select, #addAddressForm textarea", function (e) {
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+           
+            var fields = $("#addAddressForm")
+                .find("input:visible:not([readonly]):not([disabled]), " +
+                      "select:visible:not([disabled]), " +
+                      "textarea:visible:not([readonly]):not([disabled])");
+
+            var index = fields.index(this);
+
+            if (index > -1 && index + 1 < fields.length) {
+                fields.eq(index + 1).focus();
+            }
+        }
+    });
+</script>
+
+
+<script>
+    $("#AreaDropdown").change(function () {
+
+        var areaId = $(this).val();
+
+        $("#BlockDropdown").empty();
+        $("#BlockDropdown").append('<option value="">-- Select Block --</option>');
+
+        if (areaId != "") {
+
+            $.get("/UserProfile/GetBlocksByArea",
+                { areaId: areaId },
+                function (data) {
+
+                    $.each(data, function (index, item) {
+                        $("#BlockDropdown").append(
+                            '<option value="' + item.id + '">' + item.blockName + '</option>'
+                        );
+                    });
+                });
+        }
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+
+
+        $("#addAddressForm")
+            .find("input:visible")
+            .first()
+            .focus();
+
+    });
+</script>

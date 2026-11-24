@@ -1,0 +1,194 @@
+﻿@model List<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
+@using System.Globalization
+
+@{
+    var culture = CultureInfo.CurrentCulture;
+    bool isArabic = culture.TextInfo.IsRightToLeft;
+}
+<style>
+    .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+
+    .itemli{
+        width:60px;
+    }
+    .imgdiv{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .itemimg{
+        max-height: 30px;
+        max-width: 50px;
+        object-fit: contain;
+    }
+
+    .sort-select{
+        width: 180px;
+        height: 30px;
+        font-size: 0.8rem;
+        padding: 4px 15px;
+    }
+
+    .imgname{
+        font-size: 0.51rem;
+        line-height: 1.2;
+        height: 2.4em;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .Categoryname {
+        font-size: 0.8rem;
+    }
+
+    .title {
+        padding-bottom: 0.5rem;
+    }
+    @@media (max-width: 768px) {
+        .title {
+        padding-bottom:0.5rem;
+    }
+
+        .Categoryname {
+            font-size: 0.7rem;
+        }
+
+        .sort-select {
+            width: 150px;
+            height: 25px;
+            font-size: 0.78rem;
+            padding: 3px 12px;
+        }
+
+        .itemli {
+            width: 50px;
+        }
+
+        .imgdiv {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .itemimg {
+            max-height:24px;
+            max-width: 40px;
+            object-fit: contain;
+        }
+
+        .imgname {
+            font-size: 0.5rem;
+            line-height: 1.2;
+            height: 2.4em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+    }
+
+    @@media (max-width: 500px) {
+        /* .title {
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+            padding-bottom: 0.5rem;
+        } */
+
+        .Categoryname {
+            font-size: 0.6rem;
+        }
+
+        .sort-select {
+            width: 130px;
+            height: 21px;
+            font-size: 0.6rem;
+            padding: 2px 8px;
+        }
+        .itemli {
+            width: 40px;
+        }
+
+        .imgdiv {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .itemimg {
+            max-height: 20px;
+            max-width: 30px;
+            object-fit: contain;
+        }
+
+        .imgname {
+            font-size: 0.4rem;
+            line-height: 1.2;
+            height: 2.4em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+    }
+</style>
+<div class="title d-flex justify-content-between align-items-center">
+    <span class="Categoryname fw-bold" id="breadcrumbTitle">
+       @*  Category → SubCategory *@
+    </span>
+    
+@if (isArabic)
+{
+        <select class="form-select sort-select" id="sortProducts">
+            <option value="newest">الترتيب حسب: الافتراضي</option>
+            <option value="low-high">السعر من الأقل إلى الأعلى</option>
+            <option value="high-low">السعر من الأعلى إلى الأقل</option>
+        </select>
+}
+else
+{
+        <select class="form-select sort-select" id="sortProducts">
+            <option value="newest">Sort by: Default</option>
+            <option value="low-high">Price Low to High</option>
+            <option value="high-low">Price High to Low</option>
+        </select>
+}
+   
+
+</div>
+<div class="mb-4">
+    <div class="d-flex flex-nowrap overflow-auto gap-2 pb-2" style="scrollbar-width: thin">
+        @foreach (var item in Model)
+        {
+            <div class="itemli flex-shrink-0">
+                <a href="javascript:void(0)"
+                   class="subcategory-link text-decoration-none d-block"
+                   data-subid="@item.SubCategoryId"
+                   data-subname="@item.SCName">
+
+                    <div class="card text-center h-100 border-0 shadow-sm rounded-3">
+                        <!-- Compact image -->
+                        <div class="imgdiv p-2" style=" ">
+                            <img src="@item.SubCategoryImageBase64"
+                                 class="img-fluid itemimg"
+                                 style=""
+                                 alt="@item.SCName" />
+                        </div>
+
+                        <!-- 2-line text limit -->
+                        <div class="imgname px-1 pb-2 fw-semibold text-dark"
+                             style="">
+                            @item.SCName
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+</div>

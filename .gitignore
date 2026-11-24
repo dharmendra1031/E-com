@@ -1,0 +1,15 @@
+.vs/
+[Bb]in/
+[Oo]bj/
+[Pp]ackages/
+[Ll]ogs/
+*.user
+*.suo
+*.pfx
+*.pem
+*.key
+.env
+.env.*
+/Ecommerce/Views/SendNotification.zip
+/Ecommerce/appsettings.json
+/EcomReport/Web.config

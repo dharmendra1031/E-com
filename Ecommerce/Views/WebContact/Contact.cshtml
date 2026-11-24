@@ -1,0 +1,221 @@
+﻿
+@model EcommerceWebApplication.Models.ContactMessage
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "WEb Category";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+@using System.Globalization
+
+@{
+    var culture = CultureInfo.CurrentCulture;
+    bool isArabic = culture.TextInfo.IsRightToLeft;
+}
+
+<div class="container my-5">
+    <h1 class="text-center mb-5">@_localizer["Contact Us"]</h1>
+
+    <div class="row g-4 justify-content-center">
+
+        <div class="col-lg-4 col-md-5">
+            <div class="p-4 border rounded-3 bg-white shadow-sm h-100">
+                <h2 class="fs-4 fw-semibold mb-3">@_localizer["Get in Touch"]</h2>
+
+                <p class="mb-2">
+                    <strong class="d-block">@_localizer["Email"]:</strong>
+                    <a href="#" class="text-decoration-none"> @ViewBag.Email</a>
+                </p>
+
+                <p class="mb-2">
+                    <strong class="d-block">@_localizer["Phone"]:</strong>
+                    <a href="tel:+96594401346" class="text-decoration-none">  @ViewBag.Phone</a>
+                </p>
+
+                <p class="mb-4">
+                    <strong class="d-block">@_localizer["Address"]:</strong>
+                    @ViewBag.Address
+                </p>
+
+                <div class="map-container overflow-hidden rounded" style="position: relative; padding-bottom: 75%; height: 0;">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12345.67890!2d48.0000!3d29.0000!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjnCsDAwJzAwLjAiTCDsOMKwMDAnMDAuMCJF!5e0!3m2!1sen!2skw!4v1678888888888"
+                            width="100%"
+                            height="100%"
+                            style="border:0; position: absolute; top: 0; left: 0;"
+                            allowfullscreen=""
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                    <div class="position-absolute top-0 start-0 p-2 text-white small" style="background-color: rgba(0,0,0,0.5);">
+                        Sabahiya
+                        <a href="#" class="text-white d-block" style="font-size: 0.8rem;">View larger map</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-7">
+            <div class="p-4 border rounded-3 bg-white shadow-sm">
+
+                <div id="successMsg" class="alert alert-success mt-3 d-none"></div>
+
+                <form id="contactForm" novalidate>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            @_localizer["Full Name"] <span class="text-danger">*</span>
+                        </label>
+                        <input id="FullName" class="form-control" />
+                        <small class="text-danger d-none" id="errFullName">
+                            @if (isArabic)
+                            {
+                                <span>الاسم الكامل مطلوب</span>
+                            }
+                            else
+                            {
+                                <span>Full Name is required</span>
+                            }
+                            
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"> @_localizer["Email"] <span class="text-danger">*</span>  </label>
+                        <input id="Email" class="form-control" />
+
+                        <small class="text-danger d-none" id="errEmail">
+                            @if (isArabic)
+                            {
+                                <span>يرجى إدخال بريد إلكتروني صحيح</span>
+                            }
+                            else
+                            {
+                                <span>Valid Email is required</span>
+                            }
+                        </small>
+
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"> @_localizer["Message"] <span class="text-danger">*</span> </label>
+                        <textarea id="Message" class="form-control"></textarea>
+                        <small class="text-danger d-none" id="errMessage">
+                            @if (isArabic)
+                            {
+                                <span>الرسالة مطلوبة</span>
+                            }
+                            else
+                            {
+                                <span>Message is required</span>
+                            }
+
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        @if (isArabic)
+                        {
+                            <span>أرسل رسالة</span>
+                        }
+                        else
+                        {
+                            <span> Send Message</span>
+                        }
+                       
+                    </button>
+                </form>
+
+
+
+
+            </div>
+        </div>
+
+    </div>
+</div>
+<script>
+    document.getElementById("contactForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        // hide old errors
+        document.querySelectorAll('.text-danger').forEach(x => x.classList.add('d-none'));
+
+        let isValid = true;
+
+        const fullName = document.getElementById("FullName").value.trim();
+        const email = document.getElementById("Email").value.trim();
+        const message = document.getElementById("Message").value.trim();
+
+        if (fullName === "") {
+            document.getElementById("errFullName").classList.remove('d-none');
+            isValid = false;
+        }
+
+        if (email === "" || !email.includes("@@")) {
+            document.getElementById("errEmail").classList.remove('d-none');
+            isValid = false;
+        }
+
+        if (message === "") {
+            document.getElementById("errMessage").classList.remove('d-none');
+            isValid = false;
+        }
+
+        if (!isValid) return;
+
+        // 🔹 send data only if valid
+        const data = {
+            FullName: fullName,
+            Email: email,
+            Message: message
+        };
+
+        fetch('/WebContact/SubmitMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                document.getElementById("successMsg").classList.remove("d-none");
+                document.getElementById("successMsg").innerText = result.message;
+                document.getElementById("contactForm").reset();
+            }
+        });
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        // 🔹 default focus on first field
+        document.getElementById("FullName").focus();
+
+        const fields = [
+            document.getElementById("FullName"),
+            document.getElementById("Email"),
+            document.getElementById("Message")
+        ];
+
+        fields.forEach((field, index) => {
+            field.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+
+                    // Message textarea me ENTER pe new line allow nahi karna
+                    e.preventDefault();
+
+                    // 🔹 last field → submit
+                    if (index === fields.length - 1) {
+                        document.getElementById("contactForm").dispatchEvent(new Event("submit"));
+                    }
+                    // 🔹 move to next field
+                    else {
+                        fields[index + 1].focus();
+                    }
+                }
+            });
+        });
+    });
+</script>

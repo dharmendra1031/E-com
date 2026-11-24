@@ -1,0 +1,159 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.ViewModels.ProductStockViewModel
+
+@{
+    ViewData["Title"] = @_localizer["Stock Report"];
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert" style="min-height: calc(100vh - 160px);">
+                <div class="card-header">
+                    <h4>@_localizer["Filter Stock Report"]</h4>
+                </div>
+
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="row g-3 mt-3">
+
+                            <div class="col-md-3">
+
+                                <label for="ProductName" class="form-label">@_localizer["Product Name"]:</label>
+                                <input type="text" id="ProductName" name="ProductName" class="form-control" placeholder="@_localizer["Enter Product Name"]" />
+                                <ul id="suggestions" style="display:none;
+                                position:absolute;
+                                background:white;
+                                list-style:none;
+                                padding:0;
+                                margin:0;
+                                width:100%;  /* width same as input */
+                                max-height:200px;
+                                overflow-y:auto;
+                                border:1px solid #ccc;
+                                z-index:1000;">
+                                    <!-- Suggestions dynamically appended here -->
+                                </ul>
+                            </div>
+                            <!-- ✅ Barcode / Product ID Filter -->
+                            <div class="col-md-3">
+                                <label for="SearchCode" class="form-label">@_localizer["BarcodeItemCode"]:</label>
+                                <input type="text" id="searchCode" name="searchCode" class="form-control" placeholder="@_localizer["Enter Barcode or ItemCode"]" />
+                            </div>
+
+                            <!-- ✅ Status Filter -->
+                            <div class="col-md-3">
+                                <label for="Status" class="form-label">@_localizer["Status"]:</label>
+                                <select id="Status" name="Status" class="form-control">
+                                    <option value=""></option>
+                                    <option value="In">@_localizer["In Stock"]</option>
+                                    <option value="Low">@_localizer["Low Stock"]</option>
+                                    <option value="Out">@_localizer["Out of Stock"]</option>
+                                </select>
+                            </div>
+                           
+                            <div class="col-md-2" id="Format">
+                                <label class="form-label d-block">@_localizer["Export"]:</label>
+                                <br>
+                                <label class="radio-inline">
+                                    <input type="radio" name="Format" value="PDF" checked> @_localizer["PDF"]
+                                </label>
+
+                                <label class="radio-inline">
+                                    <input type="radio" name="Format" value="XLSX"> @_localizer["Excel"]
+                                </label>
+
+                            </div>
+
+
+
+
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-primary btn-flat m-t-30" onclick="PrintReport()">@_localizer["Export"]</button>
+                            </div>
+                        </div>
+
+
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
+   
+    <script>
+        function PrintReport() {
+            const productName = document.getElementById("ProductName").value.trim();
+            const status = document.getElementById("Status").value;
+            const searchCode = document.getElementById("searchCode").value.trim();
+            const format = document.querySelector("input[name='Format']:checked").value;
+
+            let url = "/Report/StockReportPrint?";
+            if (productName) url += "productName=" + encodeURIComponent(productName) + "&";
+            if (status) url += "status=" + encodeURIComponent(status) + "&";
+            if (searchCode) url += "searchCode=" + encodeURIComponent(searchCode) + "&";
+            if (format) url += "format=" + encodeURIComponent(format);
+
+            if (format === "PDF") {
+                window.open(url, "_blank");
+            } else {
+                window.location.href = url;
+            }
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+
+            function fetchCategorySuggestions(query) {
+                if (!query || query.length < 2) {
+                    $('#suggestions').hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Report/AutoCompleteSql',
+                    type: 'GET',
+                    data: { term: query },
+                    success: function(data) {
+                        let $suggestionBox = $('#suggestions');
+                        $suggestionBox.empty();
+
+                        if (data && data.length > 0) {
+                            data.forEach(function(item) {
+                                $('<li></li>')
+                                    .text(item)
+                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                    .on('click', function() {
+                                        $('#ProductName').val(item);
+                                        $suggestionBox.hide();
+                                        $('#ProductName').focus();
+                                    })
+                                    .appendTo($suggestionBox);
+                            });
+                            $suggestionBox.show();
+                        } else {
+                            $suggestionBox.hide();
+                        }
+                    }
+                });
+            }
+
+            $('#ProductName').on('input', function() {
+                fetchCategorySuggestions($(this).val());
+            });
+
+            enableSuggestionNavigation('#ProductName', '#suggestions');
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#ProductName, #suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+}

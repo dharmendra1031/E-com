@@ -1,0 +1,52 @@
+﻿@model EcommerceWebApplication.Models.Block
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    ViewData["Title"] = "Create Block";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="row">
+                            <!-- Area Dropdown -->
+                            <div class="col-md-6 mt-3">
+                                <label>@_localizer["Area"] <span class="text-danger">*</span></label>
+                                <select asp-for="AreaId" asp-items="ViewBag.Areas" class="form-control">
+                                    <option value="">-- Select Area --</option>
+                                </select>
+                                <span asp-validation-for="AreaId" class="text-danger"></span>
+                            </div>
+                            <!-- Block Name AR -->
+                            <div class="col-md-6">
+                                <label>@_localizer["Block Name (AR)"]</label>
+                                <input asp-for="BlockNameArb" class="form-control" placeholder="Enter Block Name in Arabic" />
+                                <span asp-validation-for="BlockNameArb" class="text-danger"></span>
+                            </div>
+
+                            <!-- Block Name EN -->
+                            <div class="col-md-6">
+                                <label>@_localizer["Block Name (EN)"] <span class="text-danger">*</span></label>
+                                <input asp-for="BlockName" class="form-control" placeholder="Enter Block Name in English" />
+                                <span asp-validation-for="BlockName" class="text-danger"></span>
+                            </div>
+
+                           
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mt-4">@_localizer["Save"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

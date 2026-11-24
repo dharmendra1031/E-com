@@ -1,0 +1,771 @@
+﻿@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.CheckoutviewModel
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "Checkout";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+<script src="~/js/navigation.js"></script>
+<style>
+    .form-label.required::after {
+        content: " *";
+        color: red;
+        font-weight: bold;
+    }
+</style>
+<style>
+    .is-invalid {
+        border: 2px solid red !important;
+    }
+</style>
+<div class="container my-5">
+    <div class="row g-4">
+
+        <!-- LEFT : BILLING -->
+        <div class="col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="mb-0">@_localizer["Checkout"]</h3>
+                @if (Model.UserId == null)
+                {
+                    <a href="/UserAccount/Login" class="btn btn-sm btn-outline-dark">
+                        @_localizer["Login"]
+                    </a>
+                }
+            </div>
+
+            <h5 class="mb-3"> @_localizer["Billing Details"]</h5>
+
+            @if (Model.UserId != null)
+            {
+                <!-- ✅ USER LOGGED IN → READONLY DETAILS -->
+                <input class="form-control mb-3"
+                       placeholder="Full Name"
+                       value="@Model.FullName"
+                       readonly />
+
+                <input class="form-control mb-3"
+                       placeholder="Email"
+                       value="@Model.Email"
+                       readonly />
+
+                <input class="form-control mb-3"
+                       placeholder="Mobile"
+                       value="@(string.IsNullOrEmpty(Model.Phone) || Model.Phone.Length <= 4
+                               ? ""
+                               : Model.Phone.Substring(4))"
+                       readonly />
+                <div class="mb-3">
+                    <label class="form-label"> @_localizer["Select Saved Address"]</label>
+
+                    <!-- Dropdown -->
+                    <!-- ADDRESS DROPDOWN -->
+                    <select id="addressDropdown" class="form-select">
+                        <option value=""> @_localizer["Select Address"]</option>
+
+                        @foreach (var addr in Model.AddressList)
+                        {
+                            if (addr.AddressId == Model.SelectedAddressId)
+                            {
+                                <option value="@addr.AddressId" selected>
+                                    @addr.Title
+                                </option>
+                            }
+                            else
+                            {
+                                <option value="@addr.AddressId">
+                                    @addr.Title
+                                </option>
+                            }
+                        }
+                    </select>
+
+
+                    <div class="text-muted mb-3" id="addressText">
+                        <strong> @_localizer["Address"]:</strong> --
+                    </div>
+
+
+
+                    <!-- Button (address ke niche) -->
+                    <button class="btn btn-outline-primary" onclick="openAddressModal()">
+                         @_localizer["Add New Address"]
+                    </button>
+
+                </div>
+
+            }
+            else
+            {
+                <!-- ❌ USER NOT LOGGED IN → NEW ADDRESS FORM -->
+                <form id="guestAddressForm">
+                    <div class="row" id="NavigationKey">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Full Name"]</label>
+                            <input id="fullName" class="form-control" placeholder="Full Name *">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Email"]</label>
+                            <input id="email" class="form-control" placeholder="Email *">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Mobile No"]</label>
+                            <input id="mobile" class="form-control" maxlength="8">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Area"]</label>
+                            <select class="form-control" id="ddlArea"></select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Block"]</label>
+                            <select class="form-control" id="ddlBlock"></select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required"> @_localizer["Street"]</label>
+                            <input id="street" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label> @_localizer["House No"]</label>
+                            <input id="houseNo" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label> @_localizer["Floor"]</label>
+                            <input id="floor" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>@_localizer["Apartment No"]</label>
+                            <input id="apartmentNo" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>@_localizer["Shareholder No"]</label>
+                            <input id="shareholderNo" class="form-control">
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label> @_localizer["NoInstruction"]</label>
+                            <textarea id="instruction" class="form-control"></textarea>
+                        </div>
+                    </div>
+                </form>
+
+
+
+            }
+
+
+
+            <h5 class="mb-3 mt-4">@_localizer["Payment Method"]</h5>
+
+            <div class="form-check">
+                <input class="form-check-input" type="radio" checked>
+                <label class="form-check-label fw-semibold">
+                    @_localizer["Online Payment"]
+                </label>
+            </div>
+        </div>
+
+        <!-- RIGHT : ORDER SUMMARY -->
+        <div class="col-lg-6">
+            <div class="border rounded p-4">
+
+                <h5 class="mb-4">@_localizer["Order Summary"]</h5>
+
+                <!-- ITEM -->
+                @foreach (var item in Model.CartItems)
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex gap-2">
+                            <img src="@(item.ImageUrl ?? "https://via.placeholder.com/45")"
+                                 class="rounded"
+                                 width="45" height="45">
+                            <div>
+                                <div class="fw-semibold">
+                                    @(item.ProductName != null && item.ProductName.Length > 30
+                                                                    ? item.ProductName.Substring(0, 30) + "..."
+                                                                    : item.ProductName)
+                                x @item.Quantity
+                            </div>
+
+                            </div>
+                        </div>
+                        <div class="fw-semibold">
+                            @item.TotalPrice?.ToString("F3", CultureInfo.InvariantCulture) KD
+                        </div>
+                    </div>
+                                }
+
+                <hr>
+
+                <!-- COUPON -->
+                <div class="input-group mb-3">
+                    <input type="text" id="couponCode" class="form-control" placeholder="Enter Coupon Code">
+                    <button class="btn btn-primary" id="applyCouponBtn">@_localizer["Apply"]</button>
+                </div>
+
+                <!-- TOTALS -->
+                <div class="d-flex justify-content-between mb-2">
+                    <span>@_localizer["Subtotal"]:</span>
+                    <span id="subtotalAmount">@Model.CartTotal?.ToString("F3", CultureInfo.InvariantCulture) KD</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2 text-success d-none" id="discountRow">
+                    <span>@_localizer["Coupon Discount"]:</span>
+                    <span>- <span id="discountAmount">0.000</span> KD</span>
+                </div>
+
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>@_localizer["Total After Discount"]:</span>
+                    <span id="finalAmount">@Model.CartTotal?.ToString("F3", CultureInfo.InvariantCulture) KD</span>
+                </div>
+
+                <div class="d-flex justify-content-between text-primary mb-2">
+                    <span>@_localizer["VAT"] (0%):</span>
+                    <span>+ @Model.VatPercentage?.ToString("F2", CultureInfo.InvariantCulture)</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span>@_localizer["DeliveryCharge"]:</span>
+                    <span>+ @Model.DeliveryCharge?.ToString("F3", CultureInfo.InvariantCulture)  KD</span>
+                </div>
+
+                <hr>
+
+
+                <div class="d-flex justify-content-between fw-bold fs-5 mb-4">
+                    <span>@_localizer["Total"]:</span>
+                    <span id="grandTotal"> 0.000 KD</span>
+                </div>
+
+                <button class="btn btn-primary w-100 py-2 fw-semibold" id="payNowBtn">
+                    @_localizer["Pay Online"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Modal of Address -->
+<div class="modal fade" id="addAddressModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" id="NavigationKey">
+
+            <!-- HEADER -->
+            <div class="modal-header">
+                <h5 class="modal-title">@_localizer["Add New Address"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body">
+                <div class="row g-3">
+
+                    <div class="col-md-3">
+                        <label class="form-label">@_localizer["Title"]</label>
+                        <input class="form-control" name="Title">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label required">@_localizer["Area"]</label>
+                        <select class="form-control required-field" name="Area" id="ddlArea">
+                            <option value="">Select Area</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label required">@_localizer["Block"]</label>
+                        <select class="form-control required-field" name="Block" id="ddlBlock">
+                            <option value="">Select Block</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label required">@_localizer["Street"]</label>
+                        <input class="form-control required-field" name="Street">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">@_localizer["HouseNo"]</label>
+                        <input class="form-control" name="HouseNo">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">@_localizer["Floor"]</label>
+                        <input class="form-control" name="Floor">
+                    </div>
+
+                   @*  <div class="col-md-3">
+                        <label class="form-label required">@_localizer["Phone"]</label>
+                        <input class="form-control required-field" name="Phone" maxlength="8" inputmode="numeric" pattern="[0-9]{8}" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div> *@
+                    <div class="col-md-4">
+                        <label class="form-label required">@_localizer["Phone"]</label>
+
+                        <div class="input-group">
+                            <span class="input-group-text">+965</span>
+
+                            <input class="form-control required-field"
+                                   name="Phone"
+                                   maxlength="8"
+                                   inputmode="numeric"
+                                   pattern="[0-9]{8}"
+                                   placeholder="Enter phone"
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@_localizer["Landmark"]</label>
+                        <input class="form-control" name="Landmark">
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveAddressBtn">
+                    @_localizer["Save Address"]
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const modal = document.getElementById("addAddressModal");
+
+        // Modal ke andar saare focusable inputs/selects
+        function getFocusableElements() {
+            return modal.querySelectorAll(
+                'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+            );
+        }
+
+        // 🔥 Modal open → first field focus
+        modal.addEventListener("shown.bs.modal", function () {
+            const fields = getFocusableElements();
+            if (fields.length > 0) {
+                fields[0].focus(); // Title
+            }
+        });
+
+        // 🔥 ENTER key navigation
+        modal.addEventListener("keydown", function (e) {
+
+            if (e.key !== "Enter") return;
+
+            e.preventDefault(); // ❌ default submit / reload band
+
+            const fields = Array.from(getFocusableElements());
+            const saveBtn = document.getElementById("saveAddressBtn");
+
+            const currentIndex = fields.indexOf(document.activeElement);
+
+           
+            if (currentIndex > -1) {
+                const nextIndex = currentIndex + 1;
+
+                // ✅ Next field exist karta hai
+                if (nextIndex < fields.length) {
+                    fields[nextIndex].focus();
+                }
+                // ✅ Last field ke baad → Save button
+                else {
+                    saveBtn.focus();
+                }
+            }
+            // 👉 Agar Save button pe Enter
+            else if (document.activeElement === saveBtn) {
+                saveBtn.click(); // 🔥 SAVE
+            }
+        });
+
+    });
+</script>
+
+<script>
+
+    $('#applyCouponBtn').click(function () {
+        debugger;
+        let code = $('#couponCode').val().trim();
+        let subtotal = parseFloat('@Model.CartTotal');
+
+        if (!code) {
+            alert('Enter coupon code');
+            return;
+        }
+
+        $.ajax({
+            url: '/WebCheckout/ApplyCoupon',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                code: code,
+                orderAmount: subtotal
+            }),
+            success: function (res) {
+
+                if (res.success) {
+
+                    debugger
+                    $('#discountAmount').text(res.discountApplied.toFixed(3));
+                    $('#finalAmount').text(res.finalAmount.toFixed(3) + ' KD');
+
+                    $('#discountRow').removeClass('d-none');
+                }
+                else {
+                    alert(res.message);
+                }
+            },
+            error: function () {
+                alert('Something went wrong');
+            }
+        });
+    });
+
+    function calculateFinalTotal() {
+        debugger;
+        let subtotal = parseFloat('@Model.CartTotal') || 0;
+        let discount = parseFloat($('#discountAmount').text()) || 0;
+        let vat = parseFloat('@Model.VatPercentage') || 0;
+        let delivery = parseFloat('@Model.DeliveryCharge') || 0;
+
+        // after coupon
+        let afterDiscount = subtotal - discount;
+        if (afterDiscount < 0) afterDiscount = 0;
+
+        // VAT amount (percentage)
+        let vatAmount = (afterDiscount * vat) / 100;
+
+        // FINAL TOTAL
+        let finalTotal = afterDiscount + vatAmount + delivery;
+
+        $('#grandTotal').text('KD ' + finalTotal.toFixed(3));
+    }
+
+    // call on page load
+    $(document).ready(function () {
+        calculateFinalTotal();
+    });
+
+    // call again after coupon applied
+    $('#applyCouponBtn').click(function () {
+        setTimeout(calculateFinalTotal, 300);
+    });
+</script>
+
+<script>
+    document.getElementById("saveAddressBtn").addEventListener("click", function () {
+        let isValid = true;
+
+        document.querySelectorAll("#addAddressModal .required-field").forEach(field => {
+            field.classList.remove("is-invalid");
+            if (!field.value || field.value.trim() === "") {
+                field.classList.add("is-invalid");
+                isValid = false;
+            }
+        });
+
+        if (!isValid) return; // stop if required fields not filled
+
+        const formData = {
+            Title: document.querySelector('[name="Title"]').value,
+            Area: document.getElementById("ddlArea").value,
+            Block: document.getElementById("ddlBlock").value,
+            Street: document.querySelector('[name="Street"]').value,
+            HouseNo: document.querySelector('[name="HouseNo"]').value,
+            Floor: document.querySelector('[name="Floor"]').value,
+            Phone: document.querySelector('[name="Phone"]').value,
+            Landmark: document.querySelector('[name="Landmark"]').value
+        };
+
+        fetch('/WebCheckout/AddAddress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(
+                    document.getElementById("addAddressModal")
+                ).hide();
+
+                alert("Address saved successfully ✅");
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+</script>
+
+<script>
+    function openAddressModal() {
+
+        loadAreaBlockDropdown(); // ✅ SAME FUNCTION
+
+        const modal = new bootstrap.Modal(
+            document.getElementById('addAddressModal')
+        );
+        modal.show();
+    }
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        loadAreaBlockDropdown(); // ✅ SAME DROPDOWN ON PAGE
+    });
+</script>
+
+<script>
+    let allBlocks = [];
+
+    // 🔹 Load Area & Block (Reusable)
+    function loadAreaBlockDropdown(areaId = null, blockId = null) {
+
+        fetch('/WebCheckout/GetAreaBlockData')
+            .then(res => res.json())
+            .then(data => {
+
+                const areaDDL = document.getElementById("ddlArea");
+                const blockDDL = document.getElementById("ddlBlock");
+
+                // ---- AREA ----
+                areaDDL.innerHTML = `<option value="">Select Area</option>`;
+                data.areas.forEach(a => {
+                    areaDDL.innerHTML +=
+                        `<option value="${a.id}">${a.areaName}</option>`;
+                });
+
+                // ---- BLOCK ----
+                allBlocks = data.blocks;
+                blockDDL.innerHTML = `<option value="">Select Block</option>`;
+
+                // 🔹 Preselect (optional)
+                if (areaId) {
+                    areaDDL.value = areaId;
+                    bindBlocks(areaId, blockId);
+                }
+            });
+    }
+
+    // 🔹 Bind Block on Area change
+    function bindBlocks(areaId, selectedBlockId = null) {
+
+        const blockDDL = document.getElementById("ddlBlock");
+        blockDDL.innerHTML = `<option value="">Select Block</option>`;
+
+        if (!areaId) return;
+
+        allBlocks
+            .filter(b => b.areaId == areaId)
+            .forEach(b => {
+                blockDDL.innerHTML +=
+                    `<option value="${b.id}">${b.blockName}</option>`;
+            });
+
+        if (selectedBlockId) {
+            blockDDL.value = selectedBlockId;
+        }
+    }
+
+    // 🔁 Area → Block change (Common)
+    document.getElementById("ddlArea").addEventListener("change", function () {
+        bindBlocks(this.value);
+    });
+</script>
+
+<script>
+    function showSelectedAddress(addressId) {
+        const display = document.getElementById("addressText");
+
+        if (!addressId) {
+            display.innerHTML = "<strong>Address:</strong> --";
+            return;
+        }
+
+        fetch(`/WebCheckout/GetAddressById/${addressId}`)
+            .then(res => res.json())
+            .then(addr => {
+                if (addr) {
+                    const parts = [
+                        addr.areaName,
+                        addr.blockName,
+                        addr.street,
+                        addr.houseNo
+                    ].filter(p => p && p.trim() !== "");
+
+                    display.innerHTML =
+                        "<strong>Address:</strong> " + parts.join(", ");
+                } else {
+                    display.innerHTML = "<strong>Address:</strong> --";
+                }
+            })
+            .catch(() => {
+                display.innerHTML = "<strong>Address:</strong> --";
+            });
+    }
+
+    const dropdown = document.getElementById("addressDropdown");
+
+    // ✅ CHANGE EVENT (already correct)
+    dropdown.addEventListener("change", function () {
+        showSelectedAddress(this.value);
+    });
+
+    // ✅ PAGE LOAD → show selected address automatically
+    document.addEventListener("DOMContentLoaded", function () {
+        if (dropdown.value) {
+            showSelectedAddress(dropdown.value);
+        }
+    });
+</script>
+<script>
+    const isGuestUser = @(Model.UserId == null ? "true" : "false");
+</script>
+
+<script>
+    function validateGuestForm() {
+        let isValid = true;
+
+        // remove old errors
+        document.querySelectorAll('#guestAddressForm .is-invalid')
+            .forEach(el => el.classList.remove('is-invalid'));
+
+        // required fields list
+        const requiredFields = [
+            'fullName',
+            'email',
+            'mobile',
+            'ddlArea',
+            'ddlBlock',
+            'street'
+        ];
+
+        requiredFields.forEach(id => {
+            const field = document.getElementById(id);
+            if (!field || !field.value || field.value.trim() === '') {
+                field.classList.add('is-invalid');
+                isValid = false;
+            }
+        });
+
+        // mobile length check
+        const mobile = document.getElementById('mobile');
+        if (mobile && mobile.value.length !== 8) {
+            mobile.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+</script>
+<script>
+    $('#payNowBtn').click(function () {
+
+        let items = [];
+
+        @foreach (var item in Model.CartItems)
+        {
+                    <text>
+                        items.push({
+                            productId: @item.ProductId,
+                            quantity: @item.Quantity,
+                            price: @item.Price
+                        });
+                    </text>
+        }
+
+        // 🔹 COMMON DATA (DTO MATCH)
+        let orderData = {
+            paymentMethod: "Online",
+            items: items
+        };
+
+        // 🔹 CASE 1: GUEST USER
+        if (isGuestUser) {
+
+            if (!validateGuestForm()) {
+                alert('Please fill all required billing details');
+                return;
+            }
+
+            // 🔹 DIRECT DTO FIELDS
+            orderData.fullName = $('#fullName').val();
+            orderData.email = $('#email').val();
+            orderData.mobile = $('#mobile').val();
+            orderData.areaId = parseInt($('#ddlArea').val());
+            orderData.blockId = parseInt($('#ddlBlock').val());
+            orderData.street = $('#street').val();
+            orderData.houseNo = $('#houseNo').val();
+            orderData.floor = $('#floor').val();
+            orderData.apartmentNo = $('#apartmentNo').val();
+            orderData.shareholderNo = $('#shareholderNo').val();
+            orderData.instruction = $('#instruction').val();
+
+            // Guest ke liye addressId nahi
+            orderData.deliveryAddress = 0;
+
+        }
+        else {
+            // 🔹 CASE 2: LOGGED-IN USER
+            let addressId = $('#addressDropdown').val();
+            if (!addressId) {
+                alert('Please select delivery address');
+                return;
+            }
+
+            orderData.deliveryAddress = parseInt(addressId);
+        }
+
+        // 🔹 PLACE ORDER
+        $.ajax({
+            url: '/WebCheckout/PlaceOrder',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(orderData),
+              success: function (res) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: res.message,
+            confirmButtonText: 'OK',
+             width: '500px',
+              Height: '500px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '/WebHome/Index';
+            }
+        });
+    },
+               error: function (err) {
+        let msg = err.responseJSON?.message || 'Something went wrong';
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Stock Issue',
+            text: msg,
+            confirmButtonText: 'OK',
+            width: '500px'
+        });
+    }
+        });
+    });
+</script>
+
+
+
+

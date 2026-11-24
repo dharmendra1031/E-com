@@ -1,0 +1,188 @@
+﻿@{
+    ViewData["Title"] = "WEb Category";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+<div class="row justify-content-center mt-3 mb-3">
+    <div class="container my-4 col-md-11">
+
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0">@_localizer["Your cart"]</h2>
+            <a href="~/WebCategory/Index" class="fw-semibold text-decoration-none">
+                @_localizer["Continue shopping"]
+            </a>
+        </div>
+
+        <!-- TABLE HEADER -->
+        <div class="row fw-semibold border-bottom pb-2 mb-3 d-none d-md-flex">
+            <div class="col-md-6">@_localizer["Product"]</div>
+            <div class="col-md-3 text-center">@_localizer["Qty"]</div>
+            <div class="col-md-3 text-end">@_localizer["Total"]</div>
+        </div>
+
+        <!-- CART LIST -->
+        <div id="cartList"></div>
+
+        <!-- BOTTOM SECTION -->
+        <div class="row mt-5">
+
+            <!-- LEFT (EMPTY / FUTURE USE) -->
+            <div class="col-md-6"></div>
+
+            <!-- RIGHT -->
+            <div class="col-md-6 text-md-end mt-4 mt-md-0">
+
+                <input type="hidden" id="OrderAmount" value="0" />
+
+                <h5 class="fw-bold">
+                    @_localizer["Subtotal"]:
+                    <span class="text-primary" id="cartSubtotal">0.000 KD</span>
+                </h5>
+
+                <a asp-action="Index"
+                   asp-controller="WebCheckout"
+                   class="btn btn-warning px-5 py-2 fw-semibold mt-3">
+                    @_localizer["Check out"]
+                </a>
+
+               @*  <div class="fst-italic text-muted mt-2">
+                    This order will earn you <strong>94 Re Rewards</strong>
+                </div> *@
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadCart() {
+
+        $.get('/WebCart/GetCart', function (response) {
+
+            let cart = response.cart || response;
+            let html = '';
+            let subtotal = 0;
+
+            if (!cart || cart.length === 0) {
+                $('#cartList').html('<p class="text-muted text-center">Cart is empty</p>');
+                $('#cartSubtotal').text('0.000 KD');
+                $('#OrderAmount').val(0);
+                return;
+            }
+
+            cart.forEach(item => {
+
+                let unitPrice = item.price || item.unitPrice || 0;
+                let qty = item.quantity;
+                let total = unitPrice * qty;
+
+                subtotal += total;
+
+                html += `
+                <div class="row align-items-center py-4 border-bottom" data-productid="${item.productId}">
+                    <div class="col-md-6 d-flex gap-3">
+                        <img src="${item.imageBase64 ?? 'https://via.placeholder.com/80'}"
+                             class="img-fluid rounded" style="max-width:80px">
+                        <div>
+                            <div class="fw-semibold">${item.productName}</div>
+                            <small class="text-muted">${unitPrice.toFixed(3)} KD</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 text-center">
+                        <button class="btn btn-light qty-minus">−</button>
+                        <span class="qty px-2">${qty}</span>
+                        <button class="btn btn-light qty-plus">+</button>
+                           <button class="btn btn-link text-danger p-0 ms-2 delete-item">
+                        <i class="bi bi-trash fs-5"></i>
+                    </button>
+                    </div>
+
+
+                    <div class="col-md-3 text-end fw-semibold">
+                        ${total.toFixed(3)} KD
+                    </div>
+                </div>`;
+            });
+
+            $('#cartList').html(html);
+            $('#cartSubtotal').text(`${subtotal.toFixed(3)} KD`);
+            $('#OrderAmount').val(subtotal.toFixed(3));
+        });
+    }
+
+    // INITIAL LOAD
+    $(document).ready(function () {
+        loadCart();
+        loadCartCount();
+    });
+
+    // PLUS
+    $(document).on('click', '.qty-plus', function () {
+        let productId = $(this).closest('[data-productid]').data('productid');
+        updateQty(productId, 1);
+    });
+
+    // MINUS
+    $(document).on('click', '.qty-minus', function () {
+        let row = $(this).closest('[data-productid]');
+        let productId = row.data('productid');
+        let currentQty = parseInt(row.find('.qty').text());
+
+        if (currentQty > 1) {
+            updateQty(productId, -1);
+        }
+    });
+
+    // DELETE
+    $(document).on('click', '.delete-item', function () {
+        let productId = $(this).closest('[data-productid]').data('productid');
+        removeFromCart(productId);
+    });
+
+    // function updateQty(productId, change) {
+    //     $.post('/WebCart/AddOrUpdateCart', {
+    //         productId: productId,
+    //         qty: change
+    //     }, function () {
+    //         loadCart();
+    //         loadCartCount();
+    //     });
+    // }
+        function updateQty(productId, change) {
+        $.post('/WebCart/AddOrUpdateCart', {
+            productId: productId,
+            qty: change
+        }, function (response) {
+            debugger;
+               if (response && response.success === false && response.notStock) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Out of stock',
+            text: response.message,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#f0ad4e'
+        });
+        return;
+    }
+
+            if (response && response.success) {
+                loadCart();
+                loadCartCount();
+            }
+        })
+        .fail(function () {
+            alert("Something went wrong. Please try again.");
+        });
+    }
+
+    function removeFromCart(productId) {
+        $.post('/WebCart/RemoveFromCart', {
+            productId: productId
+        }, function () {
+            loadCart();
+            loadCartCount();
+        });
+    }
+</script>

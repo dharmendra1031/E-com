@@ -1,0 +1,208 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.Category
+
+@{
+    ViewData["Title"] = "Edit Category";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // ✅ Same admin layout
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4>@_localizer["Edit Category"]</h4>
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li> <a asp-controller="Category"  asp-action="Index" class="btn btn-primary me-2"><i class="ti-pencil-alt bg-info"></i>@_localizer["CategoryList"]</a></li>
+                        </ul>
+                    </div> <hr />
+                </div>
+
+                <div class="row p-5">
+                    @* @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success">@TempData["Success"]</div>
+                    } *@
+
+                    <div class="basic-form">
+                        <!-- ✅ Edit form posts to Category/Edit -->
+                        <form asp-controller="Category" id="NavigationKey" asp-action="Edit" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+
+                            <!-- Hidden Category ID -->
+                            <input type="hidden" asp-for="CategoryId" />
+                            <div class="row">
+                                <!-- Arabic Name -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Category Name (AR)"] <span style="color:red">*</span></label>
+                                        <input asp-for="CNameArb" class="form-control input-default focusOnEnter" />
+                                        <span asp-validation-for="CNameArb" class="text-danger"></span>
+                                    </div>
+
+                                </div>
+                                <!-- Category Name -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Category Name (EN)"] <span style="color:red">*</span></label>
+                                        <input asp-for="CName" class="form-control input-default focusOnEnter"/>
+                                        <span asp-validation-for="CName" class="text-danger"></span>
+                                    </div>
+
+                                </div>
+
+                               
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>@_localizer["Optional"]</label>
+                                        <input type="file" name="CategoryImage" id="categoryImageInput" class="form-control " />
+
+                                        <!-- ✅ Preview -->
+                                        <div style="margin-top:10px;">
+                                            @if (Model.CategoryImage != null)
+                                            {
+                                                string base64Image = "data:image/png;base64," + Convert.ToBase64String(Model.CategoryImage);
+                                                <img id="categoryImagePreview" src="@base64Image" style="max-width:150px; border:1px solid #ddd;" />
+                                            }
+                                            else
+                                            {
+                                                <img id="categoryImagePreview" style="max-width:150px; display:none; border:1px solid #ddd;" />
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>@_localizer["Upload New Icon (Optional)"]</label>
+                                        <input type="file" name="CategoryIcon" id="categoryIconInput" class="form-control" />
+
+                                        <!-- ✅ Preview -->
+                                        <div style="margin-top:10px;">
+                                            @if (Model.CategoryIcon != null)
+                                            {
+                                                string base64Icon = "data:image/png;base64," + Convert.ToBase64String(Model.CategoryIcon);
+                                                <img id="categoryIconPreview" src="@base64Icon" style="max-width:150px; border:1px solid #ddd;" />
+                                            }
+                                            else
+                                            {
+                                                <img id="categoryIconPreview" style="max-width:150px; display:none; border:1px solid #ddd;" />
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <!-- Status -->
+                                    <div class="form-group">
+                                        <label>@_localizer["Status"] <span style="color:red">*</span></label>
+                                        <select asp-for="IsActive" class="form-control input-default focusOnEnter">
+                                            <option value="true" selected="@(Model.IsActive == true)">@_localizer["Active"]</option>
+                                            <option value="false" selected="@(Model.IsActive == false)">@_localizer["Inactive"]</option>
+                                           
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Description[AR]"]</label>
+                                        <textarea asp-for="CDescriptionArbic" data-val="false" class="form-control input-flatc focusOnEnter" data-val="false"></textarea>
+                                    </div>
+                                </div> 
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Description[EN]"]</label>
+                                        <textarea asp-for="CDescription" data-val="false" class="form-control input-flatc focusOnEnter" data-val="false"></textarea>
+                                    </div>
+                                </div>
+                                @* <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Current Image"]</label><br />
+                                        @if (Model.CategoryImage != null)
+                                        {
+                                            string base64Image = "data:image/png;base64," + Convert.ToBase64String(Model.CategoryImage);
+                                            <img src="@base64Image" style="max-width:150px; border:1px solid #ddd; margin-bottom:10px;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@_localizer["No image uploaded"]</span>
+                                        }
+                                    </div>
+
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Current Icon"]</label><br />
+                                        @if (Model.CategoryIcon != null)
+                                        {
+                                            string base64Image = "data:image/png;base64," + Convert.ToBase64String(Model.CategoryIcon);
+                                            <img src="@base64Image" style="max-width:150px; border:1px solid #ddd; margin-bottom:10px;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@_localizer["No image uploaded"]</span>
+                                        }
+                                    </div>
+
+                                </div> *@
+                            </div>
+                                                     
+                            
+                            
+                            
+                            <!-- Upload New Image -->
+                            <!-- Current Image Preview -->
+                            
+                            
+                            <!-- Submit -->
+                            <button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Update"]</button>
+                            <a asp-action="Index" class="btn btn-secondary btn-flat m-t-30">@_localizer["Cancel"]</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // Category Image Preview
+        document.getElementById("categoryImageInput").addEventListener("change", function (event) {
+            var preview = document.getElementById("categoryImagePreview");
+            var file = event.target.files[0];
+
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Category Icon Preview
+        document.getElementById("categoryIconInput").addEventListener("change", function (event) {
+            var preview = document.getElementById("categoryIconPreview");
+            var file = event.target.files[0];
+
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+}

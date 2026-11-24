@@ -1,0 +1,364 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "WEb Category";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+<style>
+    .product-scroll {
+        height: calc(100vh - 220px); /* header + category height adjust */
+        overflow-y: auto; /* ✅ sirf yahin scroll */
+        overflow-x: hidden; /* ⛔ sideways band */
+
+    }
+    
+
+    .subcategory-link.active .card {
+        background-color: rgba(7, 90, 150, 0.15); /* header color ka light version */
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transform: translateY(-3px);
+        transition: 0.3s;
+        padding: 5px; /* thoda spacing */
+    }
+    #SubCategoryContainer{
+        background-color: #FAFAFA;
+    }
+
+    #ProductContainer {
+        background-color: #FAFAFA;
+    }
+
+    /* @@media (min-width: 768px){
+        .main
+        {
+             flex: 0 0 auto;
+             width: 85.7%;
+         }
+
+    } */
+    main.main {
+        flex-shrink: 0;
+         width: 0%;
+        max-width: 100%;
+        padding-right: calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+        margin-top: var(--bs-gutter-y);
+    }
+    .main {
+        width: 100%;
+        padding: 10px;
+        flex: 1 1 auto;
+    }
+
+    .category-title {
+        font-weight: 700;
+        display: inline-block;
+    }
+
+   
+    /* mobile */
+    @@media(min-width: 576px) and (max-width: 768px) {
+       
+        .category-title
+
+    {
+        font-size: 12px;
+        max-width: 70px; /* 👈 wrap force */
+        line-height: 1.1;
+        word-break: break-word;
+    }
+
+        .sidebarhight {
+            height: 90vh;
+        }
+        .product-scroll {
+            height: calc(90vh - 138px); /* header + category height adjust */
+            overflow-y: auto; /* ✅ sirf yahin scroll */
+            overflow-x: hidden; /* ⛔ sideways band */
+        }
+        
+    }
+
+    @@media (max-width: 576px) {
+        .category-title {
+            font-size: 10px;
+            max-width: 68px; /* 👈 wrap force */
+            line-height: 1.1;
+            word-break: break-word;
+        }
+
+        .sidebarhight {
+            height: 80vh;
+        }
+
+        .product-scroll {
+            height: calc(80vh - 125px); /* header + category height adjust */
+            overflow-y: auto; /* ✅ sirf yahin scroll */
+            overflow-x: hidden; /* ⛔ sideways band */
+        }
+
+       
+    }
+
+    /* tablet and above */
+    @@media (min-width: 768px) and (max-width: 1200px) {
+        .main
+
+    {
+        width: 80.1%;
+        }
+
+        .product-scroll {
+            height: calc(100vh - 150px); /* header + category height adjust */
+            overflow-y: auto; /* ✅ sirf yahin scroll */
+            overflow-x: hidden; /* ⛔ sideways band */
+        }
+        .sidebarhight {
+            height: 100vh;
+        }
+
+        
+
+    }
+
+    /* desktop large */
+    @@media (min-width: 1200px) {
+        .main
+
+    {
+        width: 88%;
+    }
+
+        .product-scroll {
+            height: calc(100vh - 150px); /* header + category height adjust */
+            overflow-y: auto; /* ✅ sirf yahin scroll */
+            overflow-x: hidden; /* ⛔ sideways band */
+        }
+        .sidebarhight{
+            height: 100vh;
+            margin-top: 2.1vh !important;
+        }
+
+       
+
+    }
+</style>
+
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- LEFT SIDEBAR -->
+        <aside class="col-lg-2 col-md-3 col-sm-2 col-2 d-md-block border-end p-sm-0 p-1 sidebarhight"
+               style=" width:auto; overflow-y:scroll; scrollbar-width: thin;">
+            <h6 class="mb-3 text-center category-title">@_localizer["Top Categories"]</h6>
+
+            <div id="categoryContainer"></div>
+        </aside>
+        <!-- RIGHT CONTENT -->
+        <main class="main">
+            <!-- HEADER -->
+          
+            <!-- SUB CATEGORIES -->
+            <div id="SubCategoryContainer"></div>
+
+            <!-- PRODUCTS GRID -->
+            <div id="ProductContainer" class="product-scroll">
+                <!-- Products grid yahan -->
+            </div>
+
+        </main>
+
+    </div>
+</div>
+<script>
+    $(document).on("click", ".add-to-cart-btn", function () {
+
+        var productId = $(this).data("productid");
+
+        $.ajax({
+            url: '/WebCart/AddOrUpdateCart',
+            type: 'POST',
+            data: {
+                productId: productId,
+                qty: 1
+            },
+            success: function (res) {
+
+                if (res.notStock) {
+                    Swal.fire({
+                        icon: 'warning',
+                       text: res.message,
+                        confirmButtonText: 'OK',
+                        width: 500
+                    });
+                    return;
+                }
+
+                if (res.success) {
+                    loadCartCount();
+                }
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    text: 'Something went wrong'
+                });
+            }
+        });
+    });
+</script>
+<script>
+    let selectedCategoryName = "";
+    let selectedSubCategoryName = "";
+
+    let currentCategoryId = null;
+    let currentSubCategoryId = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedCategoryId = urlParams.get("categoryId");
+
+    // 🔹 LOAD CATEGORIES (AJAX)
+    fetch("/WebCategory/CategoryPartial")
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById("categoryContainer").innerHTML = html;
+
+            let selectedCategory;
+
+            if (selectedCategoryId) {
+                selectedCategory = document.querySelector(
+                    `.category-link[data-categoryid="${selectedCategoryId}"]`
+                );
+            }
+
+            if (!selectedCategory) {
+                selectedCategory = document.querySelector(".category-link");
+            }
+
+            if (selectedCategory) {
+                selectedCategory.click(); // 🔥 auto trigger
+            }
+        });
+
+    // 🔹 CATEGORY CLICK
+    document.addEventListener("click", function (e) {
+        const cat = e.target.closest(".category-link");
+        if (!cat) return;
+
+        e.preventDefault(); // ✅ VERY IMPORTANT
+
+        currentCategoryId = cat.dataset.categoryid;
+        currentSubCategoryId = null;
+
+        selectedCategoryName = cat.innerText.trim();
+        selectedSubCategoryName = "";
+
+        // Active class
+        document.querySelectorAll(".category-link")
+            .forEach(x => x.classList.remove("active"));
+        cat.classList.add("active");
+          document.querySelectorAll(".subcategory-link")
+        .forEach(x => x.classList.remove("active"));
+
+
+        // Load SubCategories
+        fetch(`/WebCategory/SubCategoryCardPartial?categoryId=${currentCategoryId}`)
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("SubCategoryContainer").innerHTML = html;
+
+                // Load products directly (default)
+                loadProductsByCategory(currentCategoryId);
+                updateHeading();
+            });
+    });
+
+    // 🔹 SUBCATEGORY CLICK
+    document.addEventListener("click", function (e) {
+         const sub = e.target.closest(".subcategory-link");
+         if (!sub) return;
+
+         e.preventDefault();
+
+         currentSubCategoryId = sub.dataset.subid;
+         selectedSubCategoryName = sub.dataset.subname;
+
+         // 🔹 sab subcategories se active hatao
+         document.querySelectorAll(".subcategory-link")
+             .forEach(x => x.classList.remove("active"));
+
+         // 🔹 sirf clicked wali active
+         sub.classList.add("active");
+
+         updateHeading();
+
+         fetch(`/WebCategory/ProductPartial?categoryId=${currentCategoryId}&subCategoryId=${currentSubCategoryId}`)
+             .then(res => res.text())
+             .then(html => {
+                 document.getElementById("ProductContainer").innerHTML = html;
+             });
+     });
+
+    // 🔹 LOAD PRODUCTS BY CATEGORY
+    function loadProductsByCategory(categoryId) {
+        fetch(`/WebCategory/ProductPartial?categoryId=${categoryId}`)
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("ProductContainer").innerHTML = html;
+            });
+    }
+
+    // 🔹 UPDATE HEADING / BREADCRUMB
+    function updateHeading() {
+        const title = document.getElementById("breadcrumbTitle");
+        if (!title) return;
+
+        title.innerText = selectedSubCategoryName
+            ? `${selectedCategoryName} → ${selectedSubCategoryName}`
+            : selectedCategoryName;
+    }
+</script>
+
+<script>
+    // 🔹 SORTING (standalone & working)
+    document.addEventListener("change", function (e) {
+
+        if (!e.target.matches("#sortProducts")) return;
+
+        const sortBy = e.target.value;
+
+        // 🔹 category must be selected
+        if (!currentCategoryId) {
+            console.warn("Category not selected yet");
+            return;
+        }
+
+        let url = `/WebCategory/ProductPartial?categoryId=${currentCategoryId}`;
+
+        if (currentSubCategoryId) {
+            url += `&subCategoryId=${currentSubCategoryId}`;
+        }
+
+        url += `&sortBy=${sortBy}`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("ProductContainer").innerHTML = html;
+            });
+    });
+</script>
+
+
+@if (TempData["CartMessage"] != null)
+{
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            text: '@TempData["CartMessage"]',
+            confirmButtonText: 'OK',
+            width: 500
+        });
+    </script>
+}

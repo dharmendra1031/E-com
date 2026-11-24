@@ -1,0 +1,172 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.SubCategory
+
+@{
+	ViewData["Title"] = "Create Sub-Category";
+	Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="card alert">
+				<div class="card-header">
+					<h4>@_localizer["Add Sub-Category"]</h4>
+					<div class="card-header-right-icon">
+						<ul>
+							<li> <a asp-controller="SubCategory" asp-action="List" class="btn btn-primary me-2"><i class="ti-bookmark-alt bg-info"></i>@_localizer["Sub-Category List"]</a></li>
+
+						</ul>
+					</div>
+					<hr />
+				</div>
+
+				<div class="card-body">
+					<div class="basic-form">
+						<form asp-action="CreateSubCategory" id="NavigationKey" method="post" enctype="multipart/form-data">
+							@Html.AntiForgeryToken()
+
+							<div class="row">
+								<div class="col-md-6">
+									<!-- Parent Category -->
+									<div class="form-group">
+										<label class="fw-bold">@_localizer["Main Category"]  <span style="color:red">*</span></label>
+										<select asp-for="ParentCategoryId" class="form-control input-default focusOnEnter"
+												asp-items="ViewBag.Categories">
+											<option value="">--Select--</option>
+										</select>
+										<span asp-validation-for="ParentCategoryId" class="text-danger"></span>
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label class="fw-bold">@_localizer["Sub-Category Name (AR)"] <span style="color:red">*</span></label>
+										<input asp-for="SCNameArb" class="form-control input-default focusOnEnter" />
+										<span asp-validation-for="SCNameArb" class="text-danger"></span>
+									</div>
+								</div>
+							</div>
+
+							<div class="row">
+								
+								<!-- SubCategory Name (English) -->
+								<div class="col-md-4">
+									<div class="form-group">
+										<label class="fw-bold">@_localizer["Sub-Category Name (EN)"]<span style="color:red">*</span></label>
+										<input asp-for="SCName" class="form-control input-default focusOnEnter" />
+										<span asp-validation-for="SCName" class="text-danger"></span>
+									</div>
+								</div>
+
+								<!-- Image Upload -->
+								<div class="col-md-4">
+									<div class="form-group">
+										@* <label class="fw-bold">@_localizer["Image"]</label>
+										<input type="file" id="subCategoryImageInput" name="subCategoryImage" class="form-control input-focus" accept="image/*" />
+										
+										<div class="mt-2">
+											<img id="subCategoryImagePreview" src="#" alt="Image Preview" style="display:none; max-width:150px; max-height:150px; border:1px solid #ddd; padding:5px; border-radius:6px;" />
+										</div> *@
+										<label class="fw-bold">@_localizer["Image"] <span style="color:red">*</span></label>
+										<input type="file" id="subCategoryImageInput" name="subCategoryImage" class="form-control input-focus" accept="image/*" />
+
+										<div class="mt-2">
+											<img id="subCategoryImagePreview" src="#" alt="Image Preview"
+												 style="display:none; max-width:150px; max-height:150px; border:1px solid #ddd; padding:5px; border-radius:6px;" />
+										</div>
+
+										
+										<small id="subCategoryImageError" class="text-danger" style="display:none;">
+											@_localizer["Please select an image."]
+										</small>
+										<span asp-validation-for="SubCategoryImage" class="text-danger"></span>
+									</div>
+								</div>
+
+								<!-- IsActive -->
+								<div class="col-md-4">
+									<div class="form-group">
+										<label class="fw-bold">@_localizer["Status"] <span style="color:red">*</span></label>
+										<select asp-for="IsActive" class="form-control input-default focusOnEnter">
+											<option value="true">@_localizer["Active"]</option>
+											<option value="false">@_localizer["Inactive"]</option>
+										</select>
+									</div>
+								</div>
+							</div>
+						
+							<!-- Description (Arabic) -->
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="fw-bold">@_localizer["Description[AR]"]</label>
+									<textarea asp-for="SCDescriptionArb" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
+								</div>
+							</div>
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="fw-bold">@_localizer["Description[EN]"]</label>
+									<textarea asp-for="SCDescription" data-val="false" class="form-control input-flat focusOnEnter"></textarea>
+								</div>
+							</div>
+							<!-- Show In Navigation -->
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="fw-bold">
+										@_localizer["Show In Navigation"]
+									</label>
+
+									<div class="form-check">
+										<input asp-for="showinnav" class="form-check-input" type="checkbox" />
+
+										<label asp-for="showinnav" class="form-check-label">
+											@_localizer["Display this sub-category in navigation menu"]
+										</label>
+									</div>
+								</div>
+							</div>
+							<!-- Submit -->
+							<button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Save"]</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@section Scripts {
+	<partial name="_ValidationScriptsPartial" />
+
+	<script>
+		document.getElementById("subCategoryImageInput").addEventListener("change", function (event) {
+			const file = event.target.files[0];
+			const preview = document.getElementById("subCategoryImagePreview");
+
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = function (e) {
+					preview.src = e.target.result;
+					preview.style.display = "block"; // show preview
+				};
+				reader.readAsDataURL(file);
+			} else {
+				preview.src = "#";
+				preview.style.display = "none"; // hide if no file
+			}
+		});
+
+			document.getElementById("NavigationKey").addEventListener("submit", function (event) {
+			const imageInput = document.getElementById("subCategoryImageInput");
+			const errorMsg = document.getElementById("subCategoryImageError");
+
+			if (!imageInput.files.length) {
+				errorMsg.style.display = "block";
+				imageInput.focus();
+				event.preventDefault(); 
+			} else {
+				errorMsg.style.display = "none";
+			}
+		});
+	</script>
+}

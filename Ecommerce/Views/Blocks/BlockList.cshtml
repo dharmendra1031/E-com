@@ -1,0 +1,235 @@
+﻿@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BlockViewModel>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "Block List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li>
+                                <a asp-action="Create" class="btn btn-success">
+                                    <i class="ti-plus bg-success"></i> @_localizer["Add New Block"]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <hr />
+                </div>
+
+                <div class="card-body">
+                    <form method="get" asp-action="BlockList" class="mb-3">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="name" class="me-1" style="margin-right: 5px;">@_localizer["Name"]:</label>
+                                <input type="text" id="name" name="name" class="form-control" autocomplete="off" value="@ViewBag.FilterName" style="width: 300px; display: inline-block;" />
+                                <ul id="suggestions" style="display:none;
+                                 position:absolute;
+                                 background:white;
+                                 list-style:none;
+                                 padding:0;
+                                 margin:0;
+                                 width:100%;  /* width same as input */
+                                 max-height:200px;
+                                 overflow-y:auto;
+                                 border:1px solid #ccc;
+                                 z-index:1000;">
+                                    <!-- Suggestions dynamically appended here -->
+                                </ul>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">@_localizer["Filter"]</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card alert">
+                            <div class="card-body" style="overflow-y:auto; height:70vh">
+                                @{
+                                    int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
+                                }
+
+                                @if (Model.Items != null && Model.Items.Any())
+                                {
+                                    <table class="table table-hover">
+                                        <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000;">
+                                            <tr>
+                                                <th>@_localizer["SN"]</th>
+                                                <th>@_localizer["ID"]</th>
+                                                <th>@_localizer["Block Name (AR)"]</th>
+                                                <th>@_localizer["Block Name (EN)"]</th>
+                                                <th>@_localizer["Area Name"]</th>
+                                                <th>@_localizer["Actions"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var block in Model.Items)
+                                            {
+                                                <tr>
+                                                    <td>@serial</td>
+                                                    <td>@block.Id</td>
+                                                    <td>@block.BlockNameArb</td>
+                                                    <td>@block.BlockName</td>
+                                                    <td>@block.AreaName</td>
+                                                    <td>
+                                                        <a asp-action="Edit" asp-route-id="@block.Id" class="btn btn-sm btn-warning">
+                                                            <i class="ti-pencil"></i>
+                                                        </a>
+                                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteBlock(@block.Id)">
+                                                            <i class="ti-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                serial++;
+                                            }
+                                        </tbody>
+                                    </table>
+
+                                    <!-- ✅ Pagination -->
+                                    <div class="text-center">
+                                        <ul class="pagination justify-content-center">
+                                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                                <a class="page-link" asp-action="BlockList" asp-route-page="1"
+                                                   asp-route-name="@ViewBag.FilterName">
+                                                    @_localizer["First"]
+                                                </a>
+                                            </li>
+
+                                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                                <a class="page-link" asp-action="BlockList" asp-route-page="@(Model.PageNumber - 1)"
+                                                   asp-route-name="@ViewBag.FilterName">
+                                                    @_localizer["Previous"]
+                                                </a>
+                                            </li>
+
+                                            @for (int i = 1; i <= Model.TotalPages; i++)
+                                            {
+                                                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                                    <a class="page-link" asp-action="BlockList" asp-route-page="@i"
+                                                       asp-route-name="@ViewBag.FilterName">
+                                                        @i
+                                                    </a>
+                                                </li>
+                                            }
+
+                                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                                <a class="page-link" asp-action="BlockList" asp-route-page="@(Model.PageNumber + 1)"
+                                                   asp-route-name="@ViewBag.FilterName">
+                                                    @_localizer["Next"]
+                                                </a>
+                                            </li>
+
+                                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                                <a class="page-link" asp-action="BlockList" asp-route-page="@(Model.TotalPages)"
+                                                   asp-route-name="@ViewBag.FilterName">
+                                                    @_localizer["Last"]
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info text-center">@_localizer["No blocks found"]</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function deleteBlock(id) {
+            Swal.fire({
+                title: '@_localizer["Are you sure?"]',
+                text: '@_localizer["You won’t be able to revert this!"]',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '@_localizer["Yes, delete it!"]',
+                cancelButtonText: '@_localizer["Cancel"]',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('@Url.Action("DeleteBlock", "Blocks")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'id=' + encodeURIComponent(id)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('@_localizer["Deleted!"]', data.message, 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('@_localizer["Error"]', data.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+
+            function fetchCategorySuggestions(query) {
+                if (!query || query.length < 2) {
+                    $('#suggestions').hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Blocks/AutoCompleteArea',
+                    type: 'GET',
+                    data: { term: query },
+                    success: function(data) {
+                        let $suggestionBox = $('#suggestions');
+                        $suggestionBox.empty();
+
+                        if (data && data.length > 0) {
+                            data.forEach(function(item) {
+                                $('<li></li>')
+                                    .text(item)
+                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                    .on('click', function() {
+                                        $('#name').val(item);
+                                        $suggestionBox.hide();
+                                        $('#name').focus();
+                                    })
+                                    .appendTo($suggestionBox);
+                            });
+                            $suggestionBox.show();
+                        } else {
+                            $suggestionBox.hide();
+                        }
+                    }
+                });
+            }
+
+            $('#name').on('input', function() {
+                fetchCategorySuggestions($(this).val());
+            });
+
+            enableSuggestionNavigation('#name', '#suggestions');
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#name, #suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+}

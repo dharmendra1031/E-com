@@ -1,0 +1,191 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@using EcommerceWebApplication.Models.ViewModels
+
+@{
+    ViewData["Title"] = "Day Wise Sale";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert" style="min-height: calc(100vh - 160px);">
+                <div class="card-header">
+                    <h5>@_localizer["Daily Sale Report"]</h5>
+                </div>
+                <div class="card-body">
+                    <div id="filterForm">
+                        <div class="row">
+                            <!-- Order Status -->
+                            <div class="col-md-3">
+                                <label for="status" class="form-label">@_localizer["Order Status"]:</label>
+                                <select name="OrderStatus" id="status" class="form-control" autofocus>
+                                    <option value="" onclick="resetFilter()"></option>
+                                    @foreach (var item in ViewBag.StatusList as List<SelectListItem>)
+                                    {
+                                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Payment Status -->
+                            <div class="col-md-3">
+                                <label for="paymentstatus" class="form-label">@_localizer["Payment"]:</label>
+                                <select name="PaymentStatus" id="paymentstatus" class="form-control">
+                                    <option value="" onclick="resetFilter()"></option>
+                                    @foreach (var item in ViewBag.Selectedpaymentstatus as List<SelectListItem>)
+                                    {
+                                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- From Date -->
+                            <div class="col-md-3">
+                                <label for="startDate" class="form-label">@_localizer["FromDate"]:</label>
+                                <input type="text" id="startDate" name="DateFrom"
+                                       class="form-control datepicker"
+                                       placeholder="DD-MM-YYYY"
+                                       value="@ViewBag.StartDate"
+                                       onkeypress="return numeric(event)" />
+                            </div>
+
+                            <!-- To Date -->
+                            <div class="col-md-3">
+                                <label for="endDate" class="form-label">@_localizer["ToDate"]:</label>
+                                <input type="text" id="endDate" name="DateTo"
+                                       class="form-control datepicker"
+                                       placeholder="DD-MM-YYYY"
+                                       value="@ViewBag.EndDate"
+                                       onkeypress="return numeric(event)" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-3">
+                            <!-- From Order ID -->
+                            <div class="col-md-3">
+                                <label for="fromOrderId" class="form-label">@_localizer["From Order NO"]:</label>
+                                <input type="text" id="fromOrderId" name="FromOrderNo" onkeypress="return numeric(event)" maxlength="10"
+                                       class="form-control" />
+                            </div>
+
+                            <!-- To Order ID -->
+                            <div class="col-md-3">
+                                <label for="toOrderId" class="form-label">@_localizer["To Order No"]:</label>
+                                <input type="text" id="toOrderId" name="ToOrderNo" onkeypress="return numeric(event)" maxlength="10"
+                                       class="form-control" />
+                            </div>
+
+                           @*  <!-- Export Format -->
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="fw-bold">@_localizer["Export"]:</label>
+                                    <select name="format" id="format" class="form-control input-default">
+                                        <option value="PDF">PDF</option>
+                                        <option value="XLSX">Excel</option>
+                                        <option value="DOCX">Word</option>
+                                    </select>
+                                </div>
+                            </div> *@
+                            <div class="col-md-3" id="format">
+                                <label class="form-label d-block">@_localizer["Export"]:</label>
+                                <br>
+                                <label class="radio-inline">
+                                    <input type="radio" name="format" value="PDF" checked> @_localizer["PDF"]
+                                </label>
+
+                                <label class="radio-inline">
+                                    <input type="radio" name="format" value="XLSX"> @_localizer["Excel"]
+                                </label>
+
+                            </div>
+                            <!-- Generate Report Button -->
+                            <div class="col-md-3 mb-3">
+                                <button type="button" class="btn btn-primary btn-flat m-t-30" onclick="PrintReport()">
+                                    <i class="fa fa-print"></i> @_localizer["Generate Report"]
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #printerDiv iframe {
+        position: absolute;
+        top: -1000px;
+    }
+</style>
+
+<div id="divPDF">
+    <div id="printerDiv">
+        <iframe id="frmPDF"></iframe>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker3.min.css" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+@section scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"></script>
+    <script>
+        $(function () {
+            $('#startDate').datepicker({
+                format: 'dd-mm-yyyy',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true
+            }).on('changeDate', function (e) {
+                $('#endDate').datepicker('setStartDate', e.date);
+            });
+
+            $('#endDate').datepicker({
+                format: 'dd-mm-yyyy',
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true
+            });
+
+            const fromVal = $('#startDate').val();
+            if (fromVal) {
+                const parts = fromVal.split("-");
+                const formattedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                $('#endDate').datepicker('setStartDate', formattedDate);
+            }
+        });
+      
+            function PrintReport() {
+                var DateFrom = $("#startDate").val().trim();
+                var DateTo = $("#endDate").val().trim();
+                var OrderStatus = $("#status").val();
+                var PaymentStatus = $("#paymentstatus").val();
+                var FromOrderNo = $("#fromOrderId").val().trim();
+                var ToOrderNo = $("#toOrderId").val().trim();
+                var format = $("input[name='format']:checked").val(); 
+
+                const rptParameters = new URLSearchParams({
+                    OrderStatus: OrderStatus,
+                    PaymentStatus: PaymentStatus,
+                    DateFrom: DateFrom,
+                    DateTo: DateTo,
+                    FromOrderNo: FromOrderNo,
+                    ToOrderNo: ToOrderNo,
+                    format: format
+                });
+
+                const url = `/Report/ReportPrint?${rptParameters.toString()}`;
+
+                if (format === "PDF") {
+                  
+                    window.open(url, "_blank");
+                } else {
+                    
+                    window.location.href = url;
+                }
+            }
+    
+
+    </script>
+}

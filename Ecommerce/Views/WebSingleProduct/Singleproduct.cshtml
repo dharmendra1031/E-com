@@ -1,0 +1,323 @@
+﻿@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.SingleProductVM
+
+@{
+    ViewData["Title"] = "Product Details";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+<style>
+    .offer-badge {
+        background: linear-gradient(45deg, #ff3c00, #ff8c00);
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: 1px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+</style>
+<div class="container py-5">
+    <div class="row g-5">
+
+        <!-- LEFT IMAGE SECTION -->
+        <div class="col-md-6 d-flex">
+
+            <!-- Thumbnails -->
+            <div class="d-flex flex-column gap-2 me-3 overflow-auto" style="max-height: 400px;">
+                @foreach (var img in Model.Images)
+                {
+                    <img src="@img.Base64"
+                         onclick="changeImage(this)"
+                         class="img-thumbnail rounded-2"
+                         style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" />
+                }
+            </div>
+
+            <!-- MAIN IMAGE -->
+            <div class="flex-grow-1 text-center">
+                <img id="mainImg"
+                     src="@(Model.Images.FirstOrDefault()?.Base64 ?? "/images/default-product.png")"
+                     class="img-fluid rounded-3 border"
+                     style="max-width: 450px;" />
+            </div>
+
+        </div>
+
+        <!-- RIGHT PRODUCT DETAILS -->
+        <div class="col-md-6">
+
+            <!-- Rating -->
+            <div class="mb-2 text-warning">
+                @for (int i = 0; i < Math.Round(Model.AverageRating); i++)
+                {
+                    <span>★</span>
+                }
+                <span class="text-muted fw-normal ms-2">
+                    @Model.TotalReviews review(s)
+                </span>
+            </div>
+
+            <!-- Product Name -->
+            <h2 class="fw-bold mb-2">@Model.Name</h2>
+
+
+            <!-- SKU & Product Code -->
+            @if (!string.IsNullOrEmpty(Model.SKUId) || !string.IsNullOrEmpty(Model.Ds_ProdID))
+            {
+                <p class="text-muted">
+                    @if (!string.IsNullOrEmpty(Model.SKUId))
+                    {
+                        <span>SKU: @Model.SKUId</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Ds_ProdID))
+                    {
+                        <span class="ms-2">Product ID: @Model.Ds_ProdID</span>
+                    }
+                </p>
+            }
+
+            <!-- Stock -->
+            <p class="fw-semibold @(Model.Stock > 0 ? "text-success" : "text-danger")">
+                Availability: @(Model.Stock > 0 ? "In Stock" : "Out of Stock")
+            </p>
+
+            <!-- Weight -->
+            @if (Model.Weight > 0)
+            {
+                <p class="text-muted">Weight: @Model.Weight GM</p>
+            }
+
+            <!-- Cost Price -->
+            @if (Model.CoastPrice.HasValue)
+            {
+                <p class="text-muted">Cost Price: @Model.CoastPrice KWD</p>
+            }
+
+            <!-- Warranty -->
+            @if (!string.IsNullOrEmpty(Model.Warranty))
+            {
+                <div class="border rounded p-2 mb-3 d-flex align-items-center gap-2">
+                    <strong>🛡</strong> @Model.Warranty
+                </div>
+            }
+
+            <!-- Brand -->
+            @if (Model.Brand != null)
+            {
+                <div class="mb-2 d-flex align-items-center gap-2">
+                    @if (!string.IsNullOrEmpty(Model.Brand.BrandLogoBase64))
+                    {
+                        <img src="@Model.Brand.BrandLogoBase64"
+                             alt="@Model.Brand.BrandName"
+                             style="width:70px;height:70px;object-fit:contain;" />
+                    }
+                    <strong>@Model.Brand.BrandName</strong>
+                   @*  <span class="ms-2 text-muted">(@Model.Brand.BrandName)</span> *@
+                </div>
+            }
+
+            <!-- Model -->
+            @if (!string.IsNullOrEmpty(Model.ProductsModel))
+            {
+                <div class="mb-3">
+                    <strong>Model:</strong> @Model.ProductsModel
+                </div>
+            }
+
+            <!-- Description -->
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="text-muted">@Model.Description</p>
+            }
+
+
+            <!-- Price -->
+            @if (Model.IsWeekendDeal && Model.OfferPrice.HasValue)
+            {
+                <!-- OFFER HIGHLIGHT -->
+                <div class="mb-1">
+                    <span class="badge offer-badge">
+                        <i class="bi bi-lightning-fill me-1"></i> OFFER
+                    </span>
+                </div>
+
+                <span class="text-muted text-decoration-line-through me-2">
+                    @Model.Price.Value.ToString("F3", CultureInfo.InvariantCulture) KD
+                </span>
+
+                <span class="fs-3 fw-bold text-danger">
+                    @Model.OfferPrice.Value.ToString("F3", CultureInfo.InvariantCulture) KD
+                </span>
+
+                <span class="badge bg-danger ms-2">
+                    @Model.DiscPer% OFF
+                </span>
+            }
+            else
+            {
+                <span class="fs-3 fw-bold">
+                    @Model.Price.Value.ToString("F3", CultureInfo.InvariantCulture) KD
+                </span>
+            }
+
+
+
+            <!-- Quantity & Add to Cart -->
+            @* <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="decrementQty()">-</button>
+                    <span id="qty" class="px-3">@Model.Units</span>
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="incrementQty()">+</button>
+                </div>
+
+                <button class="btn btn-dark rounded-pill px-4 py-2 add-cart"
+                        data-productid="@Model.ProductId">
+                    🛒 ADD TO CART
+                </button>
+            </div> *@
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="decrementQty()">-</button>
+                    <span id="qty" class="px-3">1</span>
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="incrementQty()">+</button>
+                </div>
+
+                <button class="btn btn-dark rounded-pill px-4 py-2 add-cart"
+                        data-productid="@Model.ProductId">
+                    🛒 ADD TO CART
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    @if (Model.Reviews.Any())
+    {
+        <div class="mt-5">
+            <h5 class="fw-bold">
+                Customer Reviews (@Model.TotalReviews)
+            </h5>
+
+            <ul class="list-group mt-3">
+                @foreach (var review in Model.Reviews)
+                {
+                    <li class="list-group-item">
+                        <strong>Rating:</strong> @review.Rating / 5
+                        <p class="mb-0">@review.Comment</p>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- Specifications Section -->
+    @if (Model.Specifications != null && Model.Specifications.Any())
+    {
+        <div class="mt-5">
+            <h4 class="mb-4">Specifications</h4>
+
+            <div class="border rounded">
+                @foreach (var spec in Model.Specifications)
+                {
+                    <div class="d-flex align-items-stretch px-3 py-2
+                                                    @(Model.Specifications.IndexOf(spec) % 2 == 0 ? "bg-light" : "")">
+
+                        <!-- Spec Name -->
+                        <div class="fw-semibold" style="min-width:200px;">
+                            @spec.SpeciNameEn
+                        </div>
+
+                        <!-- Vertical Line -->
+                        <div class="mx-3 border-start border-dark"></div>
+
+                        <!-- Spec Value -->
+                        <div class="flex-grow-1">
+                            @spec.SpecivalueEn
+                        </div>
+
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+
+
+</div>
+
+<style>
+    .specifications-list {
+        border-radius: 0.3rem;
+        border: 1px solid #ddd;
+    }
+
+        .specifications-list > div {
+            border-bottom: 1px solid #ddd;
+        }
+
+            .specifications-list > div:last-child {
+                border-bottom: none;
+            }
+</style>
+
+<script>
+    function changeImage(el) {
+        document.getElementById("mainImg").src = el.src;
+    }
+
+    @* function incrementQty() {
+        let qtyEl = document.getElementById("qty");
+        let qty = parseInt(qtyEl.innerText);
+        qtyEl.innerText = qty + 1;
+    }
+
+    function decrementQty() {
+        let qtyEl = document.getElementById("qty");
+        let qty = parseInt(qtyEl.innerText);
+        if (qty > 1) qtyEl.innerText = qty - 1;
+    } *@
+</script>
+<script>
+    function incrementQty() {
+        let qtyEl = document.getElementById("qty");
+        qtyEl.innerText = parseInt(qtyEl.innerText) + 1;
+    }
+
+    function decrementQty() {
+        let qtyEl = document.getElementById("qty");
+        let qty = parseInt(qtyEl.innerText);
+        if (qty > 1) qtyEl.innerText = qty - 1;
+    }
+
+    // 🔥 ADD TO CART
+    $(document).on('click', '.add-cart', function () {
+
+        let productId = $(this).data('productid');
+        let qty = parseInt($('#qty').text());
+
+        $.post('/WebCart/AddOrUpdateCart', {
+            productId: productId,
+            qty: qty
+           }, function (response) {
+
+        // ❌ Stock exceed
+        if (response && response.success === false && response.notStock) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Out of stock',
+                text: response.message,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#f0ad4e'
+            });
+            return;
+        }
+
+        // ✅ success case (optional)
+        if (response && response.success) {
+            if (typeof loadCartCount === "function") {
+                loadCartCount();
+            }
+        }
+    });
+    });
+</script>

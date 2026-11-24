@@ -1,0 +1,198 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.Category
+
+@{
+    ViewData["Title"] = "Create Category";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header ">
+                    <div class="row pb-5 ">
+                        <h4>@_localizer["Create New Category"]</h4>
+                        <div class="card-header-right-icon">
+                            <ul>
+                                <li> <a asp-controller="Category" asp-action="Index" class="btn btn-primary me-2"><i class="ti-pencil-alt bg-info"></i>@_localizer["CategoryList"]</a></li>
+                            </ul>
+                        </div>
+                    </div> <hr />
+                </div>
+
+                <div class="row ">
+                    <div class="basic-form  ">
+                        <form asp-controller="Category" id="NavigationKey" asp-action="Create" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+
+                            <div class="row p-5">
+                                <!-- Arabic Name -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Category Name (AR)"]<span style="color:red">*</span></label>
+                                        <input asp-for="CNameArb" class="form-control input-default focusOnEnter" />
+                                        <span asp-validation-for="CNameArb" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <!-- Category Name -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Category Name (EN)"] <span style="color:red">*</span></label>
+                                        <input asp-for="CName" class="form-control input-default focusOnEnter" />
+                                        <span asp-validation-for="CName" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+
+                            </div>
+
+                            <div class="row">
+                                <!-- Category Image -->
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        @* <label class="fw-bold">@_localizer["Category Image"]</label>
+                                        <input type="file" id="categoryImageInput" name="categoryImage" class="form-control input-focus" accept="image/*" />
+
+                                        <!-- Preview Container -->
+                                        <div class="mt-2">
+                                            <img id="imagePreview" src="#" alt="Image Preview" style="display:none; max-width:150px; max-height:150px; border:1px solid #ddd; padding:5px; border-radius:6px;" />
+                                        </div> *@
+                                        <label class="fw-bold">@_localizer["Category Image"] <span style="color:red">*</span></label>
+                                        <input type="file" id="categoryImageInput" name="categoryImage" class="form-control" accept="image/*" />
+
+                                        <div class="mt-2">
+                                            <img id="imagePreview" src="#" alt="Image Preview"
+                                                 style="display:none; max-width:150px; max-height:150px; border:1px solid #ddd; padding:5px; border-radius:6px;" />
+                                        </div>
+
+
+                                        <small id="imageError" class="text-danger" style="display:none;">@_localizer["Please select an image."]</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+
+                                        <label class="fw-bold">@_localizer["Category Icon"] <span style="color:red">*</span></label>
+                                        <input type="file" id="CategoryIconInput" name="CategoryIcon" class="form-control" accept="image/*" />
+
+                                        <div class="mt-2">
+                                            <img id="imagePreview1" src="#" alt="Image Preview"
+                                                 style="display:none; max-width:150px; max-height:150px; border:1px solid #ddd; padding:5px; border-radius:6px;" />
+                                        </div>
+
+
+                                        <small id="iconError" class="text-danger" style="display:none;">@_localizer["Please select an image."]</small>
+                                    </div>
+                                </div>
+
+                                <!-- Status -->
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Status"] <span style="color:red">*</span></label>
+                                        <select asp-for="IsActive" class="form-control input-default focusOnEnter">
+                                            <option value="true">@_localizer["Active"]</option>
+                                            <option value="false">@_localizer["Inactive"]</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="fw-bold">@_localizer["Description[AR]"]</label>
+                                    <textarea asp-for="CDescriptionArbic" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="fw-bold">@_localizer["Description[EN]"]</label>
+                                    <textarea asp-for="CDescription" class="form-control input-flat focusOnEnter" data-val="false"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Submit -->
+                            <button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Save"]</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+
+        // ================= IMAGE PREVIEW =================
+        document.getElementById("categoryImageInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById("imagePreview");
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = "none";
+            }
+        });
+
+        // ================= ICON PREVIEW =================
+        document.getElementById("CategoryIconInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById("imagePreview1");
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = "none";
+            }
+        });
+
+        // ================= FORM VALIDATION =================
+        document.getElementById("NavigationKey").addEventListener("submit", function (event) {
+
+            const imageInput = document.getElementById("categoryImageInput");
+            const iconInput = document.getElementById("CategoryIconInput");
+
+            const imageError = document.getElementById("imageError");
+            const iconError = document.getElementById("iconError");
+
+            let isValid = true;
+
+            // ✅ Image required
+            if (!imageInput.files.length) {
+                imageError.style.display = "block";
+                imageInput.focus();
+                isValid = false;
+            } else {
+                imageError.style.display = "none";
+            }
+
+            // ✅ Icon required
+            if (!iconInput.files.length) {
+                iconError.style.display = "block";
+                iconInput.focus();
+                isValid = false;
+            } else {
+                iconError.style.display = "none";
+            }
+
+            if (!isValid) {
+                event.preventDefault(); // 🚫 stop submit
+            }
+        });
+    </script>
+
+}

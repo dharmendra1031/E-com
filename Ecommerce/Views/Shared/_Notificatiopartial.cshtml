@@ -1,0 +1,62 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.LatestOrdersViewModel
+
+<li class="header-icon dib" id="orderNotification">
+    <i class="ti-bell"></i>
+
+    @if (Model.NewOrdersCount > 0)
+    {
+        <span class="badge bg-danger" id="newOrderCount">@Model.NewOrdersCount</span>
+    }
+
+    <div class="drop-down" style="max-height: 300px; overflow-y: auto;">
+        <div class="dropdown-content-heading">
+            <span class="text-left">@_localizer["Recent Orders"]</span>
+        </div>
+
+        <div class="dropdown-content-body">
+            <ul id="orderList">
+                @if (Model.Orders != null && Model.Orders.Any())
+                {
+                    foreach (var item in Model.Orders)
+                    {
+                        <li>
+                            <a href="@Url.Action("Details", "Orders", new { id = item.OrderId })">
+                                <div class="notification-content">
+                                    <small class="notification-timestamp pull-right">
+                                        @item.CreatedAt.ToString("hh:mm tt")
+                                    </small>
+                                    <div class="notification-heading">Order #@item.OrderId</div>
+                                    <div class="notification-text">Payment: @item.PaymentType</div>
+                                </div>
+                            </a>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li class="text-center text-muted" style="padding:10px;">
+                        No new orders
+                    </li>
+                }
+
+                <li class="text-center">
+                    <a href="@Url.Action("PendingOrder", "ManageOrders")" class="more-link">See All</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</li>
+
+<script>
+    let lastOrderId = @Model.LastOrderId;
+
+    // 🔁 Auto-refresh every 30 seconds
+    setInterval(function () {
+        $.get("/ManageOrders/LatestOrdersNotification", { lastOrderId: lastOrderId }, function (data) {
+            if (data.trim().length > 0) {
+                $("#orderNotification").replaceWith(data);
+            }
+        });
+    }, 30000);
+</script>

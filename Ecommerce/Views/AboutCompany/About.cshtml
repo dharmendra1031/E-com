@@ -1,0 +1,191 @@
+﻿@using System.Globalization
+@model EcommerceWebApplication.Models.CompanyDetails
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "About";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+@{
+    var culture = CultureInfo.CurrentCulture;
+    bool isArabic = culture.TextInfo.IsRightToLeft;
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<div class="container py-5">
+
+    <!-- Hero / Banner Section -->
+    <div class="text-center mb-5">
+        @if (Model.Logo != null)
+        {
+            <img src="data:image/png;base64,@Convert.ToBase64String(Model.Logo)"
+                 class="img-fluid rounded mb-3"
+                 style="max-height:150px;"
+                 alt="@Model.CompanyName Logo" />
+        }
+       
+        @if (isArabic)
+        {
+            <h1 class="fw-bold">@Model.CompanyNameArabic</h1>
+        }
+        else
+        {
+            <h1 class="fw-bold">@Model.CompanyName</h1>
+        }
+        @if (isArabic)
+        {
+            <p class="lead">تقديم منتجات عالية الجودة بثقة وموثوقية</p>
+        }
+        else
+        {
+            <p class="lead">Delivering quality products with trust and reliability</p>
+        }
+    
+    </div>
+
+    <!-- About Us entries Section -->
+    @if (ViewBag.AboutUs != null)
+    {
+        foreach (var about in ViewBag.AboutUs)
+        {
+            <div class="row align-items-center mb-5">
+                <div class="col-md-6">
+                    @if (isArabic)
+                    {
+                        <h3>@about.TitleArb</h3>
+                    }
+                    else
+                    {
+                        <h3>@about.TitleEng</h3>
+                    }
+                    @if (isArabic)
+                    {
+                        <p>@about.DescriptionArb</p>
+                    }
+                    else
+                    {
+                        <p>@about.DescriptionEng</p>
+                    }
+                  
+                </div>
+                <div class="col-md-6 d-flex justify-content-center">
+                    @if (about.AboutImage != null)
+                    {
+                        <img src="data:image/png;base64,@Convert.ToBase64String(about.AboutImage)"
+                             class="img-fluid rounded" style="max-height:200px; width:auto;" />
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Mission & Vision -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+           
+          
+            @if (isArabic)
+            {
+                <h3>مهمتنا</h3>
+                <p>
+                    توفير منتجات ميسورة التكلفة وموثوقة لعملائنا مع الحفاظ على معايير عالية من الجودة والخدمة.
+                </p>
+            }
+            else
+            {
+                <h3>Our Mission</h3>
+                <p>
+                    To provide affordable and reliable products to our customers while maintaining high standards of quality and service.
+                </p>
+            }
+        </div>
+        <div class="col-md-6">
+            @if (isArabic)
+            {
+                <h3>رؤيتنا</h3>
+                <p>
+                    أن نصبح علامة تجارية رائدة وموثوقة في مجال التجارة الإلكترونية، معترفًا بنا للتميّز ورضا العملاء والابتكار.
+                </p>
+            }
+            else
+            {
+                <h3>Our Vision</h3>
+                <p>
+                    To become a trusted and leading e-commerce brand recognized for excellence, customer satisfaction, and innovation.
+                </p>
+            }
+           
+        </div>
+    </div>
+
+    <!-- Company Details / Stats -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+            <h4>@_localizer["Company details"]</h4>
+            <ul class="list-unstyled">
+             
+                @if (isArabic)
+                {
+                    <li><strong>@_localizer["Address"]:</strong> @Model.AddressArabic</li>
+                }
+                else
+                {
+                    <li><strong>@_localizer["Address"]:</strong> @Model.Address</li>
+                }
+                <li><strong>@_localizer["Email"]:</strong> <a href="mailto:@Model.Email">@Model.Email</a></li>
+                <li><strong>@_localizer["Phone"]:</strong> <a href="tel:@Model.Phone">@Model.Phone</a></li>
+
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h4>@_localizer["Follow Us"]</h4>
+            <div class="d-flex gap-2">
+                @if (!string.IsNullOrEmpty(Model.FacebookUrl))
+                {
+                    <a href="@Model.FacebookUrl" class="btn btn-primary" target="_blank"><i class="fab fa-facebook-f"></i></a>
+                }
+                @if (!string.IsNullOrEmpty(Model.TwitterUrl))
+                {
+                    <a href="@Model.TwitterUrl" class="btn btn-info text-white" target="_blank"><i class="fab fa-twitter"></i></a>
+                }
+                @if (!string.IsNullOrEmpty(Model.InstagramUrl))
+                {
+                    <a href="@Model.InstagramUrl" class="btn btn-danger" target="_blank"><i class="fab fa-instagram"></i></a>
+                }
+                @if (!string.IsNullOrEmpty(Model.LinkedInUrl))
+                {
+                    <a href="@Model.LinkedInUrl" class="btn btn-primary" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Achievements Section -->
+    <div class="row mb-5 text-center">
+        <h3>@_localizer["Our Achievements"]</h3>
+        @if (isArabic)
+        {
+            <p>يحظى بثقة آلاف العملاء السعداء، ويتزايد عددهم يوماً بعد يوم!</p>
+        }
+        else
+        {
+            <p>Trusted by thousands of happy customers and growing every day!</p>
+        }
+      
+        @if (ViewBag.Achievements != null)
+        {
+            <div class="d-flex justify-content-center gap-4 mt-3">
+                @foreach (var item in ViewBag.Achievements)
+                {
+                    <div class="text-center">
+                        <i class="fas @item.IconClass fa-2x mb-2"></i>
+                        <h4 class="fw-bold">@item.Value</h4>
+                        <p>@item.Title</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>

@@ -1,0 +1,595 @@
+﻿
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.UserViewModel>
+@using System.Text.Json
+@using System.Globalization
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    ViewData["Title"] = "User List";
+    var userJson = JsonSerializer.Serialize(Model);
+}
+
+<!-- jsGrid styles -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid-theme.min.css" rel="stylesheet" />
+
+@Html.AntiForgeryToken()
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card alert" id="NavigationKey">
+            <form id="userFilterForm" class="form-inline mb-3 d-flex align-items-center flex-wrap" style="margin-bottom: 11px;">
+
+
+                <div class="form-group me-3" style="position:relative;">
+                    <label for="name" class="me-1" style="margin-right: 5px;">@_localizer["Name"]:</label>
+                    <input type="text" id="name" name="name" class="form-control" autocomplete="off" value="@ViewBag.NameFilter" style="width: 200px; display: inline-block;" />
+                    <ul id="suggestions" style="display:none;
+                                position:absolute;
+                                background:white;
+                                list-style:none;
+                                padding:0;
+                                margin:0;
+                                width:100%;  /* width same as input */
+                                max-height:200px;
+                                overflow-y:auto;
+                                border:1px solid #ccc;
+                                z-index:1000;">
+                        <!-- Suggestions dynamically appended here -->
+                    </ul>
+                </div>
+
+                <div class="form-group d-flex align-items-center me-3">
+                    <label for="roleId" class="me-2 mb-0" style="min-width: 50px;">@_localizer["Role"]:</label>
+                    <select id="roleId" name="roleId" class="form-control form-control-sm" style="width: 200px;">
+                        <option value=""></option>
+                        @foreach (var role in (SelectList)ViewBag.RoleList)
+                        {
+                            <option value="@role.Value" selected="@(ViewBag.RoleFilter?.ToString() == role.Value.ToString())">
+                                @role.Text
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group d-flex align-items-center me-3">
+                    <label for="isActive" class="me-2 mb-0" style="min-width: 60px;">@_localizer["Status"]:</label>
+                    <select id="isActive" name="isActive" class="form-control form-control-sm" style="width: 200px;">
+                    
+                        <option value="" selected="@(ViewBag.IsActiveFilter == null ? "selected" : "")"></option>
+                        <option value="true" selected="@(ViewBag.IsActiveFilter?.ToString().ToLower() == "true")">@_localizer["Active"]</option>
+                        <option value="false" selected="@(ViewBag.IsActiveFilter?.ToString().ToLower() == "false")">@_localizer["Inactive"]</option>
+                    </select>
+                </div>
+
+                <div class="form-group d-flex align-items-center ms-2">
+                    <button type="button" class="btn btn btn-info me-2" onclick="submitFilter();">@_localizer["Search"]</button>
+                    <a asp-controller="User" asp-action="Create" class="btn btn-info">
+                        <i class="ti-user"></i> @_localizer["Add User"]
+                    </a>
+                </div>
+
+            </form>
+
+
+
+            @* <div class="card-header">
+                <h4>Users List</h4>
+               
+            </div> *@
+            @*   <div class="card-header">
+                <h4><i class="fas fa-blog"></i> @(Model?.BlogId > 0 ? "Update Blog" : "Add Blog")</h4>
+                <div class="card-header-right-icon">
+                    <ul>
+                        <li>
+                            <a href="@Url.Action("BlogList", "Blog")" class="btn btn-primary">
+                                <i class="fas fa-list"></i> Blog List
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div> *@
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card alert">
+                        <div class="card-body" style="overflow-y:auto; height:70vh">
+                            @{
+                                int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
+                            }
+
+                            <table class="table table-hover">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                    <tr>
+                                        <th class="text-center">@_localizer["SN"]</th>
+                                        <th class="text-center">@_localizer["ID"]</th>
+                                        <th class="text-center">@_localizer["Name"]</th>
+                                        <th class="text-center">@_localizer["Email"]</th>
+                                        <th class="text-center">@_localizer["Phone"]</th>
+                                        <th class="text-center">@_localizer["Role"]</th>
+                                        <th class="text-center">@_localizer["Status"]</th>
+                                        <th class="text-center">@_localizer["Action"]</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var item in Model.Items)
+                                    {
+                                        <tr>
+                                            <td class="text-center">@serial</td>
+                                            <td class="text-center">@item.UserId</td>
+                                            @* <td class="text-center">@item.FullName</td> *@
+
+                                            <td class="text-center">
+                                                @(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar"
+                                                                                            ? item.FullNameArb
+                                                                                            : item.FullName)
+                                                                                                          </td>
+                                            <td class="text-center">@item.Email</td>
+                                            <td class="text-center">
+                                                @(string.IsNullOrEmpty(item.Phone) || item.Phone.Length <= 8
+                                                                                            ? item.Phone
+                                                                                            : item.Phone.Substring(item.Phone.Length - 8))
+                                        </td>
+                                            <td class="text-center">@item.RoleName</td>
+
+                                            <td class="text-center">
+                                                @if (item.IsActive)
+                                                {
+                                                    <span class="badge bg-success">@_localizer["Active"]</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">@_localizer["Inactive"]</span>
+                                                }
+                                            </td>
+
+                                            <td class="text-center">
+                                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                                    <a asp-action="Edit" asp-controller="User" asp-route-id="@item.UserId" class="btn btn-sm btn-primary">
+                                                        <i class="ti-pencil"></i>
+                                                    </a>
+                                                    <button class="btn btn-sm btn-danger delete-btn" onclick="deleteUser(@item.UserId)">
+                                                        <i class="ti-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        serial++;
+                                    }
+                                </tbody>
+                            </table>
+
+                            <!-- ✅ Pagination -->
+                            <div class="text-center">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-action="UserList" asp-route-page="1"
+                                           asp-route-name="@ViewBag.NameFilter"
+                                           asp-route-roleId="@ViewBag.RoleFilter"
+                                           asp-route-isActive="@ViewBag.IsActiveFilter">
+                                            @_localizer["First"]
+                                        </a>
+                                    </li>
+
+                                    <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-action="UserList" asp-route-page="@(Model.PageNumber - 1)"
+                                           asp-route-name="@ViewBag.NameFilter"
+                                           asp-route-roleId="@ViewBag.RoleFilter"
+                                           asp-route-isActive="@ViewBag.IsActiveFilter">
+                                            @_localizer["Previous"]
+                                        </a>
+                                    </li>
+
+                                    @for (int i = 1; i <= Model.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                            <a class="page-link" asp-action="UserList" asp-route-page="@i"
+                                               asp-route-name="@ViewBag.NameFilter"
+                                               asp-route-roleId="@ViewBag.RoleFilter"
+                                               asp-route-isActive="@ViewBag.IsActiveFilter">
+                                                @i
+                                            </a>
+                                        </li>
+                                    }
+
+                                    <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-action="UserList" asp-route-page="@(Model.PageNumber + 1)"
+                                           asp-route-name="@ViewBag.NameFilter"
+                                           asp-route-roleId="@ViewBag.RoleFilter"
+                                           asp-route-isActive="@ViewBag.IsActiveFilter">
+                                            @_localizer["Next"]
+                                        </a>
+                                    </li>
+
+                                    <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-action="UserList" asp-route-page="@(Model.TotalPages)"
+                                           asp-route-name="@ViewBag.NameFilter"
+                                           asp-route-roleId="@ViewBag.RoleFilter"
+                                           asp-route-isActive="@ViewBag.IsActiveFilter">
+                                            @_localizer["Last"]
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <!-- jsGrid script -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function deleteUser(id) {
+            if (!confirm("Are you sure you want to delete this User?")) return;
+
+            $.ajax({
+                url: '/User/DeleteConfirmed/' + id,
+                type: 'POST',
+                success: function () {
+                    alert("User deleted successfully!");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Failed to delete User.");
+                }
+            });
+        }
+    </script>
+
+    <script>
+       
+
+
+            // ✅ Footer time
+            document.getElementById("date-time").innerText = new Date().toLocaleString();
+
+            // ✅ Refresh
+            document.querySelector(".page-refresh").addEventListener("click", function (e) {
+                e.preventDefault();
+                location.reload();
+            });
+        });
+
+            function deleteUser(userId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you really want to delete this user?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/User/DeleteConfirmed/' + userId,
+                        type: 'POST',
+                        headers: {
+                            'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                        },
+                        success: function () {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted!',
+                                text: 'User has been deleted.',
+                                confirmButtonColor: '#3085d6'
+                            }).then(() => {
+                                location.reload(); // Reload after success
+                            });
+                        },
+                        error: function () {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed!',
+                                text: 'Failed to delete user.',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+    <script>
+              function submitFilter() {
+            const name = document.getElementById('name').value.trim();
+            const roleId = document.getElementById('roleId').value;
+            const isActive = document.getElementById('isActive').value;
+
+            let url = "/User/UserList?";
+            const params = [];
+
+            if (name) params.push(`name=${encodeURIComponent(name)}`);
+            if (roleId) params.push(`roleId=${encodeURIComponent(roleId)}`);
+            if (isActive) params.push(`isActive=${encodeURIComponent(isActive)}`);
+
+            url += params.join("&");
+            window.location.href = url;
+        }
+
+        function resetFilter() {
+            window.location.href = "/User/UserList";
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+
+            function fetchCategorySuggestions(query) {
+                if (!query || query.length < 2) {
+                    $('#suggestions').hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '/User/AutoCompleteSql',
+                    type: 'GET',
+                    data: { term: query },
+                    success: function(data) {
+                        let $suggestionBox = $('#suggestions');
+                        $suggestionBox.empty();
+
+                        if (data && data.length > 0) {
+                            data.forEach(function(item) {
+                                $('<li></li>')
+                                    .text(item)
+                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                    .on('click', function() {
+                                        $('#name').val(item);
+                                        $suggestionBox.hide();
+                                        $('#name').focus();
+                                    })
+                                    .appendTo($suggestionBox);
+                            });
+                            $suggestionBox.show();
+                        } else {
+                            $suggestionBox.hide();
+                        }
+                    }
+                });
+            }
+
+            $('#name').on('input', function() {
+                fetchCategorySuggestions($(this).val());
+            });
+
+            enableSuggestionNavigation('#name', '#suggestions');
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#name, #suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+    <script>
+        $(document).ready(function () {
+
+            function fetchCategorySuggestions(query) {
+                if (!query || query.length < 2) {
+                    $('#suggestions').hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '/User/AutoCompleteSql',
+                    type: 'GET',
+                    data: { term: query },
+                    success: function(data) {
+                        let $suggestionBox = $('#suggestions');
+                        $suggestionBox.empty();
+
+                        if (data && data.length > 0) {
+                            data.forEach(function(item) {
+                                $('<li></li>')
+                                    .text(item)
+                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                    .on('click', function() {
+                                        $('#name').val(item);
+                                        $suggestionBox.hide();
+                                        $('#name').focus();
+                                    })
+                                    .appendTo($suggestionBox);
+                            });
+                            $suggestionBox.show();
+                        } else {
+                            $suggestionBox.hide();
+                        }
+                    }
+                });
+            }
+
+            $('#name').on('input', function() {
+                fetchCategorySuggestions($(this).val());
+            });
+
+            enableSuggestionNavigation('#name', '#suggestions');
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#name, #suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@* @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.UserViewModel>
+
+
+@Html.AntiForgeryToken()
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card alert">
+            <div class="card-header">
+                <h4>Users List</h4>
+                <div class="card-header-right-icon">
+                    <ul>                    
+                        <li> <a asp-controller="User" asp-action="Create"><i class="ti-user bg-info"></i>Add User</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body" style="overflow-y:auto; height:70vh">
+                <table class="table table-responsive table-hover">
+                    <thead class="table-light text-center">
+                        <tr class="text-center">
+                            <th>User ID</th>
+                            <th>Full Name</th>
+                            <th>Full Name (Arabic)</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role Name</th>
+                            <th>Status</th>
+                            <th>Actions</th> <!-- New column for buttons -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null)
+                        {
+                            foreach (var user in Model.Items)
+                            {
+                                <tr class="text-center">
+                                    <td>@user.UserId</td>
+                                    <td>@user.FullName</td>
+                                    <td>@user.FullNameArb</td>
+                                    <td>@user.Email</td>
+                                    <td>@user.Phone</td>
+                                    <td>@user.RoleName</td>
+                                    <td>
+                                        @if (user.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-action="Edit" asp-route-id="@user.UserId" class="btn btn-sm btn-primary me-1">
+                                            <i class="ti-link"></i> Edit
+                                        </a>
+                                        <a asp-route-id="@user.UserId" class="btn btn-sm btn-danger"
+                                        onclick="deleteUser(@user.UserId)">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+                <div class="text-center">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                            @if (Model.PageNumber == 1)
+                            {
+                                <a class="page-link" tabindex="-1" aria-disabled="true">First</a>
+                            }
+                            else
+                            {
+                                <a class="page-link" asp-action="UserList" asp-route-page="1">First</a>
+                            }
+                        </li>
+
+                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                            @if (Model.PageNumber == 1)
+                            {
+                                <a class="page-link" tabindex="-1" aria-disabled="true">Previous</a>
+                            }
+                            else
+                            {
+                                <a class="page-link" asp-action="UserList" asp-route-page="@(Model.PageNumber - 1)">Previous</a>
+                            }
+                        </li>
+
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                <a class="page-link" asp-action="UserList" asp-route-page="@i">@i</a>
+                            </li>
+                        }
+
+                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                          
+                            @if (Model.PageNumber == Model.TotalPages)
+                            {
+                                <a class="page-link" tabindex="-1" aria-disabled="true">Next</a>
+                            }
+                            else
+                            {
+                                <a class="page-link" asp-action="UserList" asp-route-page="@(Model.PageNumber + 1)">Next</a>
+                            }
+                        </li>
+
+                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="UserList" asp-route-page="@(Model.TotalPages)">Last</a>
+                        </li>
+                    </ul>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function deleteUser(userId) {
+        if (!confirm("Are you sure you want to delete this user?")) return;
+        debugger
+        $.ajax({
+            url: '/User/DeleteConfirmed/' + userId,
+            type: 'POST',
+            headers: {
+                'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function () {
+                alert("User deleted successfully.");
+                $('#user-row-' + userId).remove(); // remove row from table
+            },
+            error: function () {
+                alert("Failed to delete user.");
+            }
+        });
+    }
+</script>
+
+
+ *@

@@ -1,0 +1,177 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.blogMaster
+
+@{
+    ViewData["Title"] = Model?.BlogId > 0 ? "Update Blog" : "Add Blog";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+               
+                <div class="card-header">
+                    <h4>
+                        <i class="fas fa-blog"></i>
+                        @(Model?.BlogId > 0 ? _localizer["Update Blog"] : _localizer["Add Blog"])
+                    </h4>
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li>
+                                <a href="@Url.Action("BlogList", "Blog")"class="btn btn-primary">
+                                    <i class="fas fa-list"></i> @_localizer["Blog List"]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="basic-form">
+                        <form asp-action="CreateOrUpdate" id="NavigationKey" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" asp-for="BlogId" />
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Title (Arb)"] <span style="color:red;"> * </span></label>
+                                        <input asp-for="TitleArbic" class="form-control" />
+                                        <span asp-validation-for="TitleArbic" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Title (Eng)"] <span style="color:red;"> * </span></label>
+                                        <input asp-for="Title" class="form-control" />
+                                        <span asp-validation-for="Title" class="text-danger"></span>
+                                    </div>
+                                </div>
+                               
+                            </div>
+                            <!-- Blog Image -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Image"] <span style="color:red;"> * </span></label>
+                                        <input type="file" id="blogImageInput" name="BlogImageFile" class="form-control" accept="image/*" />
+                                        <div class="mt-2">
+                                            <img id="blogImagePreview"
+                                                 src="@(Model?.BlogImage != null ? $"data:image/png;base64,{Convert.ToBase64String(Model.BlogImage)}" : "https://via.placeholder.com/150?text=No+Image")"
+                                                 alt="Blog Image"
+                                                 style="max-width:150px; max-height:150px; border:1px solid #ccc; padding:5px; border-radius:5px;" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Status Dropdown -->
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Status"] <span style="color:red;"> * </span></label>
+                                        <select asp-for="IsActive" class="form-control">
+                                            <option>--Select--</option>
+                                            <option value="0">@_localizer["Inactive"]</option>
+                                            <option value="1">@_localizer["Active"]</option>
+                                        </select>
+                                        <span asp-validation-for="IsActive" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Description (AR)"] <span style="color:red;"> * </span></label>
+                                        <textarea asp-for="DescriptionArb" class="form-control" id="body"></textarea>
+                                        <span asp-validation-for="DescriptionArb" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>@_localizer["Description[EN]"] <span style="color:red;"> * </span></label>
+                                        <textarea asp-for="DescriptionEng" class="form-control" id="bodyEng"></textarea>
+                                        <span asp-validation-for="DescriptionEng" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                
+                            </div>
+
+                            
+
+                            <button type="submit" class="btn btn-primary mt-3">
+                                @(Model?.BlogId > 0 ? _localizer["Update"] : _localizer["Save"])
+                             
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- TinyMCE CDN -->
+    <script src="https://cdn.tiny.cloud/1/wh4k2fb3ss3qg2jsgs9v8j9kbkazjxjir6w7jf42dpp507tn/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+
+    @* <script>
+
+        tinymce.init({
+
+            selector: '#body, #bodyEng',
+
+            height: 300,
+
+            menubar: false,
+
+            plugins: 'advlist autolink lists link image charmap preview anchor code',
+
+            toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | code',
+
+            branding: false
+
+        });
+    </script> *@
+
+    <script>
+        // Image preview
+        document.getElementById("blogImageInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById("blogImagePreview");
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = "#";
+                preview.style.display = "none";
+            }
+        });
+    </script>
+
+    @if (TempData["Success"] != null)
+    {
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: '@TempData["Success"]',
+                confirmButtonText: 'OK'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '@Url.Action("BlogList", "Blog")';
+                }
+            });
+        </script>
+    }
+}

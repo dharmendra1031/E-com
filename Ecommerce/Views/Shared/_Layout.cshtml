@@ -1,0 +1,927 @@
+﻿@using System.Security.Claims
+@{
+   
+    var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+    var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+    var adminEmail = "admin@gmail.com";
+    var isSuperAdmin = userRole == "Admin" &&
+                       userEmail.Equals(adminEmail, StringComparison.OrdinalIgnoreCase);
+}
+
+@*@{
+    var userId = User.FindFirstValue("UserId");
+}
+
+ @if (string.IsNullOrEmpty(userId))
+{
+    <script>
+        window.location.href = "https://shopsabahiyacoop.com/admin";
+    </script>
+} *@
+
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var direction = culture.TextInfo.IsRightToLeft ? "rtl" : "ltr";
+    var layoutDirection = Context.Request.Cookies["LayoutDirection"] ?? "ltr";
+    var rtlCssPath = "/AdminTheame/assets/css/rtl.css";
+    //var rtlCssHref = layoutDirection == "rtl" ? rtlCssPath : "";
+    var rtlCssHref = rtlCssPath;
+
+}
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    // For single menu links
+    Func<string, string, string> activeClass = (controller, action) =>
+        (currentController == controller && currentAction == action) ? "active" : "";
+
+    // For parent menu
+    Func<string[], string> activeMenuClass = (controllers) =>
+        controllers.Contains(currentController) ? "active" : "";
+
+    // For submenu <ul> open style
+    Func<string[], string> submenuStyle = (controllers) =>
+        controllers.Contains(currentController) ? "display:block;" : "display:none;";
+}
+@{
+    var culturedashboard = System.Globalization.CultureInfo.CurrentCulture;
+    var isArabic = culturedashboard.TwoLetterISOLanguageName == "ar";
+
+    currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    var pageKey = $"{currentController}_{currentAction}";
+
+    var pageTitleMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+ {
+    { "AdminDashboard_Index", isArabic ? "لوحة التحكم" : "DASHBOARD" },
+    { "Companydetails_Index", isArabic ? "تفاصيل الشركة" : "COMPANY DETAIL" },
+    { "Category_Index", isArabic ? "الفئة" : "CATEGORY LIST" },
+    { "Category_Create", isArabic ? "الفئة" : "CATEGORY" },
+    { "Category_Edit", isArabic ? "الفئة" : "CATEGORY" },
+    { "SubCategory_List", isArabic ? "القائمة الفرعية" : "SUB-CATEGORY LIST" },
+    { "SubCategory_CreateSubCategory", isArabic ? "القائمة الفرعية" : "SUB-CATEGORY" },
+    { "SubCategory_Edit", isArabic ? "القائمة الفرعية" : "SUB-CATEGORY" },
+    { "Category_TopCategory", isArabic ? "الفئات العليا" : "TOP-CATEGORIES" },
+    { "Products_ProductList", isArabic ? "المنتجات" : "PRODUCT LIST" },
+    { "Products_Create", isArabic ? "المنتجات" : "PRODUCTS" },
+    { "Products_Edit", isArabic ? "المنتجات" : "PRODUCTS" },
+    { "ManageOrders_PendingOrder", isArabic ? "الطلبات المعلقة" : "ORDER LIST" },
+    { "ManageCustomer_CustomerList", isArabic ? "العملاء" : "CUSTOMER LIST" },
+    { "User_UserList", isArabic ? "المستخدمين" : "USER LIST" },
+    { "User_Create", isArabic ? "المستخدمين" : "USER" },
+    { "User_Edit", isArabic ? "المستخدمين" : "USER" },
+    { "Contact_ContactList", isArabic ? "رسائل الاتصال" : "CONTACT MESSAGES LIST" },
+    { "AboutUs_UpdateAbout", isArabic ? "معلومات عنا" : "ABOUT US" },
+    { "Blog_BlogList", isArabic ? "المدونة" : "BLOG" },
+    { "Blog_Add_Blog", isArabic ? "المدونة" : "BLOG" },
+    { "RolePermission_RoleIndex", isArabic ? "صلاحيات الأدوار" : "ROLE PERMISSION" },
+    { "RolePermission_PermissionList", isArabic ? "صلاحيات الأدوار" : "PERMISSION LIST" },
+    { "SendNotification_Index", isArabic ? "صلاحيات الأدوار" : "NOTIFICATION" },
+    { "ProductStock_Index", isArabic ? "مخزون المنتجات" : "PRODUCT STOCK" },
+    { "Report_ItemReport", isArabic ? "تقرير العنصر" : "ITEM REPORT" },
+    { "Report_StockReport", isArabic ? "تقرير المخزون" : "STOCK REPORT" },
+    { "Report_Index", isArabic ? "تقرير المبيعات اليومي" : "DAILY SALE REPORT" },
+    { "Report_CategoryWiseSalereport", isArabic ? "تقرير مبيعات الفئة" : "CATEGORY SALE REPORT" },
+    { "Report_Customers", isArabic ? "تقرير العملاء" : "CUSTOMERS REPORT" },
+    { "Areas_AreaList", isArabic ? "تقرير العملاء" : "AREALIST"},
+    { "Blocks_BlockList", isArabic ? "تقرير العملاء" : "BLOCKLIST"},
+    { "Blocks_Create", isArabic ? "تقرير العملاء" : "ADD BLOCK"},
+
+
+ };
+
+    var pageTitle = pageTitleMap.ContainsKey(pageKey) ? pageTitleMap[pageKey] : currentAction;
+}
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName" dir="@layoutDirection">
+
+
+<!-- Mirrored from www.webstrot.com/html/webstrotadmin/bootstrap3/default/index.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 17 Jul 2025 06:46:17 GMT -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>E-commerce Admin Dashboard</title>
+    <!-- ================= Favicon ================== -->
+    <!-- Standard -->
+    <link rel="shortcut icon" href="http://placehold.it/64.png/000/fff">
+    <!-- Retina iPad Touch Icon-->
+    <link rel="apple-touch-icon" sizes="144x144" href="http://placehold.it/144.png/000/fff">
+    <!-- Retina iPhone Touch Icon-->
+    <link rel="apple-touch-icon" sizes="114x114" href="http://placehold.it/114.png/000/fff">
+    <!-- Standard iPad Touch Icon-->
+    <link rel="apple-touch-icon" sizes="72x72" href="http://placehold.it/72.png/000/fff">
+    <!-- Standard iPhone Touch Icon-->
+    <link rel="apple-touch-icon" sizes="57x57" href="http://placehold.it/57.png/000/fff">
+    <!-- Styles -->
+    @*     <link href="/AdminTheame/assets/css/lib/chartist/chartist.min.css" rel="stylesheet">
+ *@    <link href="/AdminTheame/assets/css/lib/font-awesome.min.css" rel="stylesheet">
+    <link href="/AdminTheame/assets/css/lib/themify-icons.css" rel="stylesheet">
+    <link href="/AdminTheame/assets/css/lib/owl.carousel.min.css" rel="stylesheet" />
+    <link href="/AdminTheame/assets/css/lib/owl.theme.default.min.css" rel="stylesheet" />
+    <link href="/AdminTheame/assets/css/lib/weather-icons.css" rel="stylesheet" />
+    <link href="/AdminTheame/assets/css/lib/menubar/sidebar.css" rel="stylesheet">
+    <link href="/AdminTheame/assets/css/lib/bootstrap.min.css" rel="stylesheet">
+    <link href="/AdminTheame/assets/css/lib/unix.css" rel="stylesheet">
+    <link href="/AdminTheame/assets/css/style.css" rel="stylesheet">
+
+    <link id="rtlStyles" rel="stylesheet" href="@rtlCssHref" />
+
+
+</head>
+
+<body>
+    <script>
+           function enableSuggestionNavigation(inputSelector, suggestionBoxSelector, nextInputSelector) {
+            let selectedIndex = -1;
+
+            const $input = $(inputSelector);
+            const $suggestionBox = $(suggestionBoxSelector);
+
+            $input.on('keydown', function (e) {
+                const items = $suggestionBox.find('li');
+                if (items.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex + 1) % items.length;
+                    items.removeClass('selected').css('background-color', '');
+                    items.eq(selectedIndex).addClass('selected').css('background-color', '#f0f0f0');
+                    scrollIntoView(items.eq(selectedIndex), $suggestionBox);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+                    items.removeClass('selected').css('background-color', '');
+                    items.eq(selectedIndex).addClass('selected').css('background-color', '#f0f0f0');
+                    scrollIntoView(items.eq(selectedIndex), $suggestionBox);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0) {
+                        $input.val(items.eq(selectedIndex).text());
+                    }
+                    $suggestionBox.hide();
+                    if (nextInputSelector) $(nextInputSelector).focus();
+                }
+            });
+
+            // Ensure selected item is visible when navigating
+            function scrollIntoView($item, $container) {
+                const itemTop = $item.position().top;
+                const itemBottom = itemTop + $item.outerHeight();
+                const containerScrollTop = $container.scrollTop();
+                const containerHeight = $container.height();
+
+                if (itemBottom > containerHeight) {
+                    $container.scrollTop(containerScrollTop + (itemBottom - containerHeight));
+                } else if (itemTop < 0) {
+                    $container.scrollTop(containerScrollTop + itemTop);
+                }
+            }
+        }
+    </script>
+    <script>
+        window.onload = function () {
+            const form = document.querySelector("#NavigationKey");
+            if (!form) return;
+
+            const getFocusables = () => Array.from(
+                form.querySelectorAll("input, select, textarea, button[type='submit'], input[type='submit']")
+            ).filter(el =>
+                !el.disabled &&
+                !el.readOnly &&
+                el.type !== "hidden" &&
+                el.offsetParent !== null
+            );
+
+            let focusables = getFocusables();
+
+
+            if (focusables.length > 0) {
+                setTimeout(() => {
+                    focusables[0].focus();
+                    focusables[0].scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+            }
+
+            focusables.forEach((el, index) => {
+                el.addEventListener("keydown", function (e) {
+                            if (el.tagName.toLowerCase() === "textarea") {
+            if (e.key === "Enter" && e.shiftKey) {
+                // Allow new line inside textarea
+                return; // Do nothing, normal newline
+            }
+        }
+
+                    const goNext = () => {
+                        if (index + 1 < focusables.length) {
+                            // Next focusable
+                            focusables[index + 1].focus();
+                            focusables[index + 1].scrollIntoView({ behavior: "smooth", block: "center" });
+                        } else {
+
+                            if (el.tagName.toLowerCase() === "button" || el.type === "submit") {
+                                el.click();
+                            }
+                        }
+                        e.preventDefault();
+                    };
+
+                    const goPrev = () => {
+                        if (index - 1 >= 0) {
+                            focusables[index - 1].focus();
+                            focusables[index - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+                            e.preventDefault();
+                        }
+                    };
+
+                    if (e.key === "ArrowRight" || e.key === "Enter") {
+                        goNext();
+                    } else if (e.key === "ArrowLeft") {
+                        goPrev();
+                    }
+                });
+            });
+
+
+            form.addEventListener("submit", function () {
+                setTimeout(() => {
+                    focusables = getFocusables();
+                    if (focusables.length > 0) {
+                        focusables[0].focus();
+                    }
+                }, 100);
+            });
+        };
+    </script>
+
+ 
+    <div class="sidebar sidebar-hide-to-small sidebar-shrink sidebar-gestures">
+        <div class="nano">
+            <div class="nano-content">
+                <ul>
+                    <li class="label">@_localizer["Main"]</li>
+                    <li class="active"><a href="@Url.Action("Index", "AdminDashboard")"><i class="ti-home"></i> @_localizer["Dashboard"] </a></li>
+                    <li>
+                        <a href="@Url.Action("Index", "Companydetails")"><i class="ti-receipt"></i>@_localizer["CompanyDetail"]</a>
+                    </li>
+
+                    <li><a href="@Url.Action("Index", "Category")"><i class="ti-pencil-alt"></i>@_localizer["Category"]</a></li>
+                    <li><a href="@Url.Action("List", "SubCategory")"><i class="ti-bookmark-alt"></i>@_localizer["Sub-Category"]</a></li>
+                    <li><a href="@Url.Action("TopCategory", "Category")"><i class="ti-pencil-alt"></i>@_localizer["Top-Categories"]</a></li>
+                    <li>
+                        <a href="@Url.Action("Index", "Brand")"><i class="ti-briefcase"></i> @_localizer["Brand"]</a>
+                    </li>
+
+                    <li>
+                        <a href="@Url.Action("ProductList", "Products")"><i class="ti-bar-chart-alt"></i> @_localizer["Products"] </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("WekendDealsList", "WekendDeals")"><i class="ti-tag"></i> @_localizer["Wekend Deals"] </a>
+                    </li>
+                   
+                    <li>
+                        <a href="@Url.Action("AddBanner", "Banner")"><i class="ti-package"></i> @_localizer["Add Banners"] </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Index", "ProductStock")"><i class="ti-package"></i> @_localizer["Manage Stocks"] </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Index", "Coupon")"><i class="ti-bookmark-alt"></i> @_localizer["Coupon"] </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("PendingOrder", "ManageOrders")"><i class="ti-receipt"></i> @_localizer["Orders"]</a>                       
+                    </li>
+                    <li>
+                        <a href="@Url.Action("CustomerList", "ManageCustomer")">
+                            <i class="ti-receipt"></i>@_localizer["Customers"]
+                            </a>
+
+                    </li>
+                 @*    @if (userRole == "Admin" && userEmail == "admin@gmail.com")
+                    {
+                        <li>
+                            <a href="@Url.Action("UserList", "User")">
+                                <i class="ti-user"></i> @_localizer["Users"]
+                            </a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("RoleIndex", "RolePermission")">
+                                <i class="ti-lock"></i> @_localizer["Role Permission"]
+                            </a>
+                        </li>
+                    }
+           *@
+                    @if (isSuperAdmin)
+                    {
+                        <li><a href="@Url.Action("UserList", "User")"><i class="ti-user"></i> @_localizer["Users"]</a>
+                    
+                        </li>
+                        <li><a href="@Url.Action("RoleIndex", "RolePermission")"><i class="ti-lock"></i> @_localizer["Role Permission"]n</a></li>
+                    }
+                    @* <li><a href="@Url.Action("UserList", "User")"><i class="ti-user"></i> @_localizer["Users"]</a></li> *@
+                    <li><a href="@Url.Action("ContactList", "Contact")"><i class="ti-comment"></i> @_localizer["Contact Massage"]</a></li>
+                    <li><a href="@Url.Action("UpdateAbout", "AboutUs")"><i class="ti-info-alt"></i>@_localizer["About Us"]</a></li>
+                    <li><a href="@Url.Action("BlogList", "Blog")"><i class="fas fa-address-card"></i>@_localizer["Blog"]</a></li>
+
+                   @*  <li><a href="@Url.Action("RoleIndex", "RolePermission")"><i class="ti-lock"></i>@_localizer["Role Permission"]</a></li> *@
+                    <li>
+                        <a href="@Url.Action("Index", "SendNotification")">
+                            <i class="ti-email"></i> @_localizer["Send Notification"]
+                        </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("AreaList", "Areas")">
+                            <i class="ti-map-alt"></i> @_localizer["Areas"]
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="@Url.Action("BlockList", "Blocks")">
+                            <i class="ti-layout-grid2"></i> @_localizer["Blocks"]
+                        </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Index", "Changecolors")">
+                            <i class="ti-pencil-alt"></i> @_localizer["Change Colors"]
+                        </a>
+                    </li>
+                    <li class="sidebar-sub-toggle @activeMenuClass(new[] { "Report" })">
+                        <a href="javascript:void(0);">
+                            <i class="ti-bar-chart-alt"></i> @_localizer["Reports"]
+                            <span class="sidebar-collapse-icon ti-angle-down"></span>
+                        </a>
+                        <ul class="sidebar-submenu" style="@submenuStyle(new[] { "Report" })">
+                            <li class="@activeClass("Report", "Index")">
+                                <a href="/Report/Index">@_localizer["Daily Sale Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "CategoryWiseSalereport")">
+                                <a href="/Report/CategoryWiseSalereport">@_localizer["Category Sale Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "Customers")">
+                                <a href="/Report/Customers">@_localizer["Customer Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "StockReport")">
+                                <a href="/Report/StockReport">@_localizer["StockReport"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "ItemReport")">
+                                <a href="/Report/ItemReport">@_localizer["Item Report"]</a>
+                            </li>
+                        </ul>
+                    </li>
+
+
+                    <li><a href="@Url.Action("Logout", "Account")"><i class="ti-close"></i> @_localizer["Logout"]</a></li>
+                </ul>
+
+            </div>
+        </div>
+    </div>
+
+
+    <div class="header">
+        <div class="pull-left">
+            <div class="logo"><a href="~/WebHome/Index"target="_blank"><!-- <img src="assets/images/logo.png" alt="" /> --><span>@_localizer["E-Commerce Admin"]</span></a></div>
+            <div class="hamburger sidebar-toggle">
+                <span class="line"></span>
+                <span class="line"></span>
+                <span class="line"></span>
+            </div>
+        </div>
+        <div class="pull-right p-r-15">
+            <ul>
+@* 
+                @await Html.PartialAsync("_Notificatiopartial", new EcommerceWebApplication.Models.LatestOrdersViewModel {
+                Orders = new List<EcommerceWebApplication.Models.LatestOrderItem>(),
+                                NewOrdersCount = 0,
+                                LastOrderId = 0
+                                })
+ *@
+                @*  <li class="header-icon dib"><a href="#search"><i class="ti-search"></i></a></li> *@
+              @*   <li class="header-icon dib">
+
+                    <i class="ti-bell"></i>
+                    <div class="drop-down">
+
+                        <div class="dropdown-content-heading">
+                            <span class="text-left">@_localizer["Recent"]</span>
+                        </div>
+                        <div class="dropdown-content-body">
+                            <ul>
+                                <li>
+                                    <a href="#">
+                                        <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                        <div class="notification-content">
+                                            <small class="notification-timestamp pull-right">02:34 PM</small>
+                                            <div class="notification-heading">Mr.  Ajay</div>
+                                            <div class="notification-text">5 members joined today </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#">
+                                        <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                        <div class="notification-content">
+                                            <small class="notification-timestamp pull-right">02:34 PM</small>
+                                            <div class="notification-heading">Mr.  Ajay</div>
+                                            <div class="notification-text">likes a photo of you</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#">
+                                        <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                        <div class="notification-content">
+                                            <small class="notification-timestamp pull-right">02:34 PM</small>
+                                            <div class="notification-heading">Mr.  Ajay</div>
+                                            <div class="notification-text">Hi Teddy, Just wanted to let you ...</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#">
+                                        <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                        <div class="notification-content">
+                                            <small class="notification-timestamp pull-right">02:34 PM</small>
+                                            <div class="notification-heading">Mr.  Ajay</div>
+                                            <div class="notification-text">Hi Teddy, Just wanted to let you ...</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li class="text-center">
+                                    <a href="#" class="more-link">See All</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </li>  *@
+                <li class="header-icon dib" id="notificationDropdown">
+                    <div style="position: relative; display: inline-block;">
+                        <i class="ti-bell" style="font-size: 24px; color: #333;"></i>
+                        <span id="notificationCountBadge"
+                              class="badge badge-danger"
+                              style="position: absolute; top: -6px; right: -8px; background-color: red; color: white; font-size: 12px; padding: 2px 5px; border-radius: 50%; min-width: 18px; text-align: center; line-height: 16px;font-weight: bold;">
+                          
+                        </span>
+                    </div>
+                    <div class="drop-down">
+                        <div class="dropdown-content-heading">
+                            <span class="text-left">@_localizer["Recent"]</span>
+                        </div>
+                        <div class="dropdown-content-body">
+
+                            <ul id="notificationList" style="max-height: 380px; overflow-y: auto; padding-right: 5px; margin: 0; padding: 0; list-style: none;">
+@*                                    <li>
+                                        <a href="#">
+                                            <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                            <div class="notification-content">
+                                                <small class="notification-timestamp pull-right">02:34 PM</small>
+                                                <div class="notification-heading">Mr.  Ajay</div>
+                                                <div class="notification-text">5 members joined today </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#">
+                                            <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                            <div class="notification-content">
+                                                <small class="notification-timestamp pull-right">02:34 PM</small>
+                                                <div class="notification-heading">Mr.  Ajay</div>
+                                                <div class="notification-text">likes a photo of you</div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#">
+                                            <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                            <div class="notification-content">
+                                                <small class="notification-timestamp pull-right">02:34 PM</small>
+                                                <div class="notification-heading">Mr.  Ajay</div>
+                                                <div class="notification-text">Hi Teddy, Just wanted to let you ...</div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#">
+                                            <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                                            <div class="notification-content">
+                                                <small class="notification-timestamp pull-right">02:34 PM</small>
+                                                <div class="notification-heading">Mr.  Ajay</div>
+                                                <div class="notification-text">Hi Teddy, Just wanted to let you ...</div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="text-center">
+                                        <a href="#" class="more-link">See All</a>
+                                    </li> *@
+                                </ul>
+                            
+                        </div>
+                    </div>
+                </li>
+
+                <!-- ✅ Language Dropdown -->
+                <li class="header-icon dib toggleRTL" style="cursor: pointer;">
+                    <i class="fa fa-language"></i>
+                    <span class="user-avatar">@culture</span>
+                </li>
+
+                               <li class="header-icon dib">
+                    <img class="avatar-img" src="assets/images/avatar/1.jpg" alt="" />
+                    <span class="user-avatar">
+                        @User.FindFirstValue(ClaimTypes.Name) <i class="ti-angle-down f-s-10"></i>
+                    </span>
+
+                    <div class="drop-down dropdown-profile bg-light">
+                        <div class="dropdown-content-heading">
+                            <span class="text-left">@_localizer["Settings"]</span>
+                        </div>
+
+                        <div class="dropdown-content-body">
+                            <ul>
+                                <!-- RTL Switch -->
+                                @* <li>
+									<a href="javascript:void(0)" id="toggleRTL" class="toggleRTL">
+										<i class="ti-exchange-vertical"></i> Switch RTL/LTR
+									</a>
+								</li> *@
+
+                                <!-- Logout -->
+                                <li>
+                                    <a href="@Url.Action("Logout", "Account")"><i class="ti-close"></i> @_localizer["Logout"]</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </li>
+
+
+            </ul>
+        </div>
+    </div>
+    <div class="content-wrap">
+        <div class="main">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="page-header">
+                            <div class="page-title">
+                                <h1>@pageTitle</h1>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- /# column -->
+                </div>
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <div id="search">
+        <button type="button" class="close">×</button>
+        <form>
+            <input type="search" value="" placeholder="type keyword(s) here" />
+            <button type="submit" class="btn btn-primary">@_localizer["Search"]</button>
+        </form>
+    </div>
+    <script src="/AdminTheame/assets/js/lib/jquery.min.js"></script>
+    <!-- bootstrap -->
+    <script src="/AdminTheame/assets/js/lib/bootstrap.min.js"></script>
+    <!-- jquery vendor -->
+    <script src="/AdminTheame/assets/js/lib/jquery.nanoscroller.min.js"></script>
+    <!-- nano scroller -->
+    <script src="/AdminTheame/assets/js/lib/menubar/sidebar.js"></script>
+    <script src="/AdminTheame/assets/js/lib/preloader/pace.min.js"></script>
+    <!-- sidebar -->
+ 
+    <script src="/AdminTheame/assets/js/lib/weather/jquery.simpleWeather.min.js"></script>
+    <script src="/AdminTheame/assets/js/lib/weather/weather-init.js"></script>
+    <script src="/AdminTheame/assets/js/lib/circle-progress/circle-progress.min.js"></script>
+    <script src="/AdminTheame/assets/js/lib/circle-progress/circle-progress-init.js"></script>
+    @*<script src="/AdminTheame/assets/js/lib/chartist/chartist.min.js"></script>
+    <script src="/AdminTheame/assets/js/lib/chartist/chartist-init.js"></script> *@
+    <script src="/AdminTheame/assets/js/lib/sparklinechart/jquery.sparkline.min.js"></script>
+    <script src="/AdminTheame/assets/js/lib/sparklinechart/sparkline.init.js"></script>
+    <script src="/AdminTheame/assets/js/lib/owl-carousel/owl.carousel.min.js"></script>
+    <script src="/AdminTheame/assets/js/lib/owl-carousel/owl.carousel-init.js"></script>
+    <script src="/AdminTheame/assets/js/scripts.js"></script>
+    <script src="/js/navigation.js"></script>
+
+    <script>
+
+        async function loadNotificationCount() {
+            try {
+                const countRes = await fetch('/api/EcommerceApi/GetNotificationCount');
+                const countData = await countRes.json();
+                document.getElementById('notificationCountBadge').innerText =
+                    countData.unseenCount > 0 ? countData.unseenCount : '';
+            } catch (err) {
+                console.error('Error loading notification count:', err);
+            }
+        }
+
+
+        async function loadNotifications() {
+            try {
+                const res = await fetch('/api/EcommerceApi/GetNewOrders');
+                const data = await res.json();
+
+                const list = document.getElementById('notificationList');
+                list.innerHTML = ''; // Clear existing items
+
+                if (data.length === 0) {
+                    list.innerHTML = '<li class="text-center">No new notifications</li>';
+                    return;
+                }
+
+                data.forEach(order => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+
+                        <a href="#">
+                            <img class="pull-left m-r-10 avatar-img" src="assets/images/avatar/3.jpg" alt="" />
+                            <div class="notification-content">
+                                      <small class="notification-timestamp pull-right">
+                                     ${new Date(order.createdAt).toLocaleTimeString('en-US', {
+                                       hour: 'numeric',
+                                       minute: '2-digit',
+                                       hour12: true
+                                       })}
+                                      </small>
+    
+                                <div class="notification-heading">Order #${order.orderId}</div>
+                                <div class="notification-text">
+                                  New Order Received from ${order.fullName}
+                                </div>
+                                 <div class="notification-text" style="display: flex; justify-content: space-between;">
+                                <span class="notification-heading">Total Amount: ${order.totalAmount.toFixed(3)} KD</span>
+                                <span style="color: ${order.paymentMode === 'cod' ? 'crimson' : 'green'}; font-weight: bold;">
+                                  ${order.paymentType}
+                                </span>
+                                </div>
+
+
+                            </div>
+                        </a>
+                    `;
+                    list.appendChild(li);
+                });
+
+        const seeAll = document.createElement('li');
+        seeAll.classList.add('text-center');
+        seeAll.style.cssText = `
+            background-color: #f8f9fa;
+            padding: 10px;
+            cursor: pointer;
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        `;
+        seeAll.innerText = 'See All';
+
+        // Hover effect (optional, looks nice)
+        seeAll.addEventListener('mouseenter', () => {
+            seeAll.style.backgroundColor = '#e9ecef';
+        });
+        seeAll.addEventListener('mouseleave', () => {
+            seeAll.style.backgroundColor = '#f8f9fa';
+        });
+
+        // Make the entire <li> clickable
+        seeAll.addEventListener('click', () => {
+            window.location.href = '/ManageOrders/PendingOrder';
+        });
+
+        list.appendChild(seeAll);
+
+
+            } catch (err) {
+                console.error('Error loading notifications:', err);
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNotificationCount();
+            loadNotifications();
+        });
+               
+
+            // ⏱️ Set interval to refresh every 15 seconds
+            setInterval(() => {
+                loadNotificationCount();
+                //loadNotifications();
+            }, 5000); // 15000 milliseconds = 15 seconds
+
+
+               document.getElementById('notificationDropdown').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                loadNotifications();
+                // Mark all as seen but don't reload notification list immediately
+                await fetch('/api/EcommerceApi/MarkNotificationsAsSeen');
+                document.getElementById('notificationCountBadge').innerText = '';
+                // Dropdown content should remain visible — so no loadNotifications() here
+            } catch (err) {
+                console.error('Error marking notifications as seen:', err);
+            }
+        });
+
+        // When dropdown closes (click outside)
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('notificationDropdown');
+            if (dropdown.classList.contains('show') && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+                // Reload notifications when dropdown is closed
+                loadNotifications();
+            }
+        });
+
+       
+    </script>
+
+@*     <script>
+        // Function to just fetch unseen notification count
+        async function loadNotificationCount() {
+            const res = await fetch('/api/EcommerceApi/GetNotificationCount');
+            const data = await res.json();
+            document.getElementById('notificationCountBadge').innerText =
+                data.unseenCount > 0 ? data.unseenCount : '';
+        }
+
+        // Load count when page loads (just count, no update)
+        document.addEventListener('DOMContentLoaded', loadNotificationCount);
+
+        // When bell icon clicked, mark as seen
+        document.getElementById('notificationDropdown').addEventListener('click', async () => {
+            await fetch('/api/EcommerceApi/MarkNotificationsAsSeen');
+            document.getElementById('notificationCountBadge').innerText = '';
+        });
+    </script> *@
+
+
+    <script>
+        $(document).ready(function () {
+            let layoutDir = getCookie("LayoutDirection") || "ltr";
+
+            // Set direction
+            document.body.setAttribute("dir", layoutDir);
+
+            // Apply CSS
+            const rtlLink = document.getElementById("rtlStyles");
+            if (layoutDir === "rtl") {
+                rtlLink.setAttribute("href", "/AdminTheame/assets/css/rtl.css");
+            } else {
+                rtlLink.setAttribute("href", "");
+            }
+        });
+        // 🟢 Helper: Get cookie value
+        // function getCookie(name) {
+        // 	let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        // 	return match ? match[2] : null;
+        // }
+        function getCookie(name) {
+            let value = `; ${document.cookie}`;
+            let parts = value.split(`; ${name}=`);
+            return parts.length === 2 ? parts.pop().split(';').shift() : null;
+        }
+
+        // 🟢 On page load, set direction from cookie
+        document.addEventListener("DOMContentLoaded", function () {
+            let layoutDir = getCookie("LayoutDirection") || "ltr";
+            document.body.setAttribute("dir", layoutDir);
+
+            if (layoutDir === 'rtl') {
+                document.getElementById("rtlStyles").setAttribute("href", "/AdminTheame/assets/css/rtl.css");
+            }
+
+            // 🔒 Prevent duplicate click handlers
+            const toggleButton = document.querySelector(".toggleRTL");
+            if (toggleButton) {
+                toggleButton.addEventListener("click", manageLayoutDirection, { once: true }); // ❗Run only once
+            }
+        });
+
+        // 🔄 Toggle between RTL and LTR
+        function manageLayoutDirection() {
+                let cultureText = document.querySelector(".toggleRTL .user-avatar")?.innerText.trim().toLowerCase() || "en";
+            let newCulture = (cultureText === "ar" || cultureText === "ar-kw") ? "en" : "ar";
+            let newDirection = newCulture.startsWith("ar") ? "rtl" : "ltr";
+
+            // Set cookie only — server will handle layout + reload
+            document.cookie = "LayoutDirection=" + newDirection + "; path=/";
+
+            // Redirect to change culture and re-render correctly
+            let returnUrl = window.location.pathname + window.location.search;
+            window.location.href = `/Home/SetLanguage?culture=${newCulture}&returnUrl=${encodeURIComponent(returnUrl)}`;
+        }
+
+        // side bar active  start
+
+            document.addEventListener("DOMContentLoaded", function () {
+            const currentUrl = window.location.pathname.toLowerCase();
+            const menuItems = document.querySelectorAll(".sidebar ul li a");
+            menuItems.forEach(item => {
+                if (item.getAttribute("href").toLowerCase() === currentUrl) {
+                    item.parentElement.classList.add("active");
+                } else {
+                    item.parentElement.classList.remove("active");
+                }
+            });
+        });
+       
+
+        // Sidebar active  end 
+
+        // ✅ SweetAlert Global
+        function showAlert(title, message, icon = 'success') {
+            Swal.fire({
+                title: title,
+                text: message,
+                icon: icon,
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        // ✅ Show TempData messages
+                @if (TempData["Success"] != null)
+        {
+                    var msg = TempData["Success"].ToString().Replace("'", "\\'");
+                    <text>
+                        document.addEventListener("DOMContentLoaded", function () {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: '@msg',
+                                confirmButtonText: 'OK',
+                                showConfirmButton: true
+                            }).then(() => {
+                                // ✅ OK ke baad first column pe focus
+                                const form = document.querySelector("#NavigationKey");
+                                if (form) {
+                                    const firstField = form.querySelector("input, select, textarea");
+                                    if (firstField) {
+                                        firstField.focus();
+                                        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    }
+                                }
+                            })
+                        });
+                    </text>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+                    var msg = TempData["Error"].ToString().Replace("'", "\\'");
+                    <text>
+                        document.addEventListener("DOMContentLoaded", function () {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: '@msg',
+                                confirmButtonText: 'OK',
+                                showConfirmButton: true
+                            }).then(() => {
+                                // ✅ OK ke baad first column pe focus
+                                const form = document.querySelector("#NavigationKey");
+                                if (form) {
+                                    const firstField = form.querySelector("input, select, textarea");
+                                    if (firstField) {
+                                        firstField.focus();
+                                        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    }
+                                }
+                            })
+                        });
+                    </text>
+        }
+
+    </script>
+   
+    <script>
+        $(document).ready(function () {
+            $(".sidebar-sub-toggle > a").click(function (e) {
+                e.preventDefault();
+
+                var $parent = $(this).parent("li");
+                var $submenu = $parent.find("ul.sidebar-submenu").first();
+
+             
+                $(".sidebar-submenu").not($submenu).slideUp(200);
+                $(".sidebar-sub-toggle").not($parent).removeClass("active");
+
+             
+                $submenu.slideToggle(200);
+                $parent.toggleClass("active");
+            });
+        });
+    </script>
+
+    @RenderSection("Scripts", required: false)
+    <partial name="_ValidationScriptsPartial" />
+</body>
+</html>

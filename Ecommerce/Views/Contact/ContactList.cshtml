@@ -1,0 +1,256 @@
+﻿
+
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ContactMessage>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    ViewData["Title"] = "Contact Messages";
+    var contactJson = System.Text.Json.JsonSerializer.Serialize(Model);
+    string searchName = ViewBag.SearchName as string ?? "";
+}
+
+<!-- jsGrid styles -->
+
+<div id="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header" id="NavigationKey">
+                    <form id="filterForm" class="form-inline mt-2" style="margin-bottom: 11px;">
+                            
+                        <div class="form-group me-3" style="position:relative;">
+                            <label for="name" class="me-1" style="margin-right: 5px;">@_localizer["Name"]:</label>
+                            <input type="text" id="name" name="name" class="form-control" autocomplete="off" value="@ViewBag.SearchName" style="width: 200px; display: inline-block;" />
+                            <ul id="suggestions" style="display:none;
+                                position:absolute;
+                                background:white;
+                                list-style:none;
+                                padding:0;
+                                margin:0;
+                                width:100%;  /* width same as input */
+                                max-height:200px;
+                                overflow-y:auto;
+                                border:1px solid #ccc;
+                                z-index:1000;">
+                                <!-- Suggestions dynamically appended here -->
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="submitFilter()">@_localizer["Search"]</button>
+                    
+                    </form>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card alert">
+
+
+                            <div class="card-body" style="overflow-y:auto; height:70vh">
+                                @{
+                                    int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
+                                }
+                                <table class="table table-hover">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                        <tr>
+                                            <th class="text-center"> @_localizer["SN"]</th>
+                                            <th class="text-center"> @_localizer["ID"]</th>
+                                            <th class="text-start"> @_localizer["Name"]</th>
+                                            <th class="text-center"> @_localizer["Email"]</th>
+                                            <th class="text-center"> @_localizer["Message"]</th>
+                                            <th class="text-center"> @_localizer["Created Date"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.Items)
+                                        {
+                                            <tr>
+                                                <td class="text-center">@serial</td>
+                                                <td class="text-center">@item.Id</td>
+                                                <td class="text-start">@item.FullName</td>
+                                                <td class="text-start">@item.Email</td>
+                                                <td class="text-start">@item.Message</td>
+                                            
+                                                <td class="text-center">@(item.SubmittedAt.ToString("dd-MM-yyyy") ?? "")</td>
+                                               
+                                            </tr>
+                                            serial++;
+                                        }
+                                    </tbody>
+                                </table>
+
+
+                                <!-- ✅ Pagination (Same as UserList) -->
+                                
+                                <div class="text-center">
+                                    <ul class="pagination justify-content-center">
+
+                                        <!-- First & Previous -->
+                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                            <a class="page-link" asp-action="ContactList" asp-route-page="1"
+                                               asp-route-name="@ViewBag.SearchName">
+                                                @_localizer["First"]
+                                            </a>
+                                        </li>
+
+                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                            <a class="page-link" asp-action="ContactList" asp-route-page="@(Model.PageNumber - 1)"
+                                               asp-route-name="@ViewBag.SearchName">
+                                                @_localizer["Previous"]
+                                            </a>
+                                        </li>
+
+                                        @{
+                                            int maxPagesToShow = 10; // ek time me 5 pages hi dikhaye
+                                            int startPage = Math.Max(1, Model.PageNumber - 2);
+                                            int endPage = Math.Min(Model.TotalPages, startPage + maxPagesToShow - 1);
+
+                                            // Agar last pages ke karan startPage adjust karna ho
+                                            if (endPage - startPage + 1 < maxPagesToShow)
+                                            {
+                                                startPage = Math.Max(1, endPage - maxPagesToShow + 1);
+                                            }
+
+                                            // Agar 1 se pehle bhi pages hain
+                                            if (startPage > 1)
+                                            {
+                                                <li class="page-item">
+                                                    <a class="page-link" asp-action="ContactList" asp-route-page="1"
+                                                       asp-route-name="@ViewBag.SearchName">1</a>
+                                                </li>
+                                                if (startPage > 2)
+                                                {
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                }
+                                            }
+
+                                            // Main visible page loop
+                                            for (int i = startPage; i <= endPage; i++)
+                                            {
+                                                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                                    <a class="page-link" asp-action="ContactList" asp-route-page="@i"
+                                                       asp-route-name="@ViewBag.SearchName">@i</a>
+                                                </li>
+                                            }
+
+                                            // Agar last ke baad bhi pages hain
+                                            if (endPage < Model.TotalPages)
+                                            {
+                                                if (endPage < Model.TotalPages - 1)
+                                                {
+                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                }
+                                                <li class="page-item">
+                                                    <a class="page-link" asp-action="ContactList" asp-route-page="@Model.TotalPages"
+                                                       asp-route-name="@ViewBag.SearchName">@Model.TotalPages</a>
+                                                </li>
+                                            }
+                                        }
+
+                                        <!-- Next & Last -->
+                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                            <a class="page-link" asp-action="ContactList" asp-route-page="@(Model.PageNumber + 1)"
+                                               asp-route-name="@ViewBag.SearchName">
+                                                @_localizer["Next"]
+                                            </a>
+                                        </li>
+
+                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                            <a class="page-link" asp-action="ContactList" asp-route-page="@Model.TotalPages"
+                                               asp-route-name="@ViewBag.SearchName">
+                                                @_localizer["Last"]
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->"
+    <div class="row mt-3">
+        <div class="col-lg-12">
+            <div class="footer">
+                <p>
+                        @_localizer["This dashboard was generated on"] <span id="date-time"></span>
+                        <a href="#" class="page-refresh">@_localizer["Refresh Dashboard"]</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <!-- jsGrid scripts -->
+ 
+    <script>
+                function submitFilter() {
+            const name = document.getElementById('name').value.trim();
+
+            let url = "/Contact/ContactList?";
+            const params = [];
+
+            if (name) params.push(`name=${encodeURIComponent(name)}`);
+
+            url += params.join("&");
+            window.location.href = url;
+        }
+
+        function resetFilter() {
+            window.location.href = "/Contact/ContactList";
+        }
+
+    </script>
+    <script>
+        $(document).ready(function () {
+
+            function fetchCategorySuggestions(query) {
+                if (!query || query.length < 2) {
+                    $('#suggestions').hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Contact/AutoCompleteSql',
+                    type: 'GET',
+                    data: { term: query },
+                    success: function(data) {
+                        let $suggestionBox = $('#suggestions');
+                        $suggestionBox.empty();
+
+                        if (data && data.length > 0) {
+                            data.forEach(function(item) {
+                                $('<li></li>')
+                                    .text(item)
+                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                    .on('click', function() {
+                                        $('#name').val(item);
+                                        $suggestionBox.hide();
+                                        $('#name').focus();
+                                    })
+                                    .appendTo($suggestionBox);
+                            });
+                            $suggestionBox.show();
+                        } else {
+                            $suggestionBox.hide();
+                        }
+                    }
+                });
+            }
+
+            $('#name').on('input', function() {
+                fetchCategorySuggestions($(this).val());
+            });
+
+            enableSuggestionNavigation('#name', '#suggestions');
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#name, #suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+}

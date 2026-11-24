@@ -1,0 +1,168 @@
+﻿@model List<EcommerceWebApplication.Models.ViewModels.CategoryListViewModel>
+<style>
+    /* Active category background */
+    .category-link.active {
+        background-color: rgba(7, 90, 150, 0.15);
+        border-radius: 2px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transform: translateY(-3px);
+        transition: 0.3s;
+        padding: 2px;
+    }
+
+    /* Hover effect */
+    .category-link:hover {
+        background-color: rgba(7, 90, 150, 0.1);
+        border-radius: 2px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+        transition: 0.3s;
+    }
+
+    .category-img {
+        width: 60px;
+        height: 40px;
+        object-fit: cover;
+    }
+
+    /* Fixed container for consistent sizing */
+    .category-list li {
+        width: 50%;
+    }
+
+        .category-list li {
+            width: 100%;
+            max-width: 130px;
+            min-width: 130px;
+        }
+
+    /* Fixed width text container with truncation */
+    .category-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        width: 120px;
+        max-width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: center;
+        margin: 0 auto;
+        padding: 0 5px;
+    }
+
+    /* Responsive adjustments */
+    @@media(min-width: 576px) and (max-width: 768px) {
+        .category-list li
+
+    {
+        max-width: 80px;
+        min-width: 80px;
+    }
+
+    .category-name {
+        width: 80px;
+        max-width: 80px;
+        font-size: 0.7rem;
+    }
+
+        .lisst {
+            margin-bottom: 0.8rem !important;
+        }
+        .category-img {
+            width: 50px;
+            height: 30px;
+            object-fit: cover;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .category-list li
+
+    {
+        max-width: 65px;
+        min-width: 60px;
+    }
+
+    .category-name {
+        width: 69px;
+        max-width: 60px;
+        font-size: 0.6rem;
+    }
+
+        .lisst {
+            margin-bottom: 0.7rem !important;
+        }
+
+        .category-img {
+            width: 40px;
+            height: 20px;
+            object-fit: cover;
+        }
+    }
+
+    .lisst {
+        margin-bottom: 0.8rem !important;
+    }
+</style>
+
+<ul class="list-unstyled category-list d-flex flex-column align-items-center">
+    @foreach (var item in Model)
+    {
+        <li class="text-center lisst">
+            <a href="#"
+               class="category-link text-decoration-none text-dark d-flex flex-column align-items-center"
+               data-categoryid="@item.CategoryId">
+
+                <img src="@item.CategoryImageBase64"
+                     class="rounded mb-1 category-img" />
+
+                <div class="fw-semibold small category-name"
+                     title="@item.CName">
+                    @item.CName
+                </div>
+            </a>
+        </li>
+    }
+</ul>
+
+
+
+
+
+
+@* <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoryLinks = document.querySelectorAll('.category-link');
+
+        // 🔹 Default: first category active
+        if (categoryLinks.length > 0) {
+            categoryLinks[0].classList.add('active');
+        }
+
+        // 🔹 Click event: set clicked category active
+        categoryLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                // Remove active from all
+                categoryLinks.forEach(l => l.classList.remove('active'));
+
+                // Set active on clicked
+                this.classList.add('active');
+
+                // Optional: load products or do anything else here
+                const catId = this.dataset.categoryid;
+                console.log('Selected CategoryId:', catId);
+            });
+        });
+
+        // 🔹 Optional: if coming from another page with JS param
+        const selectedCatId = window.selectedCategoryId; // agar global JS var set kiya ho
+        if (selectedCatId) {
+            categoryLinks.forEach(link => {
+                if (link.dataset.categoryid == selectedCatId) {
+                    categoryLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                }
+            });
+        }
+    });
+</script> *@

@@ -1,0 +1,77 @@
+﻿@using System.Globalization
+@model List<EcommerceWebApplication.Models.blogMaster>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    var culture = CultureInfo.CurrentCulture;
+    bool isArabic = culture.TextInfo.IsRightToLeft;
+}
+@{
+    ViewData["Title"] = "About";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+
+<div class="container my-4" style="max-width:1100px;">
+    <div class="row g-4">
+
+        @foreach (var blog in Model.Where(b => b.IsActive == 1))
+        {
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm d-flex flex-column">
+
+                    <!-- Title -->
+                    <div class="card-body pb-2">
+                        @if (isArabic)
+                        {
+                            <h5 class="card-title text-center fw-bold">
+                                @blog.TitleArbic
+                            </h5>
+                        }
+                        else
+                        {
+                            <h5 class="card-title text-center fw-bold">
+                                @blog.Title
+                            </h5>
+                        }
+                       
+                    </div>
+
+                    <!-- Image (NO FIXED HEIGHT) -->
+                    <div class="ratio ratio-16x9 px-3">
+                        @if (blog.BlogImage != null && blog.BlogImage.Length > 0)
+                        {
+                            var imgBase64 = Convert.ToBase64String(blog.BlogImage);
+                            var imgSrc = $"data:image/png;base64,{imgBase64}";
+                            <img src="@imgSrc"
+                                 class="img-fluid rounded"
+                                 alt="@blog.Title" />
+                        }
+                        else
+                        {
+                            <img src="https://via.placeholder.com/600x400?text=No+Image"
+                                 class="img-fluid rounded" />
+                        }
+                    </div>
+
+                    <!-- Description (NO CUT) -->
+                    <div class="card-body mt-2">
+                        @if (isArabic)
+                        {
+                            <p class="card-text text-secondary">
+                                @blog.DescriptionArb
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="card-text text-secondary">
+                                @blog.DescriptionEng
+                            </p>
+                        }
+                        
+                    </div>
+
+                </div>
+            </div>
+        }
+
+    </div>
+</div>

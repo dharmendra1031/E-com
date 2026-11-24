@@ -1,0 +1,180 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+
+@{
+    ViewData["Title"] = "Item report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert" style="min-height: calc(100vh - 160px);">
+
+                <!-- Card Header -->
+                <div class="card-header">
+                    <h4>
+                        <i class="fas fa-file-alt"></i>
+                        @_localizer["Filter Item File Report"]
+                    </h4>
+                  
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="basic-form">
+                        <form method="get" asp-controller="Report" asp-action="ItemfileReport" id="NavigationKey" target="_blank">
+
+                            <div class="row">
+                               
+                                <div class="col-md-3">
+
+                                    <label for="ProductName" class="form-label">@_localizer["Product Name"]:</label>
+                                    <input type="text" id="name" name="name" class="form-control"  />
+                                    <ul id="suggestions" style="display:none;
+                                position:absolute;
+                                background:white;
+                                list-style:none;
+                                padding:0;
+                                margin:0;
+                                width:100%;  /* width same as input */
+                                max-height:200px;
+                                overflow-y:auto;
+                                border:1px solid #ccc;
+                                z-index:1000;">
+                                        <!-- Suggestions dynamically appended here -->
+                                    </ul>
+                                </div>
+                                <!-- Sale Price -->
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>@_localizer["Sale Price"]</label>
+                                        <input type="text" name="salePrice" id="salePrice" class="form-control" onkeypress="return ValidAmount(event, this);" maxlength="8"/>
+                                    </div>
+                                </div>
+
+                                <!-- Status -->
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>@_localizer["Status"]</label>
+                                        <select name="status" id="status" class="form-control">
+                                            <option value=""selected></option>
+                                            <option value="Active">@_localizer["Active"]</option>
+                                            <option value="Inactive">@_localizer["Inactive"]</option>
+                                        </select>
+                                    </div>
+                                </div>
+                               @*  <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>@_localizer["Export Format"]</label>
+                                        <select name="format" id="format" class="form-control">
+                                            <option value="PDF">PDF</option>
+                                            <option value="Excel">Excel</option>
+                                            <option value="Word">Word</option>
+                                        </select>
+                                    </div>
+                                </div> *@
+                                <div class="col-md-3" id="format">
+                                    <label class="form-label d-block">@_localizer["Export"]:</label>
+                                    <br>
+                                    <label class="radio-inline">
+                                        <input type="radio" name="Format" value="PDF" checked> @_localizer["PDF"]
+                                    </label>
+
+                                    <label class="radio-inline">
+                                        <input type="radio" name="Format" value="Excel"> @_localizer["Excel"]
+                                    </label>
+
+                                </div>
+                            </div>
+
+                            <!-- Checkboxes -->
+                            <div class="row g-3 mt-3">
+                                <div class="col-md-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="showCategory" id="showCategory" value="true" class="form-check-input" checked />
+                                        <label for="showCategory" class="form-check-label">@_localizer["Show Category"]</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="showStock" id="showStock" value="true" class="form-check-input" checked />
+                                        <label for="showStock" class="form-check-label">@_localizer["Show Stock"]</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary mt-3">
+                                        <i class="fas fa-file-download"></i> @_localizer["Export"]
+                                    </button>
+                                </div>
+                            </div>
+
+                            
+
+                            <!-- Submit -->
+                            <div class="row">
+                               
+                            </div>
+                        </form>
+
+                    </div>
+                </div> <!-- End Card Body -->
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
+<script>
+    $(document).ready(function () {
+       
+        function fetchCategorySuggestions(query) {
+            if (!query || query.length < 2) {
+                $('#suggestions').hide();
+                return;
+            }
+
+            $.ajax({
+                url: '/Report/AutoCompleteSql',
+                type: 'GET',
+                data: { term: query },
+                success: function(data) {
+                    let $suggestionBox = $('#suggestions');
+                    $suggestionBox.empty();
+
+                    if (data && data.length > 0) {
+                        data.forEach(function(item) {
+                            $('<li></li>')
+                                .text(item)
+                                .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
+                                .on('click', function() {
+                                    $('#name').val(item);
+                                    $suggestionBox.hide();
+                                    $('#name').focus();
+                                })
+                                .appendTo($suggestionBox);
+                        });
+                        $suggestionBox.show();
+                    } else {
+                        $suggestionBox.hide();
+                    }
+                }
+            });
+        }
+
+        $('#name').on('input', function() {
+            fetchCategorySuggestions($(this).val());
+        });
+
+        enableSuggestionNavigation('#name', '#suggestions');
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#name, #suggestions').length) {
+                $('#suggestions').hide();
+            }
+        });
+    });
+</script>
+}

@@ -1,0 +1,119 @@
+﻿@model EcommerceWebApplication.Models.AboutUs
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    ViewData["Title"] = "UpdateAbout";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4>@_localizer["Update About Us"]</h4>
+                </div>
+
+                <div class="card-body">
+                    <div class="basic-form">
+                        <form asp-action="Create" id="NavigationKey" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["Title (Arb)"] <span style="color:red;"> * </span></label>
+                                    <input asp-for="TitleArb" class="form-control" />
+                                    <span asp-validation-for="TitleArb" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["Title (Eng)"] <span style="color:red;"> * </span></label>
+                                    <input asp-for="TitleEng" class="form-control" />
+                                    <span asp-validation-for="TitleEng" class="text-danger"></span>
+                                </div>
+                               
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["SubTitle(AR)"] <span style="color:red;"> * </span></label>
+                                    <input asp-for="SubTitleArb" class="form-control" />
+                                    <span asp-validation-for="SubTitleArb" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["SubTitle (EN)"] <span style="color:red;"> * </span></label>
+                                    <input asp-for="SubTitleEng" class="form-control" />
+                                    <span asp-validation-for="SubTitleEng" class="text-danger"></span>
+                                </div>
+                               
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["Description (AR)"] <span style="color:red;"> * </span></label>
+                                    <textarea asp-for="DescriptionArb" class="form-control" rows="5"></textarea>
+                                    <span asp-validation-for="DescriptionArb" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["Description[EN]"] <span style="color:red;"> * </span></label>
+                                    <textarea asp-for="DescriptionEng" class="form-control" rows="5"></textarea>
+                                    <span asp-validation-for="DescriptionEng" class="text-danger"></span>
+                                </div>
+                                
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="fw-bold">@_localizer["Image"] </label>
+                                    <input type="file" id="aboutImageInput" name="AboutImageFile" class="form-control" accept="image/*" />
+                                   
+                                    <div class="mt-2">
+                                        <img id="aboutImagePreview"
+                                             src="@(Model.AboutImage != null ? $"data:image/png;base64,{Convert.ToBase64String(Model.AboutImage)}" : "#")"
+                                             alt="About Image"
+                                             style="@(Model.AboutImage != null ? "" : "display:none;") max-width:150px; max-height:150px; border:1px solid #ccc; padding:5px; border-radius:5px;" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary  btn-flat m-t-30">@_localizer["Update"]</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+   
+    <script>
+        document.getElementById("aboutImageInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById("aboutImagePreview");
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = "#";
+                preview.style.display = "none";
+            }
+        });
+
+        @if (TempData["Success"] != null)
+        {
+            <text>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: '@TempData["Success"]'
+                    });
+            </text>
+        }
+    </script>
+}

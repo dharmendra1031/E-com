@@ -1,0 +1,54 @@
+﻿@model EcommerceWebApplication.Models.BannerModel
+
+<h3>Edit Banner</h3>
+
+<form asp-action="EditBanner" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="BannerId" />
+
+    <div class="form-group mb-2">
+        <label>Title (English)</label>
+        <input asp-for="Title" class="form-control" />
+    </div>
+
+    <div class="form-group mb-2">
+        <label>Title (Arabic)</label>
+        <input asp-for="TitleArabic" class="form-control" />
+    </div>
+
+    <div class="form-group mb-2">
+        <label>Display Order</label>
+        <input asp-for="DisplayOrder" class="form-control" type="number" />
+    </div>
+
+    <div class="form-group mb-2">
+        <label>Current Image</label><br />
+
+        @if (Model.BannerImage != null)
+        {
+            var base64 = Convert.ToBase64String(Model.BannerImage);
+            <img src="data:image/png;base64,@base64" style="width:150px; height:80px; object-fit:cover;" />
+        }
+        else
+        {
+            <span>No Image</span>
+        }
+    </div>
+
+    <div class="form-group mb-2">
+        <label>Change Image (Optional)</label>
+        <input type="file" name="BannerFile" class="form-control" accept="image/*" onchange="loadPreview(event)" />
+    </div>
+
+    <img id="previewImg" style="width:150px; display:none; margin-top:10px;" />
+
+    <button class="btn btn-primary mt-3">Update Banner</button>
+    <a href="/Banner/AddBanner" class="btn btn-secondary mt-3">Back</a>
+</form>
+
+<script>
+    function loadPreview(event) {
+        var output = document.getElementById('previewImg');
+        output.src = URL.createObjectURL(event.target.files[0]);
+        output.style.display = "block";
+    }
+</script>

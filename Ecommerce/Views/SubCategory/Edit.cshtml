@@ -1,0 +1,153 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.SubCategory
+
+@{
+    ViewData["Title"] = "Edit Sub-Category";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4>@_localizer["Edit Sub-Category"]</h4>
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li> <a asp-controller="SubCategory" asp-action="List" class="btn btn-primary me-2"><i class="ti-bookmark-alt bg-info"></i>@_localizer["Sub-Category List"]</a></li>
+
+                        </ul>
+                    </div> <hr />
+                </div>
+
+                <div class="card-body">
+                    <div class="basic-form">
+                        <!-- ✅ Form posts to SubCategory/Edit -->
+                        <form asp-action="Edit" id="NavigationKey" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+
+                            <!-- Hidden SubCategory ID -->
+                            <input type="hidden" asp-for="SubCategoryId" />
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <!-- Parent Category Dropdown -->
+                                    <div class="form-group">
+                                        <label>@_localizer["Main Category"]  <span style="color:red">*</span></label>
+                                        <select asp-for="ParentCategoryId" class="form-control input-default focusOnEnter" asp-items="ViewBag.Categories">
+                                            <option value="">--Select--</option>
+                                        </select>
+                                        <span asp-validation-for="ParentCategoryId" class="text-danger"></span>
+                                    </div>
+
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Sub-Category Name (AR)"] <span style="color:red">*</span></label>
+                                        <input asp-for="SCNameArb" class="form-control input-default focusOnEnter" placeholder="أدخل اسم الفئة الفرعية" />
+                                        <span asp-validation-for="SCNameArb" class="text-danger"></span>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <!-- SubCategory Name (English) -->
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Sub-Category Name (EN)"] <span style="color:red">*</span></label>
+                                        <input asp-for="SCName" class="form-control input-default focusOnEnter" placeholder="Enter Sub-Category Name" />
+                                        <span asp-validation-for="SCName" class="text-danger"></span>
+                                    </div>
+
+
+                                </div>
+                                <div class="col-md-4">
+                                    <!-- Image Upload -->
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Image"]</label>
+                                        <input type="file" name="subCategoryImage" class="form-control input-focus" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <!-- IsActive -->
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Status"] <span style="color:red">*</span></label>
+                                        <select asp-for="IsActive" class="form-control input-default focusOnEnter">
+                                            <option value="true">@_localizer["Active"]</option>
+                                            <option value="false">@_localizer["Inactive"]</option>
+                                        </select>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <!-- Description (Arabic) -->
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Description[AR]"]</label>
+                                        <textarea asp-for="SCDescriptionArb" data-val="false" class="form-control input-flat focusOnEnter" data-val="false" placeholder="أدخل الوصف"></textarea>
+                                    </div>
+
+
+
+                                </div>
+
+                                <div class="col-md-4">
+                                    <!-- Description (English) -->
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Description[EN]"]</label>
+                                        <textarea asp-for="SCDescription" data-val="false" class="form-control input-flat focusOnEnter" data-val="false" placeholder="Enter Description"></textarea>
+                                    </div>
+
+
+                                </div>
+                               
+                                <div class="col-md-4">
+                                    <!-- Current Image Preview -->
+                                    <div class="form-group">
+                                        <label>@_localizer["Current Image"]</label><br />
+                                        @if (Model.SubCategoryImage != null)
+                                        {
+                                            string base64Image = "data:image/png;base64," + Convert.ToBase64String(Model.SubCategoryImage);
+                                            <img src="@base64Image" style="max-width:150px; border:1px solid #ddd; margin-bottom:10px;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No image uploaded</span>
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
+                            <!-- Show In Navigation -->
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label class="fw-bold">
+                                        @_localizer["Show In Navigation"]
+                                    </label>
+
+                                    <div class="form-check">
+                                        <input asp-for="showinnav" class="form-check-input" type="checkbox" />
+
+                                        <label asp-for="showinnav" class="form-check-label">
+                                            @_localizer["Display this sub-category in navigation menu"]
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            
+                            
+                            <!-- Submit -->
+                            <button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Update"]</button>
+                            <a asp-action="List" class="btn btn-secondary btn-flat m-t-30">@_localizer["Cancel"]</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

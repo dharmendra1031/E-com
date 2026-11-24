@@ -1,0 +1,263 @@
+﻿@model dynamic
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    ViewData["Title"] = "Permission List";
+    var permissionJson = System.Text.Json.JsonSerializer.Serialize(Model);
+}
+
+<div id="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4>@_localizer["Permission List"]</h4>
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li><a asp-action="RoleIndex" class="btn btn-primary"><i class="fas fa-lock"></i> @_localizer["Add Permission"]</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card alert">
+                            <div class="card-body" style="overflow-y:auto; height:70vh">
+                                @{
+                                    int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
+                                }
+
+                                <table class="table table-hover">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                        <tr>
+                                            <th class="text-center">@_localizer["SN"]</th>
+                                            <th class="text-center">@_localizer["ID"]</th>
+                                            <th class="text-center">@_localizer["Role"]</th>
+                                            <th class="text-center">@_localizer["Pages"]</th>
+                                            <th class="text-center">@_localizer["Create"]</th>
+                                            <th class="text-center">@_localizer["Update"]</th>
+                                            <th class="text-center">@_localizer["Delete"]</th>
+                                            <th class="text-center">@_localizer["List"]</th>
+                                            <th class="text-center">@_localizer["Report View"]</th>
+                                            <th class="text-center">@_localizer["Report Print"]</th>
+                                            <th class="text-center">@_localizer["Created Date"]</th>
+                                            <th class="text-center">@_localizer["Action"]</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach (var item in Model.Items)
+                                        {
+                                            <tr>
+                                                <td class="text-center">@serial</td>
+                                                <td class="text-center">@item.RolePermissionId</td>
+                                                <td class="text-center">@item.RoleName</td>
+                                                <td class="text-center">@item.PageName</td>
+
+                                                <td class="text-center">@(item.CreatePage == 1 ? "✅" : "❌")</td>
+                                                <td class="text-center">@(item.UpdatePage == 1 ? "✅" : "❌")</td>
+                                                <td class="text-center">@(item.DeletePage == 1 ? "✅" : "❌")</td>
+                                                <td class="text-center">@(item.ListPage == 1 ? "✅" : "❌")</td>
+                                                <td class="text-center">@(item.ReportView == 1 ? "✅" : "❌")</td>
+                                                <td class="text-center">@(item.ReportPrint == 1 ? "✅" : "❌")</td>
+
+                                                <td class="text-center">
+                                                    @if (item.CreatedAt != null)
+                                                    {
+                                                        @item.CreatedAt?.ToString("dd-MM-yyyy")
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>-</span>
+                                                    }
+                                                </td>
+
+                                                <td class="text-center">
+                                                    <a asp-action="RoleIndex" asp-controller="RolePermission" asp-route-id="@item.RolePermissionId" class="btn btn-sm btn-primary me-1">
+                                                        <i class="ti-pencil"></i>
+                                                    </a>
+
+                                                    <button class="btn btn-sm btn-danger " onclick="deleterole(@item.RolePermissionId)">
+                                                        <i class="ti-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            serial++;
+                                        }
+                                    </tbody>
+                                </table>
+
+                                <!-- ✅ Pagination -->
+                                <div class="text-center">
+                                    <ul class="pagination justify-content-center">
+                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                            <a class="page-link" asp-action="PermissionList" asp-route-page="1">@_localizer["First"]</a>
+                                        </li>
+
+                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                                            <a class="page-link" asp-action="PermissionList" asp-route-page="@(Model.PageNumber - 1)">@_localizer["Previous"]</a>
+                                        </li>
+
+                                        @for (int i = 1; i <= Model.TotalPages; i++)
+                                        {
+                                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                                <a class="page-link" asp-action="PermissionList" asp-route-page="@i">@i</a>
+                                            </li>
+                                        }
+
+                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                            <a class="page-link" asp-action="PermissionList" asp-route-page="@(Model.PageNumber + 1)">@_localizer["Next"]</a>
+                                        </li>
+
+                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                                            <a class="page-link" asp-action="PermissionList" asp-route-page="@(Model.TotalPages)">@_localizer["Last"]</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+   
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function deleterole(id) {
+            if (!confirm("Are you sure you want to delete this Permission?")) return;
+
+            $.ajax({
+                url: '/RolePermission/Delete/' + id,
+                type: 'POST',
+                success: function () {
+                    alert("Permission deleted successfully!");
+                    location.reload();
+                },
+                error: function () {
+                    alert("Failed to delete Permission.");
+                }
+            });
+        }
+    </script>
+     <script>
+               @*document.addEventListener("DOMContentLoaded", function () {
+            var permissions = @Html.Raw(permissionJson)
+
+            function permissionText(value) {
+                return value === 1 ? '✅' : '❌';
+            }
+
+            $("#jsGrid").jsGrid({
+                width: "100%",
+                height: "400",
+                sorting: true,
+                paging: true,
+                pageSize: 10,
+                pageButtonCount: 5,
+                data: permissions,
+                fields: [
+                     {
+                        name: "SNo",
+                        title: "@_localizer["SN"]",
+                        width: 40,
+                        align: "center",
+                        itemTemplate: function (_, item) {
+                            const index = permissions.findIndex(p => p.RolePermissionId === item.RolePermissionId);
+                            return index + 1;
+                        }
+                    },
+                    { name: "RolePermissionId", align: "center", title: "@_localizer["ID"]", type: "number", width: 50 },
+                    { name: "RoleName", title: "@_localizer["Role"]", type: "text", width: 120 },
+                    { name: "PageName", title: "@_localizer["Pages"]", type: "text", width: 150 },
+                    {
+                        name: "CreatePage", title: "@_localizer["Create"]", width: 70,
+                        itemTemplate: value => permissionText(value)
+                    },
+                    {
+                        name: "UpdatePage", title: "@_localizer["Update"]", width: 70,
+                        itemTemplate: value => permissionText(value)
+                    },
+                    {
+                        name: "DeletePage", title: "@_localizer["Delete"]", width: 70,
+                        itemTemplate: value => permissionText(value)
+                    },
+                    {
+                        name: "ListPage", title: "@_localizer["List"]", width: 70,
+                        itemTemplate: value => permissionText(value)
+                    },
+                    {
+                        name: "ReportView", title: "@_localizer["Report View"]", width: 90,
+                        itemTemplate: value => permissionText(value)
+                    },
+                    {
+                        name: "ReportPrint", title: "@_localizer["Report Print"]", width: 90,
+                        itemTemplate: value => permissionText(value)
+                    },
+                            {
+                            name: "CreatedAt",
+                             title: "@_localizer["Created Date"]",
+                            width: 120,
+                            itemTemplate: function (value) {
+                                if (!value) return "-";
+
+                                const date = new Date(value);
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+                                const year = date.getFullYear();
+
+                                return `${day}-${month}-${year}`;
+                            }
+                          },
+                        {
+                            title: "@_localizer["Action"]",
+                            width: 120,
+                            align: "center",
+                            itemTemplate: function (_, item) {
+                                return `
+                                    <a class='btn btn-sm btn-primary' href='/Admin/RolePermission/RoleIndex/${item.RolePermissionId}'>@_localizer["Edit"]</a>
+                                    <button type="button" class='btn btn-sm btn-danger delete-btn' data-id='${item.RolePermissionId}'>@_localizer["Delete"]</button>
+                                `
+                            }
+                        }
+                ]
+            });
+        });
+ // *@
+ //        $(document).on('click', '.delete-btn', function () {
+ //            var permissionId = $(this).data('id');
+
+ //            Swal.fire({
+ //                title: 'Are you sure?',
+ //                text: "This will delete the permission record!",
+ //                icon: 'warning',
+ //                showCancelButton: true,
+ //                confirmButtonColor: '#d33',
+ //                cancelButtonColor: '#3085d6',
+ //                confirmButtonText: 'Yes, delete it!'
+ //            }).then((result) => {
+ //                if (result.isConfirmed) {
+ //                    $.ajax({
+ //                        url: '/RolePermission/Delete/' + permissionId,
+ //                        type: 'POST',
+ //                        success: function (response) {
+ //                            if (response.success) {
+ //                                Swal.fire('Deleted!', response.message, 'success').then(() => {
+ //                                    location.reload();
+ //                                });
+ //                            } else {
+ //                                Swal.fire('Error!', response.message, 'error');
+ //                            }
+ //                        },
+ //                        error: function () {
+ //                            Swal.fire('Error!', 'Server error.', 'error');
+ //                        }
+ //                    });
+ //                }
+ //            });
+ //        });
+    </script>
+}

@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Payment</title>
+    <link rel="icon" href="Asset 1@4x.png">
+    <style>
+        body {
+            background-color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .payment-container {
+            max-width: 400px;
+            margin: 50px auto;
+            text-align: center;
+        }
+
+        .payment-div {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="payment-container">      
+
+        <!-- Apple Pay -->
+        <div id="apple-pay" class="payment-div"></div>
+
+        <!-- Google Pay -->
+        <div id="google-pay" class="payment-div"></div>
+
+        <!-- STC Pay -->
+       @*  <div id="stc-pay" class="payment-div"></div> *@
+        <div id="KFAST" class="payment-div"></div>
+
+        <!-- Unified Payment Session (Card + All supported) -->
+        <div id="unified-session" class="payment-div"></div>
+        <!-- Optional Custom Payment Button -->
+        <!-- <button onclick="customSubmit()" class="animated-button">Pay Now</button> -->
+    </div>
+
+    <!-- MyFatoorah Embedded JS -->
+    @* <script src="https://demo.myfatoorah.com/payment/v1/session.js"></script> *@
+    <script src="https://portal.myfatoorah.com/payment/v1/session.js"></script>
+    <script>
+        const countryCode = "KWT";
+        const currencyCode = "KWD";
+        const amount = "0.001";
+
+        // 1️⃣ Get session from backend
+        fetch('/api/PaymentApi/session')
+            .then(res => res.json())
+            .then(data => {
+                const sessionId = data.sessionId;
+                console.log("Session ID: ", sessionId);
+                startMyFatoorah(sessionId);
+            })
+            .catch(err => console.error("Error creating session:", err));
+
+        function startMyFatoorah(sessionId) {
+            const config = {
+                sessionId: sessionId,
+                countryCode: countryCode,
+                currencyCode: currencyCode,
+                amount: amount,
+                callback: executePaymentOnServer, // Called after payment
+                language: "en",
+                paymentOptions: ["Card", "ApplePay", "GooglePay","KFAST"],
+                supportedNetworks: ["visa", "masterCard", "mada", "amex"],
+                containerId: "unified-session",
+                settings: {
+                    applePay: { containerId: "apple-pay" },
+                     googlePay: { containerId: "google-pay" },
+                    // stcPay: { containerId: "stc-pay" }
+                     KFAST: { containerId: "KFAST" }
+
+                }
+            };
+            myfatoorah.init(config);
+        }
+
+        // 2️⃣ Send MyFatoorah payment info to backend
+        function executePaymentOnServer(response) {
+            console.log("Payment Response:", response);
+
+            if (!response.isSuccess) {
+                alert("Payment failed or canceled.");
+                return;
+            }
+
+           const requestData = {
+            PaymentMethodId: 20,        // Replace with actual PaymentMethodId
+            InvoiceValue: parseFloat(amount),
+            CallBackUrl: "https://shopsabahiyacoop.com/payment-success",
+            ErrorUrl: "https://shopsabahiyacoop.com/payment-failed",
+            CustomerName: "Customer Name",
+            DisplayCurrencyIso: currencyCode,
+            MobileCountryCode: "965",
+            CustomerMobile: "55271040",
+            CustomerEmail: "harishchandra444@gmail.com",
+            Language: "EN",
+            SessionId: response.sessionId,
+            PaymentType: response.paymentType,
+            IsRecurring: true
+        };
+
+            fetch('/api/PaymentApi/executePayment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            })
+            .then(res => res.json())
+            .then(result => {
+                console.log("Server ExecutePayment Response:", result);
+
+                if (result.paymentUrl) {
+                    // Non-direct payment → redirect to MyFatoorah hosted payment page
+                    window.location.href = result.paymentUrl;
+                } else if (result.data && result.data.InvoiceStatus === "Paid") {
+                    // Direct payment → redirect to success page
+                    window.location.href = "https://shopsabahiyacoop.com/payment-success";
+                } else {
+                    // Failed payment
+                    window.location.href = "https://shopsabahiyacoop.com/payment-failed";
+                }
+            })
+            .catch(err => {
+                console.error("ExecutePayment API error:", err);
+                window.location.href = "https://shopsabahiyacoop.com/payment-failed";
+            });
+        }
+    </script>
+
+</body>
+</html>

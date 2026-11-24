@@ -1,0 +1,1137 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+	var culture = System.Globalization.CultureInfo.CurrentCulture;
+	var direction = culture.TextInfo.IsRightToLeft ? "rtl" : "ltr";
+	var layoutDirection = Context.Request.Cookies["LayoutDirection"] ?? "ltr";
+	var rtlCssPath = "/AdminTheame/assets/css/rtl.css";
+	//var rtlCssHref = layoutDirection == "rtl" ? rtlCssPath : "";
+	var rtlCssHref = rtlCssPath;
+	var lang = culture.TextInfo.IsRightToLeft ? "ar" : "en";
+}
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName" dir="@layoutDirection">
+<head>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>@ViewBag.Title</title>
+
+	<!-- Bootstrap 5 -->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+	
+
+
+	@* <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> *@
+	<!-- jQuery UI CSS -->
+	<link rel="stylesheet"
+		  href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+	<!-- jQuery UI JS -->
+	<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+	<!-- Font Awesome -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="~/js/navigation.js"></script>
+	<link id="rtlStyles" rel="stylesheet" href="@rtlCssHref" />
+	<style>
+		/*  .page-content {
+					margin-top: auto; /* total height of all headers */
+		}
+
+		*/
+		/* ===== FIXED HEADER ===== */
+		/* .fixed-header {
+					position: fixed ;
+					top: 0;
+					left: 0;
+					width: 100%;
+					z-index: 1050;
+				} */
+		.fixed-header {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			z-index: 1050;
+		}
+
+		.page-content {
+			/* JS se set hoga */
+		}
+
+		.offcanvas {
+			position: fixed !important;
+		}
+
+		@@media(min-width: 768px) {
+			.fixed-header {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				z-index: 1050;
+			}
+
+			.page-content {
+				/* JS se set hoga */
+			}
+
+			.offcanvas.offcanvas-start {
+				display: none;
+			}
+		}
+
+		@@media(max-width: 768px) {
+			.fixed-header {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				z-index: 1050;
+			}
+
+			.page-content {
+				/* JS se set hoga */
+			}
+
+			.offcanvas.offcanvas-start {
+				top: var(--header-height);
+				height: calc(100vh - var(--header-height));
+			}
+		}
+
+		/* Top white bar */
+		.top-bar-1 {
+			background-color: #fff;
+			color: #14a2d7;
+			font-size: 24px;
+			height: 50px;
+		}
+
+		/* Company details bar */
+		/*   .header-top {
+					background-color: #14a2d7;
+					color: #fff;
+					font-size: 0.875rem;
+					height: 25px;
+				} */
+
+		.header-top {
+			background-color: #14a2d7;
+			color: #fff;
+			font-size: 17px;
+			min-height: 28px;
+			display: flex;
+			align-items: center; /* 🔥 vertical center */
+			line-height: 1;
+		}
+		/* Main navbar */
+	/* 	.main-header {
+			background-color: #14a2d7;
+			color: #fff;
+		} */
+
+
+		/* Page content ko header ke niche lana */
+
+
+	/* 	header, footer {
+			background-color: #14a2d7;
+			color: #fff;
+		} */
+
+		.search-box {
+			border-radius: 50px;
+			padding-left: 45px;
+		}
+
+		.category-btn {
+			background: #fcb034;
+			border-radius: 7px;
+			font-weight: 600;
+		}
+
+		.footer-bottom {
+			background: #064b7c;
+			padding: 10px 0;
+			text-align: center;
+			color: #fff;
+		}
+
+		.category-item {
+			position: relative;
+		}
+
+		.submenu {
+			position: absolute;
+			top: 0;
+			left: 100%;
+			min-width: 200px;
+			display: none;
+			z-index: 1055;
+		}
+
+
+	</style>
+	<style>
+		html, body {
+			overflow-x: hidden;
+		}
+
+		.category-scroll {
+			overflow-x: auto;
+			overflow-y: hidden;
+			white-space: nowrap;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: none;
+			cursor: grab;
+		}
+
+			.category-scroll:active {
+				cursor: grabbing;
+			}
+
+			.category-scroll::-webkit-scrollbar {
+				display: none;
+			}
+
+		.category-menu-icon {
+			width: 30px !important;
+			height: 30px !important;
+			object-fit: contain;
+		}
+	</style>
+
+
+</head>
+
+<body>
+	<div class="fixed-header" id="siteHeader">
+		<div class="py-1" style="background-color:#fff; color:#14a2d7; font-size:24px;">
+			<div class="container text-center fw-bold text-uppercase">
+				This Website is under construction. Currently not accepting orders.
+			</div>
+		</div>
+		<div class="header-top py-1 w-100 d-none"
+			 style="background-color:##14a2d7;color:#fff;font-size:0.875rem;margin:0;">
+			@*  <div id="topHeaderCompanyDetails">
+                <!-- Company details yahan AJAX se aayegi -->
+            </div> *@
+			<div class="header-top w-100 d-flex align-items-center">
+				<div id="topHeaderCompanyDetails" class="w-100"></div>
+			</div>
+		</div>
+
+
+		<!-- HEADER -->
+		<header class="py-2 main-header dynamicmainHeader" style="color:#fff;">
+		
+			<div class="container-fluid">
+				<div class="row align-items-center">
+
+					<!-- LOGO -->
+					<div class="col-md-3 col-6">
+						<a href="~/WebHome/Index" class="text-decoration-none">
+							<img id="hcompanyLogo" src="/images/download.png" class="img img-fluid" style="max-height:60px" />
+						</a>
+					</div>
+
+					<!-- NAV -->
+					@*    <div class="col-md-4 d-none d-md-flex justify-content-center">
+                        <nav class="d-flex gap-3 flex-wrap d-none">
+                            <a href="~/WebHome/Index" class="text-white text-decoration-none">@_localizer["Home"]</a>
+                            <a href="/AboutCompany/About" class="text-white text-decoration-none">@_localizer["About"]</a>
+                            <a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a>
+                            <a href="/WebBlog/WebBlog" class="text-white text-decoration-none">@_localizer["Blog"]</a>
+                            <a href="~/WebContact/Contact" class="text-white text-decoration-none">@_localizer["Contact"]</a>
+                        </nav>
+                    </div> *@
+
+					<!-- SEARCH BOX -->
+					<div class="col-md-6 d-none d-md-block position-relative">
+						<input type="text"
+							   id="searchInput"
+							   class="form-control ps-4 pe-4  @(lang == "ar" ? "mr-auto" : "ml-auto")"
+							   placeholder="@_localizer["Search"]">
+						<i class="fa fa-search position-absolute top-50 start-0 translate-middle-y text-secondary ms-3"></i>
+
+						<!-- DROPDOWN -->
+						@* <div id="searchDropdown"
+							 class="list-group position-absolute start-50 translate-middle-x w-100 mt-1 d-none overflow-auto"
+							 style="max-width:300px; max-height:260px; z-index:1050;">
+						</div> *@
+						<div id="searchDropdown"
+							 class="list-group position-absolute start-0 w-100 mt-1 d-none overflow-auto"
+							 style="max-height:260px; z-index:1050;">
+						</div>
+
+
+					</div>
+
+					<!-- ICONS: Right-Aligned -->
+					<div class="col-md-3 col-6 d-flex align-items-center gap-2 ms-auto justify-content-end d-flex">
+
+
+						<!-- Wrapper for positioning -->
+						<div class="position-relative d-md-none">
+
+							<!-- MOBILE SEARCH BUTTON -->
+							<button class="btn btn-light btn-sm p-1"
+									type="button"
+									id="mobileSearchBtn">
+								<i class="fa fa-search fs-6 text-dark"></i>
+							</button>
+
+							<!-- MOBILE SEARCH POPUP (Hidden by default) -->
+							<div id="mobileSearchPopup" class="card p-2 position-absolute d-none"
+								 style="top:100%; left:0; width:250px; z-index:1050; box-shadow:0 4px 8px rgba(0,0,0,0.2); border-radius:0.25rem;">
+
+								<!-- Search Input -->
+								<input type="text" id="mobileSearchInput" class="form-control mb-2" placeholder="Search products...">
+
+								<!-- Results will appear here -->
+								<div id="mobileSearchResults" class="list-group" style="max-height:200px; overflow-auto;">
+									<!-- JS will inject results here -->
+								</div>
+							</div>
+						</div>
+
+						@{
+							var userId = Context.Session.GetInt32("UserId");
+							var fullName = Context.Session.GetString("FullName");
+							var profileImage = Context.Session.GetString("ProfileImage") ?? "/images/default-user.png";
+						}
+
+						@if (userId != null)
+						{
+							<div class="dropdown">
+
+								<!-- TRIGGER -->
+								<a class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+								   href="#"
+								   role="button"
+								   data-bs-toggle="dropdown"
+								   aria-expanded="false">
+
+									<span>@fullName</span>
+								</a>
+
+								<!-- DROPDOWN MENU -->
+								<ul class="dropdown-menu dropdown-menu-end shadow">
+
+									<a class="dropdown-item" asp-controller="UserProfile" asp-action="Profile">
+										<i class="fa fa-user me-2"></i> @_localizer["My Profile"]
+									</a>
+									<li>
+										<a class="dropdown-item text-danger" href="~/UserAccount/Logout">
+											<i class="fa fa-sign-out-alt me-2"></i> @_localizer["Logout"]
+										</a>
+									</li>
+								</ul>
+							</div>
+						}
+						else
+						{
+							<a asp-controller="UserAccount" asp-action="Login" class="text-white fs-5 px-3">
+								<i class="fa fa-user"></i>
+							</a>
+						}
+
+
+
+
+
+						<!-- Shopping Cart Icon with Badge -->
+						<a href="~/WebCart/Cart" class="text-white position-relative">
+							<i class="fa fa-shopping-cart fs-5"></i>
+							<span id="cartCount"
+								  class="badge bg-warning text-dark position-absolute top-0 start-100 translate-middle">
+								0
+							</span>
+						</a>
+
+						<!-- Language Button -->
+						@*  <a href="#" class="btn btn-light btn-sm px-3">العربية</a> *@
+						<a class="header-icon dib toggleRTL px-3" style="cursor: pointer;color:white;">
+							<i class="fa fa-language text-white"></i>
+							<span class="user-avatar">@culture</span>
+						</a>
+
+						<button class="btn btn-light d-md-none"
+								type="button"
+								data-bs-toggle="offcanvas"
+								data-bs-target="#mobileMenu">
+							<i class="fa fa-bars text-dark"></i>
+						</button>
+
+					</div>
+
+
+
+				</div>
+			</div>
+
+		</header>
+
+		<!-- CATEGORY BAR START -->
+		<div class="py-0 border-top border-bottom" style="background-color:#eef1f5;">
+
+			<div class="mx-3">
+
+				<div class="d-flex align-items-center">
+
+					<!-- All Categories (Always Visible) -->
+					<div class="dropdown me-4 flex-shrink-0">
+						<a class="fw-semibold text-primary text-decoration-none dropdown-toggle"
+						   data-bs-toggle="dropdown">
+							<img src="/Images/options-lines.png" class="category-menu-icon" />
+							@_localizer["All Categories"]
+						</a>
+
+						<ul class="dropdown-menu shadow" id="categoryDropdown">
+							<li><span class="dropdown-item text-muted">Loading...</span></li>
+						</ul>
+					</div>
+
+					<!-- Scrollable Categories -->
+					<div class="flex-grow-1 text-primary category-scroll">
+						<ul class="nav flex-nowrap" id="topCategoryList"></ul>
+					</div>
+				</div>
+
+			</div>
+
+		</div>
+		<!-- CATEGORY BAR END -->
+	</div>
+
+
+	<div class="page-content" id="pageContent">
+		@RenderBody()
+	</div>
+
+
+	<!-- FOOTER -->
+	<!-- FOOTER -->
+	<footer class="py-2 dynamicmainHeader" style="color:#fff;">
+		<div class="container">
+			<div class="row gy-4">
+
+				<!-- LEFT: LOGO + CONTACT -->
+				<div class="col-md-6 col-lg-3">
+					<div style="background-color:white !important">
+					</div>
+					<img id="fcompanyLogo"
+						 src="~/Images/download.png"
+						 class="img-fluid mb-2"
+						 style="max-width:160px; background-color: transparent !important;" />
+
+					<p class="mb-1 d-flex align-items-center gap-1 text-light">
+
+						<span id="companyName" title="Company Name" style="font-weight:bold;"></span>
+
+					</p>
+
+					<p class="mb-1 d-flex align-items-center gap-2 text-light">
+						<i class="bi bi-geo-alt-fill text-"></i>
+						<span id="companyAddress"></span>
+					</p>
+
+					<p class="mb-1 d-flex align-items-center gap-2 text-light">
+						<i class="bi bi-telephone-fill text-"></i>
+						<span id="companyPhone"></span>
+					</p>
+
+					<p class="mb-3 d-flex align-items-center gap-2 text-light">
+						<i class="bi bi-envelope-fill text-"></i>
+						<span id="companyEmail"></span>
+					</p>
+
+					<div class="d-flex gap-3">
+						<a id="fbLink" href="#" class="text-white fs-5"><i class="fab fa-facebook-f"></i></a>
+						<a id="twLink" href="#" class="text-white fs-5"><i class="fab fa-x-twitter"></i></a>
+						<a id="igLink" href="#" class="text-white fs-5"><i class="fab fa-instagram"></i></a>
+						<a id="lnLink" href="#" class="text-white fs-5"><i class="fab fa-linkedin-in"></i></a>
+					</div>
+
+				</div>
+
+				<!-- COMPANY -->
+				<div class="col-md-6 col-lg-2">
+					<h6 class="fw-bold mb-3 text-white">@_localizer["Company1"]</h6>
+					<ul class="list-unstyled d-grid gap-2">
+						<li><a href="~/AboutCompany/About" class="text-white text-decoration-none">@_localizer["About"]</a></li>
+						<li><a href="~/WebBlog/WebBlog" class="text-white text-decoration-none">@_localizer["Blog"]</a></li>
+						<a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a>
+						<li><a href="#" class="text-white text-decoration-none">@_localizer["FAQ"]</a></li>
+						<li>
+							<a href="@Url.Action("Contact", "WebContact")" class="text-white text-decoration-none">@_localizer["Contact Us"]</a>
+						</li>
+
+					</ul>
+				</div>
+				<!-- DOWNLOAD OUR APP -->
+				<div class="col-md-6 col-lg-5 text-left text-md-start">
+
+					<h6 class="fw-bold mb-3 text-uppercase">
+						@_localizer["Download Our App"]
+					</h6>
+
+					<div class="col-md-6 col-lg-5 text-start about-img-left d-flex flex-column gap-2 align-items-left align-items-md-start">
+
+						<!-- Apple App Store -->
+						<a href="https://play.google.com/store/apps/details?id=com.raqmikarts" class="d-inline-block">
+							<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+								 alt="Download on the App Store"
+								 class="img-fluid px-2" height="45" width="120"
+								 style="object-fit: contain;">
+						</a>
+
+						<!-- Google Play Store -->
+						<a href="https://play.google.com/store/apps/details?id=com.raqmikarts" class="d-inline-block">
+							<img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png"
+								 alt="Get it on Google Play"
+								 class="img-fluid" height="45" width="120"
+								 style="object-fit: contain;">
+						</a>
+
+					</div>
+
+
+
+				</div>
+				<!-- SERVICES -->
+				<div class="col-md-6 col-lg-2">
+					<h6 class="fw-bold mb-3 text-white">@_localizer["Services"]</h6>
+					<ul class="list-unstyled d-grid gap-2">
+						<li>
+							<a href="@Url.Action("Login", "UserAccount")" class="text-white text-decoration-none">@_localizer["Login"]</a>
+						</li>
+
+						<li><a href="#" class="text-white text-decoration-none">@_localizer["My Account"]</a></li>
+						<li><a href="~/Term_Condition/Index" class="text-white text-decoration-none">@_localizer["Terms & Conditions"]</a></li>
+						<li><a href="#" class="text-white text-decoration-none">@_localizer["Promotional Offers"]</a></li>
+					</ul>
+				</div>
+
+			</div>
+		</div>
+	</footer>
+	@* 	background-color:#14a2d7; *@
+
+	<script>
+						$(document).ready(function () {
+
+				//  CATEGORIES BIND
+			$.ajax({
+				url: '/WebCategory/GetCategories',
+				type: 'GET',
+				success: function (data) {
+
+					var dropdown = $('#categoryDropdown');
+					dropdown.empty();
+
+					$.each(data, function (index, item) {
+
+						dropdown.append(
+							'<li class="position-relative category-item" data-id="' + item.categoryId + '">' +
+								'<a class="dropdown-item d-flex justify-content-between align-items-center" ' +
+								'href="/WebCategory/Index?categoryId=' + item.categoryId + '">' +
+									'<span>' + item.cName + '</span>' +
+									'<span>›</span>' +
+								'</a>' +
+								'<ul class="submenu list-unstyled bg-white shadow"></ul>' +
+							'</li>'
+						);
+					});
+				}
+			});
+
+				//  SUBCATEGORIES BIND
+		
+			$(document).on('mouseenter', '.category-item', function () {
+
+				var categoryId = $(this).data('id');
+				var submenu = $(this).find('.submenu');
+
+				if (submenu.children().length > 0) {
+					submenu.show();
+					return;
+				}
+
+				$.ajax({
+					url: '/WebCategory/GetSubCategoriesByCategoryId',
+					type: 'GET',
+					data: { id: categoryId },
+					success: function (subData) {
+
+						submenu.empty();
+
+						if (subData.length === 0) {
+							submenu.append('<li class="dropdown-item text-muted">No Subcategory</li>');
+						} else {
+							$.each(subData, function (i, sub) {
+									var imageTag = sub.imageBase64
+		? '<img src="' + sub.imageBase64 + '" class="me-2 category-menu-icon" />'
+		: '';
+
+								submenu.append(
+									'<li>' +
+										'<a class="dropdown-item" ' +
+										'href="/WebCategory/Index?subCategoryId=' + sub.subCategoryId + '">' +
+											imageTag +
+										sub.scName +
+										'</a>' +
+									'</li>'
+								);
+							});
+						}
+
+						submenu.show();
+					}
+				});
+
+			});
+
+			// Hide submenu on mouse leave
+			$(document).on('mouseleave', '.category-item', function () {
+				$(this).find('.submenu').hide();
+			});
+
+
+		
+			//  CATEGORIES BIND NAV
+		
+			$.ajax({
+				url: '/WebCategory/GetNavSubCategories',
+				type: 'GET',
+				success: function (data) {
+
+					var topList = $('#topCategoryList');
+					topList.empty();
+
+					if (data.length === 0) {
+						topList.append(
+							'<li class="nav-item p-1 text-muted">No Subcategory</li>'
+						);
+						return;
+					}
+
+					$.each(data, function (index, item) {
+
+							var imageTag = item.imageBase64
+		? '<img src="' + item.imageBase64 + '" class="me-2 category-menu-icon" />'
+		: '';
+
+						topList.append(
+							'<li class="nav-item">' +
+								'<a class="nav-link text-secondary fw-semibold py-1 px-3" ' +
+								'href="/WebCategory/Index?categoryId=' + item.categoryId + '">' +
+								imageTag +
+								item.cName +
+								'</a>' +
+							'</li>'
+						);
+					});
+				}
+			});
+
+		});
+	</script>
+	<script>
+		function adjustPageContent() {
+			const header = document.getElementById("siteHeader");
+			const pageContent = document.getElementById("pageContent");
+
+			if (!header || !pageContent) return;
+
+			const headerHeight = header.offsetHeight;
+			pageContent.style.paddingTop = headerHeight + "px";
+
+				 document.documentElement.style.setProperty(
+			"--header-height",
+			headerHeight + "px"
+			);
+		}
+
+		// Page load
+		window.addEventListener("load", adjustPageContent);
+
+		// Window resize (mobile rotate, responsive)
+		window.addEventListener("resize", adjustPageContent);
+
+		// If fonts/images load later
+		setTimeout(adjustPageContent, 300);
+	</script>
+
+
+	<script>
+				window.onload = function () {
+				const form = document.querySelector("#NavigationKey");
+		if (!form) return;
+
+				const getFocusables = () => Array.from(
+		form.querySelectorAll("input, select, textarea, button[type='submit'], input[type='submit']")
+				).filter(el =>
+		!el.disabled &&
+		!el.readOnly &&
+		el.type !== "hidden" &&
+		el.offsetParent !== null
+		);
+
+		let focusables = getFocusables();
+
+
+				if (focusables.length > 0) {
+			setTimeout(() => {
+				focusables[0].focus();
+				focusables[0].scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 100);
+				}
+
+				focusables.forEach((el, index) => {
+			el.addEventListener("keydown", function (e) {
+				if (el.tagName.toLowerCase() === "textarea") {
+					if (e.key === "Enter" && e.shiftKey) {
+						// Allow new line inside textarea
+						return; // Do nothing, normal newline
+					}
+				}
+
+				const goNext = () => {
+					if (index + 1 < focusables.length) {
+						// Next focusable
+						focusables[index + 1].focus();
+						focusables[index + 1].scrollIntoView({ behavior: "smooth", block: "center" });
+					} else {
+
+						if (el.tagName.toLowerCase() === "button" || el.type === "submit") {
+							el.click();
+						}
+					}
+					e.preventDefault();
+				};
+
+				const goPrev = () => {
+					if (index - 1 >= 0) {
+						focusables[index - 1].focus();
+						focusables[index - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+						e.preventDefault();
+					}
+				};
+
+				if (e.key === "ArrowRight" || e.key === "Enter") {
+					goNext();
+				} else if (e.key === "ArrowLeft") {
+					goPrev();
+				}
+			});
+				});
+
+
+		form.addEventListener("submit", function () {
+			setTimeout(() => {
+				focusables = getFocusables();
+				if (focusables.length > 0) {
+					focusables[0].focus();
+				}
+			}, 100);
+				});
+			};
+
+
+
+
+
+
+
+
+		document.addEventListener("DOMContentLoaded", function () {
+
+			fetch('/WebHome/GetCompanyDetailsJson')
+				.then(res => res.json())
+				.then(data => {
+					if (!data) return;
+					document.getElementById('hcompanyLogo').src = data.logo;
+					document.getElementById('fcompanyLogo').src = data.logo;
+					document.getElementById('companyName').innerText = data.companyName;
+					document.getElementById('companyAddress').innerText = data.address;
+					document.getElementById('companyPhone').innerText = data.phone;
+					document.getElementById('companyEmail').innerText = data.email;
+
+					document.getElementById('fbLink').href = data.facebook || '#';
+					document.getElementById('twLink').href = data.twitter || '#';
+					document.getElementById('igLink').href = data.instagram || '#';
+					document.getElementById('lnLink').href = data.linkedIn || '#';
+				})
+				.catch(err => console.error("Company load error", err));
+
+		});
+	</script>
+
+	<script>
+		document.getElementById("scrollTopBtn").addEventListener("click", function () {
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		});
+	</script>
+	<!-- SEARCH JS -->
+	<script>
+		$(document).ready(function () {
+
+			let timer;
+			$('#searchInput').on('keyup', function () {
+				clearTimeout(timer);
+				let term = $(this).val().trim();
+
+				timer = setTimeout(function () {
+
+					if (!term) {
+						$('#searchDropdown').addClass('d-none').empty();
+						return;
+					}
+
+					$.ajax({
+						url: '/WebHome/search',
+						type: 'GET',
+						data: { term: term, lang: 'en' },
+						success: function (data) {
+
+							let dropdown = $('#searchDropdown');
+							dropdown.empty();
+
+							if (!data || data.length === 0) {
+								dropdown
+									.removeClass('d-none')
+									.html('<div class="list-group-item text-muted small">No products found</div>');
+								return;
+							}
+
+							data.forEach(p => {
+								dropdown.append(`
+									<a href="/WebSingleProduct/SingleProduct/${p.productId}"
+									   class="list-group-item list-group-item-action d-flex gap-2 align-items-start">
+										<img src="${p.imageBase64 || '/images/default-product.png'}"
+											 class="rounded"
+											 width="50" height="50" />
+										<div class="flex-grow-1">
+											<div class="fw-semibold small text-dark">${p.name}</div>
+											<div class="small text-dark">KD ${Number(p.price).toFixed(3)}</div>
+											<div class="small text-dark">⭐ ${p.averageRating.toFixed(2)}</div>
+										</div>
+									</a>
+								`);
+							});
+
+							dropdown.removeClass('d-none');
+						}
+					});
+
+				}, 150); // 100ms delay for fast response
+			});
+
+			// CLICK OUTSIDE TO HIDE
+			$(document).on('click', function (e) {
+				if (!$(e.target).closest('#searchForm').length) {
+					$('#searchDropdown').addClass('d-none');
+				}
+			});
+
+		});
+
+		document.addEventListener("DOMContentLoaded", function () {
+
+			fetch('/WebHome/GetCompanyDetails')
+				.then(res => res.text())
+				.then(html => {
+					document.getElementById("topHeaderCompanyDetails").innerHTML = html;
+				})
+				.catch(err => console.error("CompanyDetails load error:", err));
+
+		});
+
+				$(document).ready(function () {
+			loadCartCount();
+		});
+
+
+			function loadCartCount() {
+		$.ajax({
+		url: '/WebCart/GetCart',
+		method: 'GET',
+		success: function (data) {
+		let totalCount = 0;
+
+		if (data && data.length > 0) {
+		$.each(data, function (index, item) {
+		totalCount += parseInt(item.quantity);
+		});
+		}
+
+		$('#cartCount').text(totalCount);
+		},
+		error: function () {
+		$('#cartCount').text('0');
+		}
+		});
+		}
+
+	</script>
+
+
+	<div class="offcanvas offcanvas-start bg-white text-dark offcanvasstart"
+		 tabindex="-1"
+		 id="mobileMenu">
+
+		<div class="offcanvas-header border-bottom">
+			<h5 class="offcanvas-title fw-bold">@_localizer["Menu"]</h5>
+			<button type="button"
+					class="btn-close"
+					data-bs-dismiss="offcanvas"></button>
+		</div>
+
+		<div class="offcanvas-body offcanvasbody">
+			<ul class="list-unstyled d-grid gap-3 fs-5">
+				<li><a href="~/WebHome/Index" class="text-dark text-decoration-none">@_localizer["HOME"]</a></li>
+				<li><a href="/AboutCompany/About" class="text-dark text-decoration-none">@_localizer["ABOUT"]</a></li>
+				<li><a href="~/WebCategory/Index" class="text-dark text-decoration-none">@_localizer["SHOP"]</a></li>
+				<li><a href="/WebBlog/WebBlog" class="text-dark text-decoration-none">@_localizer["BLOG"]</a></li>
+				<li><a href="~/WebContact/Contact" class="text-dark text-decoration-none">@_localizer["CONTACT"]</a></li>
+				<li><a href="~/UserAccount/Logout" class="text-dark text-decoration-none">@_localizer["Logout"]</a></li>
+			</ul>
+		</div>
+
+	</div>
+
+
+
+
+	@* mobile view icon for script search 
+ *@
+
+	<script>
+		const searchBtn = document.getElementById("mobileSearchBtn");
+		const searchPopup = document.getElementById("mobileSearchPopup");
+		const searchInput = document.getElementById("mobileSearchInput");
+		const searchResults = document.getElementById("mobileSearchResults");
+
+		// Toggle popup
+		searchBtn.addEventListener("click", () => {
+			searchPopup.classList.toggle("d-none");
+			searchInput.value = "";
+			searchResults.innerHTML = "";
+			searchInput.focus();
+		});
+
+		// Live search from database
+		searchInput.addEventListener("input", () => {
+			const query = searchInput.value.trim();
+			searchResults.innerHTML = "";
+
+			if(query === "") return;
+
+			// Fetch from your backend
+			fetch(`/WebHome/search?term=${encodeURIComponent(query)}`)
+				.then(res => res.json())
+				.then(data => {
+					searchResults.innerHTML = "";
+
+					if(data.length === 0){
+						searchResults.innerHTML = `<div class="text-center text-muted py-2">No results</div>`;
+					} else {
+						data.forEach(p => {
+							const a = document.createElement("a");
+							a.href = `/WebSingleProduct/SingleProduct/${p.productId}`;
+							a.className = "list-group-item list-group-item-action d-flex align-items-center py-2";
+
+							// Image
+							const img = document.createElement("img");
+							img.src = p.imageBase64 || "/images/default-product.png";
+							img.alt = p.name;
+							img.style.width = "30px";
+							img.style.height = "30px";
+							img.style.objectFit = "cover";
+							img.className = "me-2";
+
+							// Product name
+							const span = document.createElement("span");
+							span.textContent = p.name;
+
+
+
+
+								a.appendChild(img);
+							a.appendChild(span);
+
+
+							searchResults.appendChild(a);
+						});
+					}
+				})
+				.catch(err => console.error(err));
+		});
+
+		// Click outside → hide
+		document.addEventListener("click", (e) => {
+			if(!searchPopup.contains(e.target) && !searchBtn.contains(e.target)){
+				searchPopup.classList.add("d-none");
+			}
+		});
+
+		document.querySelectorAll('.dropdown').forEach(function (dropdown) {
+			dropdown.addEventListener('mouseenter', function () {
+				let toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+				bootstrap.Dropdown.getOrCreateInstance(toggle).show();
+			});
+			dropdown.addEventListener('mouseleave', function () {
+				let toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+				bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+			});
+		});
+	</script>
+	<script>
+		$(document).ready(function () {
+			let layoutDir = getCookie("LayoutDirection") || "ltr";
+
+			// Set direction
+			document.body.setAttribute("dir", layoutDir);
+
+			// Apply CSS
+			const rtlLink = document.getElementById("rtlStyles");
+			if (layoutDir === "rtl") {
+				rtlLink.setAttribute("href", "/AdminTheame/assets/css/rtl.css");
+			} else {
+				rtlLink.setAttribute("href", "");
+			}
+		});
+		// 🟢 Helper: Get cookie value
+		// function getCookie(name) {
+		// 	let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+		// 	return match ? match[2] : null;
+		// }
+		function getCookie(name) {
+			let value = `; ${document.cookie}`;
+			let parts = value.split(`; ${name}=`);
+			return parts.length === 2 ? parts.pop().split(';').shift() : null;
+		}
+
+		// 🟢 On page load, set direction from cookie
+		document.addEventListener("DOMContentLoaded", function () {
+			let layoutDir = getCookie("LayoutDirection") || "ltr";
+			document.body.setAttribute("dir", layoutDir);
+
+			if (layoutDir === 'rtl') {
+				document.getElementById("rtlStyles").setAttribute("href", "/AdminTheame/assets/css/rtl.css");
+			}
+
+			// 🔒 Prevent duplicate click handlers
+			const toggleButton = document.querySelector(".toggleRTL");
+			if (toggleButton) {
+				toggleButton.addEventListener("click", manageLayoutDirection, { once: true }); // ❗Run only once
+			}
+		});
+
+		// 🔄 Toggle between RTL and LTR
+		function manageLayoutDirection() {
+				let cultureText = document.querySelector(".toggleRTL .user-avatar")?.innerText.trim().toLowerCase() || "en";
+			let newCulture = (cultureText === "ar" || cultureText === "ar-kw") ? "en" : "ar";
+			let newDirection = newCulture.startsWith("ar") ? "rtl" : "ltr";
+
+			// Set cookie only — server will handle layout + reload
+			document.cookie = "LayoutDirection=" + newDirection + "; path=/";
+
+			// Redirect to change culture and re-render correctly
+			let returnUrl = window.location.pathname + window.location.search;
+			window.location.href = `/Home/SetLanguage?culture=${newCulture}&returnUrl=${encodeURIComponent(returnUrl)}`;
+		}
+
+		// side bar active  start
+
+			document.addEventListener("DOMContentLoaded", function () {
+			const currentUrl = window.location.pathname.toLowerCase();
+			const menuItems = document.querySelectorAll(".sidebar ul li a");
+			menuItems.forEach(item => {
+				if (item.getAttribute("href").toLowerCase() === currentUrl) {
+					item.parentElement.classList.add("active");
+				} else {
+					item.parentElement.classList.remove("active");
+				}
+			});
+		});
+
+
+
+
+
+	</script>
+	<script>
+
+		
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const slider = document.querySelector(".category-scroll");
+
+    if (!slider) return;
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    slider.addEventListener("mousedown", (e) => {
+        isDown = true;
+        slider.style.cursor = "grabbing";
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+
+    slider.addEventListener("mouseleave", () => {
+        isDown = false;
+        slider.style.cursor = "grab";
+    });
+
+    slider.addEventListener("mouseup", () => {
+        isDown = false;
+        slider.style.cursor = "grab";
+    });
+
+    slider.addEventListener("mousemove", (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        slider.scrollLeft = scrollLeft - walk;
+    });
+
+});
+</script>
+	<script>
+		$(document).ready(function () {
+
+			loadHeaderColor();
+
+		});
+
+		function loadHeaderColor() {
+
+			$.ajax({
+				url: '/ChangeColors/GetColor',
+				type: 'GET',
+				success: function (res) {
+
+					if (res.success && res.color) {
+
+						// 🎯 header ka color change
+						$(".dynamicmainHeader").css("background-color", res.color);
+					}
+				},
+				error: function () {
+					console.log("Color load failed");
+				}
+			});
+		}
+	</script>
+</body>
+</html>

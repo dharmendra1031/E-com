@@ -1,0 +1,118 @@
+﻿@using System.Globalization
+@model List<EcommerceWebApplication.Models.WeekendDealProductVM>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+
+@{
+    ViewData["Title"] = "Wekenddeal";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<div class="row justify-content-center mt-3 mb-1">
+    <div class="container my-4 col-md-11">
+
+        @if (Model != null && Model.Any())
+        {
+            <div class="row g-3 justify-content-center">
+
+                @foreach (var item in Model)
+                {
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                        <div class="card shadow-sm rounded-4 h-100">
+
+                            <!-- ENTIRE CARD CLICKABLE -->
+                            <a href="@Url.Action("SingleProduct", "WebSingleProduct",
+                                                               new { id = item.ProductId })"
+                                                                                            class="text-decoration-none text-dark">
+
+                                <!-- IMAGE -->
+                                <img src="@item.ProductImagesBase64.FirstOrDefault()"
+                                     class="card-img-top p-3"
+                                     style="height:130px; object-fit:contain;" />
+
+                                <div class="card-body p-3">
+                                    <h6 class="card-title mb-1">
+                                        @(item.ProductName?.Length > 50
+                                                                        ? item.ProductName.Substring(0, 50) + "..."
+                                                                        : item.ProductName)
+                            </h6>
+
+                                    <!-- DEAL INFO -->
+                                    <small class="text-danger fw-semibold">
+                                        @item.DiscPer % OFF
+                                    </small>
+
+                                    <div class="mt-2">
+                                        <del class="text-muted d-block">
+                                            @item.ProductPrice.ToString("F3", CultureInfo.InvariantCulture) KD
+                                        </del>
+                                        <span class="fw-bold text-success d-block">
+                                            @item.OfferPrice.ToString("F3", CultureInfo.InvariantCulture) KD
+                                            
+                                        </span>
+                                    </div>
+
+
+                                </div>
+                            </a>
+
+                            <!-- ADD TO CART -->
+                            <div class="card-body p-3 pt-0 text-center">
+                                <button class="btn btn-success rounded-circle btn-sm add-to-cart"
+                                        data-productid="@item.ProductId">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                        }
+            </div>
+        }
+        else
+        {
+            <div class="col-12 text-center text-muted py-5">
+                <h6>@_localizer["No weekend deals found"]</h6>
+            </div>
+        }
+
+    </div>
+</div>
+<script>
+    $(document).on("click", ".add-to-cart", function () {
+
+        var productId = $(this).data("productid");
+
+        $.ajax({
+            url: '/WebCart/AddOrUpdateCart',
+            type: 'POST',
+            data: {
+                productId: productId,
+                qty: 1
+            },
+            success: function (res) {
+
+                if (res.notStock) {
+                    Swal.fire({
+                        icon: 'warning',
+                       text: res.message,
+                        confirmButtonText: 'OK',
+                        width: 500
+                    });
+                    return;
+                }
+
+                if (res.success) {
+                    loadCartCount();
+                }
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    text: 'Something went wrong'
+                });
+            }
+        });
+    });
+</script>

@@ -1,0 +1,58 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@model EcommerceWebApplication.Models.Area
+
+@{
+    ViewData["Title"] = "Edit Area";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert">
+                <div class="card-header">
+                    <h4>@_localizer["Edit Area"]</h4>
+                    <div class="card-header-right-icon">
+                        <ul>
+                            <li>
+                                <a asp-action="AreaList" class="btn btn-primary">
+                                    <i class="ti-bar-chart-alt bg-info"></i> @_localizer["Area List"]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <hr />
+                </div>
+
+                <div class="card-body">
+                    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        @Html.HiddenFor(m => m.Id)
+
+                        <div class="row">
+                            <!-- Area Name EN -->
+                            <div class="col-md-6">
+                                <label>@_localizer["Area Name (EN)"] <span class="text-danger">*</span></label>
+                                <input asp-for="AreaName" class="form-control" placeholder="Enter Area Name in English" />
+                                <span asp-validation-for="AreaName" class="text-danger"></span>
+                            </div>
+
+                            <!-- Area Name AR -->
+                            <div class="col-md-6">
+                                <label>@_localizer["Area Name (AR)"] <span class="text-danger">*</span></label>
+                                <input asp-for="AreaNameArb" class="form-control" placeholder="Enter Area Name in Arabic" />
+                                <span asp-validation-for="AreaNameArb" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success mt-4">@_localizer["Update"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

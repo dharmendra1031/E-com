@@ -1,0 +1,26 @@
+﻿@{
+    ViewData["Title"] = "Web HomE";
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    .banner-image {
+        height: 350px; /* Change height here */
+        object-fit: cover; /* Crop & maintain design */
+        border-radius: 14px;
+    }
+</style>
+<div class="row justify-content-center mt-3 mb-3">
+    @Html.Partial("_PartialBanner")
+</div>
+
+<div class="row justify-content-center mt-3 mb-3">
+    @Html.Partial("_CategoriesPartial")
+</div>
+<div class="row justify-content-center mt-3 mb-3">
+    @Html.Partial("_WeekendDealsPartial")
+</div>
+
+ <div class="row justify-content-center mt-3 mb-3">
+    @Html.Partial("_brandPartial")
+</div>

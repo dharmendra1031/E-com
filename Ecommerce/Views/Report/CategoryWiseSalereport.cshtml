@@ -1,0 +1,114 @@
+﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@using EcommerceWebApplication.Models.ViewModels
+
+@{
+    ViewData["Title"] = _localizer["Category Wise Sale"];
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="main-content">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card alert"style="min-height: calc(100vh - 160px);">
+
+                <!-- ✅ Header -->
+                <div class="card-header">
+                    <h4 class="mb-0">@_localizer["Category Sale Report"]</h4>
+                </div>
+
+                <!-- ✅ Body -->
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="row g-3 mt-3">
+                            <!-- Category Filter -->
+                            <div class="col-md-4">
+                                <label for="CategoryId" class="form-label">@_localizer["Category"]</label>
+                                <div class="d-flex">
+                                    <select name="CategoryId" id="CategoryId" class="form-control me-2">
+                                        <option value=""selected> </option>
+                                        @foreach (var item in ViewBag.CategoryList as List<SelectListItem>)
+                                        {
+                                            <option value="@item.Value">@item.Text</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                                @* <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="fw-bold">@_localizer["Export"]:</label>
+                                        <select name="format" class="form-control input-default">
+                                            <option value="PDF">PDF</option>
+                                            <option value="XLSX">Excel</option>
+                                            <option value="DOCX">Word</option>
+                                        </select>
+                                    </div>
+                                </div> *@
+                            <div class="col-md-3" >
+                                <label class="form-label d-block">@_localizer["Export"]:</label>
+                                <br>
+                                <label class="radio-inline">
+                                    <input type="radio" name="format" value="PDF" checked> @_localizer["PDF"]
+                                </label>
+
+                                <label class="radio-inline">
+                                    <input type="radio" name="format" value="XLSX"> @_localizer["Excel"]
+                                </label>
+
+                            </div>
+
+                            <div class="col-md-2">
+                                <button type="button" onclick="PrintReport()" class="btn btn-primary btn-flat m-t-30">@_localizer["Generate Report"]</button>
+                            </div>
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Print Iframe -->
+<style>
+    #printerDiv iframe {
+        position: absolute;
+        top: -1000px;
+        visibility: hidden;
+    }
+</style>
+
+<div id="divPDF">
+    <div id="printerDiv">
+        <iframe id="frmPDF"></iframe>
+    </div>
+</div>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+@section scripts {
+    <script>
+        function PrintReport() {
+            $('#frmPDF').removeAttr('src');
+
+            var categoryId = $("#CategoryId").val();
+            var format = $("input[name='format']:checked").val();
+
+            const rptParameters = new URLSearchParams({
+                CategoryId: categoryId || 0,
+                format: format
+            });
+
+            const url = `/Report/CategoryReportPrint?${rptParameters.toString()}`;
+
+            if (format === "PDF") {
+
+                window.open(url, "_blank");
+            } else {
+
+                window.location.href = url;
+            }
+        }
+    </script>
+}
