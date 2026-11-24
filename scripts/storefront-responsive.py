@@ -78,6 +78,36 @@ with sync_playwright() as pw:
                                 page.wait_for_function("document.querySelector('#ProductContainer').textContent.trim().length > 0 && !document.querySelector('#ProductContainer').hasAttribute('aria-busy') && !!document.querySelector('#SubCategoryContainer #breadcrumbTitle')", timeout=15000)
                                 if page.url != current_url or not page.evaluate("window.__catalogNavigationProbe === true"):
                                     row["issues"].append("category back navigation failed")
+                    if not args.reference and name=="catalog":
+                        page.locator(".cart-grid-container").wait_for(state="visible", timeout=15000)
+                        cards = page.locator("#ProductContainer .cart-item-col")
+                        if cards.count() > 24:
+                            row["issues"].append("initial product page exceeds 24")
+                        more = page.locator("#loadMoreProducts")
+                        if more.is_visible():
+                            before = cards.count()
+                            page.evaluate("window.__loadMoreProbe = true")
+                            more.click()
+                            page.wait_for_function("!document.querySelector('#ProductContainer').hasAttribute('aria-busy')")
+                            if cards.count() <= before or not page.evaluate("window.__loadMoreProbe === true"):
+                                row["issues"].append("load more did not append in place")
+                        page.locator("#inStock").check()
+                        page.locator("#catalogFilters button[type=submit]").click()
+                        page.wait_for_function("!document.querySelector('#ProductContainer').hasAttribute('aria-busy')")
+                        if cards.count() > 24 or page.locator("#ProductContainer .out-of-stock").count():
+                            row["issues"].append("stock filter did not reset/filter the catalog")
+                    if not args.reference and name=="product":
+                        main = page.locator("#mainImg")
+                        if main.count():
+                            main.click()
+                            page.locator("#productImageModal").wait_for(state="visible")
+                            page.locator("#productImageModal .btn-close").click()
+                            page.locator("#productImageModal").wait_for(state="hidden")
+                        plus = page.locator("#qtyPlus")
+                        if plus.is_enabled():
+                            plus.click()
+                            if page.locator("#detailAdd").get_attribute("data-quantity") != "2":
+                                row["issues"].append("quantity not synchronized with cart action")
                     page.evaluate("document.fonts.ready")
                     metrics = page.evaluate("""() => {
                         const root=document.documentElement;
@@ -90,7 +120,7 @@ with sync_playwright() as pw:
                         const clippedCards = [...document.querySelectorAll(".store-product-grid .cart-item-card, .store-product-grid .cart-item-footer, .store-product-grid .product-price")].filter(el=>el.scrollWidth>el.clientWidth+2).length;
                         const overflow=[...document.querySelectorAll('body *')].filter(el=>{
                           if (!el.getClientRects().length || getComputedStyle(el).visibility==='hidden') return false;
-                          if (el.closest('.overflow-auto,.category-scroll,.category-list,.storefront-brands,.product-thumbnails,.table-responsive,.carousel,.offcanvas,.dropdown-menu')) return false;
+                          if (el.closest('.overflow-auto,.category-scroll,.category-list,.storefront-brands,.product-thumbnails,.store-detail-thumbnails,.table-responsive,.carousel,.offcanvas,.dropdown-menu')) return false;
                           const r=rect(el);
                           return r.width>0 && r.height>0 && (r.right>innerWidth+2 || r.left< -2);
                         }).slice(0,12).map(el=>el.tagName+'.'+String(el.className).slice(0,100));

@@ -51,7 +51,7 @@ namespace EcommerceWebApplication.Controllers
 
             return PartialView("_CategoryPartial", categories);
         }
-        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null)
+        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null, bool brandedOnly = false)
         {
             const int pageSize = 24;
             if (page < 1 || page > int.MaxValue / pageSize) return BadRequest();
@@ -62,6 +62,7 @@ namespace EcommerceWebApplication.Controllers
             if (!ModelState.IsValid || minPrice < 0 || maxPrice < 0 ||
                 (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice) ||
                 (minRating.HasValue && (minRating < 1 || minRating > 5))) return BadRequest();
+            if (brandedOnly) query = query.Where(p => p.BrandId.HasValue && p.Brand != null);
             if (brandId.HasValue) query = query.Where(p => p.BrandId == brandId);
             if (minPrice.HasValue) query = query.Where(p => p.Price >= minPrice.Value);
             if (maxPrice.HasValue) query = query.Where(p => p.Price <= maxPrice.Value);

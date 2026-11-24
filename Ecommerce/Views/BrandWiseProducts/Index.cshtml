@@ -1,42 +1,95 @@
 @model List<EcommerceWebApplication.Models.ViewModels.BrandWiseProductsViewModel>
 @{
     Layout = "~/Views/Shared/_WebLayout.cshtml";
-    var isArabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    ViewData["Title"] = isArabic ? "العلامات التجارية" : "Brands";
-    var brands = ViewBag.AllBrands as List<EcommerceWebApplication.Models.ViewModels.BrandWiseProductsViewModel>;
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = ar ? "العلامات التجارية" : "Brands";
     var selectedBrandId = ViewBag.SelectedBrandId as int?;
 }
 <div class="container-fluid py-3 store-wide">
     <h1 class="h4 store-heading">@ViewData["Title"]</h1>
-    @if (brands != null && brands.Any())
-    {
-        <nav class="storefront-brands mb-4" aria-label="@ViewData["Title"]">
-            @foreach (var brand in brands)
-            {
-                <a href="@Url.Action("Index", new { brandId = brand.BrandId })" class="text-decoration-none" aria-current="@(selectedBrandId == brand.BrandId ? "true" : null)">
-                    <div class="brand-tile">
-                        @if (!string.IsNullOrEmpty(brand.BrandImageBase64))
-                        {
-                            <img src="@brand.BrandImageBase64" alt="" loading="lazy" />
-                        }
-                        <span>@brand.BrandName</span>
-                    </div>
-                </a>
-            }
-        </nav>
-    }
-    @if (Model != null && Model.Any())
-    {
-        foreach (var brand in Model)
+    <nav id="brandNavigation" class="storefront-brands mb-3" aria-label="@ViewData["Title"]">
+        <a href="@Url.Action("Index")" class="text-decoration-none" data-brand="" aria-current="@(!selectedBrandId.HasValue ? "true" : null)">
+            <div class="brand-tile justify-content-center">@(ar ? "كل العلامات التجارية" : "All brands")</div>
+        </a>
+        @foreach (var brand in Model)
         {
-            <section class="mb-4">
-                <h2 class="h5 store-heading">@brand.BrandName</h2>
-                @await Html.PartialAsync("~/Views/WebCategory/_ProductsPartial.cshtml", brand.Products)
-            </section>
+            <a href="@Url.Action("Index", new { brandId = brand.BrandId })" class="text-decoration-none" data-brand="@brand.BrandId" aria-current="@(selectedBrandId == brand.BrandId ? "true" : null)">
+                <div class="brand-tile">
+                    @if (!string.IsNullOrEmpty(brand.BrandImageBase64)) { <img src="@brand.BrandImageBase64" alt="" loading="lazy" /> }
+                    <span>@brand.BrandName</span>
+                </div>
+            </a>
         }
-    }
-    else
-    {
-        <p class="text-center py-5">@(isArabic ? "لا توجد منتجات" : "No products found")</p>
-    }
+    </nav>
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+        <h2 class="h5 mb-0" id="brandHeading">@(ar ? "المنتجات" : "Products")</h2>
+        <span id="brandResultCount" class="small text-secondary" role="status"></span>
+    </div>
+    <div id="brandProducts" aria-live="polite"></div>
+    <div class="text-center my-3">
+        <button type="button" id="brandMore" class="btn btn-outline-primary d-none">@(ar ? "عرض المزيد" : "Load more products")</button>
+        <p id="brandError" class="text-danger small" role="status"></p>
+    </div>
 </div>
+<script>
+(() => {
+    const ar = document.documentElement.lang === "ar";
+    const nav = document.getElementById("brandNavigation");
+    const products = document.getElementById("brandProducts");
+    const more = document.getElementById("brandMore");
+    const error = document.getElementById("brandError");
+    const count = document.getElementById("brandResultCount");
+    let selected = "@selectedBrandId", next = 0, request;
+    async function load(append = false) {
+        if (append && (!next || more.disabled)) return;
+        request?.abort();
+        const current = new AbortController();
+        request = current;
+        const page = append ? next : 1;
+        if (!append) { next = 0; count.textContent = ""; more.classList.add("d-none"); products.textContent = ar ? "جارٍ التحميل…" : "Loading products…"; }
+        more.disabled = true; products.setAttribute("aria-busy","true"); error.textContent = "";
+        const params = new URLSearchParams({ page, brandedOnly:"true" });
+        if (selected) params.set("brandId",selected);
+        try {
+            const response = await fetch("/WebCategory/ProductPartial?" + params, {signal:current.signal});
+            if (!response.ok) throw new Error();
+            const template = document.createElement("template");
+            template.innerHTML = await response.text();
+            if (current.signal.aborted) return;
+            const grid = template.content.querySelector(".cart-grid-container");
+            if (!grid) throw new Error();
+            if (append) products.querySelector(".store-product-grid").append(...grid.querySelectorAll(".cart-item-col"));
+            else products.replaceChildren(template.content);
+            next = Number(grid.dataset.nextPage) || 0;
+            count.textContent = products.querySelectorAll(".cart-item-col").length + (ar ? " من " : " of ") + (Number(grid.dataset.totalProducts)||0);
+            more.classList.toggle("d-none", !next);
+        } catch(e) {
+            if (e.name !== "AbortError") {
+                if (!append) products.textContent = "";
+                error.textContent = ar ? "تعذر التحميل. حاول مرة أخرى." : "Unable to load products. Try again.";
+            }
+        } finally { if (request === current) { products.removeAttribute("aria-busy"); more.disabled = false; } }
+    }
+    function select(id, push) {
+        selected = id;
+        nav.querySelectorAll("[data-brand]").forEach(link => {
+            if (link.dataset.brand === selected) { link.setAttribute("aria-current","true"); document.getElementById("brandHeading").textContent = link.textContent.trim(); }
+            else link.removeAttribute("aria-current");
+        });
+        if (push) {
+            const url = new URL(location.href);
+            if (selected) url.searchParams.set("brandId",selected); else url.searchParams.delete("brandId");
+            if (url.href !== location.href) history.pushState(null,"",url);
+        }
+        load();
+    }
+    nav.addEventListener("click", e => {
+        const link = e.target.closest("[data-brand]");
+        if (!link || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault(); select(link.dataset.brand,true);
+    });
+    window.addEventListener("popstate", () => select(new URLSearchParams(location.search).get("brandId") || "",false));
+    more.addEventListener("click", () => load(true));
+    select(selected,false);
+})();
+</script>
