@@ -157,7 +157,7 @@ namespace EcommerceWebApplication.Controllers
             // ================= DONE =================
 
             // 🔹 DEVICE ID
-            if (!string.IsNullOrEmpty(model.ReturnUrl))
+            if (Url.IsLocalUrl(model.ReturnUrl))
             {
                 return Redirect(model.ReturnUrl);   // 🔥 Checkout pe wapas
             }
@@ -222,7 +222,7 @@ namespace EcommerceWebApplication.Controllers
                 {
                     return BadRequest(new { success = false, message = emailExistsMsg });
                 }
-                var otp = new Random().Next(100000, 999999).ToString();
+                var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
                 string emailBody = currentCulture == "ar"
                     ? $@"
@@ -310,8 +310,7 @@ namespace EcommerceWebApplication.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = otpSentMsg,
-                    otp = otp
+                    message = otpSentMsg
                 });
             }
             catch (Exception ex)
@@ -476,7 +475,7 @@ namespace EcommerceWebApplication.Controllers
 
             //await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
             //// -----------------------------------------------------
-            //if (!string.IsNullOrEmpty(model.ReturnUrl))
+            //if (Url.IsLocalUrl(model.ReturnUrl))
             //{
             //    return Redirect(model.ReturnUrl);  
             //}
@@ -496,7 +495,7 @@ namespace EcommerceWebApplication.Controllers
             );
 
             // 👇 Redirect yaha hoga
-            if (!string.IsNullOrEmpty(model.ReturnUrl))
+            if (Url.IsLocalUrl(model.ReturnUrl))
             {
                 return Redirect(model.ReturnUrl);
             }
@@ -571,7 +570,7 @@ namespace EcommerceWebApplication.Controllers
         // ===================== LOGOUT =====================
         public async Task<IActionResult> Logout()
         {
-            //await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             HttpContext.Session.Clear();
             return RedirectToAction("Index", "WebHome");
         }
