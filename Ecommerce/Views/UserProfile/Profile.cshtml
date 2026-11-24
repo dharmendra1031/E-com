@@ -8,147 +8,27 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
-    /* Default menu item */
-    
-    .container, .container-sm {
-        max-width: 100%;
+    .customer-profile .leftsidebaar, .customer-profile .rightpage { min-width: 0; }
+    .customer-profile #username { font-weight: 700; overflow-wrap: anywhere; }
+    .customer-profile .listitem { min-height: 44px; padding: .75rem; }
+    .customer-profile .menu-item { cursor: pointer; display: flex; align-items: center; }
+    .customer-profile .menu-item:hover, .customer-profile .menu-item.active { background: #eaf3f9; color: #075a96; }
+    .customer-profile .menu-item.active { font-weight: 600; }
+    .customer-profile #rightContent { overflow-wrap: anywhere; }
+    .customer-profile .partialheader { font-weight: 700; }
+    .customer-profile .fontsize, .customer-profile .valuefont { font-size: .95rem; }
+    @@media (max-width: 767.98px) {
+        .customer-profile .leftsidebaar { padding-block-end: 12px; }
+        .customer-profile .leftsidebaar .list-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+        .customer-profile .fontsize { font-size: .875rem; }
     }
-    .listitem{
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-
-    }
-    #username{
-        font-weight:700;
-        font-size:1rem;
-    }       
-
-       
-
-        .rightpage{
-            height: calc(100vh - 60px);
-            overflow-y: auto;
-        }
-
-        .partialheader{
-            font-weight:700;
-            font-size:1rem;
-        }
-
-
-    .menu-item {
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        display: flex;
-        align-items: center;
-    }
-
-        .menu-item:hover {
-            background-color: #f1f1f1;
-        }
-
-        .menu-item.active {
-            background-color: #f1f1f1;
-            font-weight: 600;
-            color: #0d6efd;
-        }
-    
-        @@media(min-width: 576px) and (max-width: 768px) {
-        .container, .container-sm {
-            max-width: 100%;
-        }
-        #username {
-            font-weight: 600;
-            font-size: 0.8rem;
-        }
-
-        .ifontsize {
-            font-size: 0.6rem;
-        }
-           .fontsize
-           {
-            font-size:0.7rem;
-           }
-
-        .leftsidebaar {
-            padding:0.4rem;
-        }
-
-        .listitem {
-            padding: 0.6rem;
-        }
-
-        #rightContent{
-            font-size:0.8rem;
-        }
-
-        .rightpage {
-            height: calc(50vh - 30px);
-            overflow-y: auto;
-        }
-        /*patial pages ka value font */
-        .valuefont{
-            font-size: 0.8rem;
-        }
-
-        .partialheader {
-            font-weight: 600;
-            font-size: 0.8rem;
-        }
-        }
-
-        
-        @@media(max-width: 576px)
-        {
-        .container, .container-sm {
-            max-width: 100%;
-        }
-        #username {
-            font-weight: 500;
-            font-size: 0.7rem;
-        }
-
-        .ifontsize {
-            font-size: 0.5rem;
-        }
-           .fontsize 
-           {
-            font-size: 0.6rem;
-        }
-
-        .leftsidebaar {
-            padding: 0.2rem;
-        }
-
-        .listitem {
-            padding:0.6rem;
-        }
-
-        #rightContent {
-            font-size: 0.6rem;
-        }
-
-        .rightpage {
-            height: calc(56vh - 30px);
-            overflow-y: auto;
-        }
-        /*patial pages ka value font */
-        .valuefont {
-            font-size: 0.7rem;
-        }
-
-        .partialheader {
-            font-weight: 600;
-            font-size: 0.78rem;
-        }
-        }
 </style>
 
-<div class="container py-1">
+<div class="container py-3 customer-profile">
     <div class="row">
 
         <!-- LEFT SIDEBAR -->
-        <div class="col-3 overflow-auto bg-white shadow-sm leftsidebaar">
+        <div class="col-12 col-md-4 col-lg-3 bg-white leftsidebaar">
 
             <!-- Profile Card -->
             <div class="bg-white p-md-3 p-1 rounded shadow-sm mb-md-2 mb-1 d-flex align-items-center">
@@ -198,38 +78,38 @@
                 <li class="list-group-item menu-item active listitem"
                     data-target="#loadOrders">
                     <i class="bi bi-box-seam me-2 ifontsize"></i>
-                    <span class="fontsize">My Orders</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "طلباتي" : "My Orders")</span>
                 </li>
 
                 <li class="list-group-item menu-item listitem"
                     data-target="#loadProfileInfo">
                     <i class="bi bi-person me-2 ifontsize"></i>
-                    <span class="fontsize">Profile Information</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "معلومات الحساب" : "Profile Information")</span>
                 </li>
 
                 <li class="list-group-item menu-item listitem"
                     data-target="#loadAddresses">
                     <i class="bi bi-geo-alt me-2 ifontsize"></i>
-                    <span class="fontsize">Manage Address</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إدارة العناوين" : "Manage Address")</span>
                 </li>
 
                 <li class="list-group-item menu-item listitem"
                     data-target="#loadChangePassword">
                     <i class="bi bi-lock me-2 ifontsize"></i>
-                    <span class="fontsize">Change Password</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تغيير كلمة المرور" : "Change Password")</span>
                 </li>
                 <li class="list-group-item listitem text-danger fw-semibold"
                     style="cursor:pointer;"
                     onclick="location.href='/UserAccount/Logout'">
                     <i class="bi bi-power me-2 ifontsize"></i>
-                    <span class="fontsize">Logout</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تسجيل الخروج" : "Logout")</span>
                 </li>
 
                 <li class="list-group-item listitem text-danger fw-semibold"
                     style="cursor:pointer;"
                     onclick="deleteAccount()">
                     <i class="bi bi-trash me-2 ifontsize"></i>
-                    <span class="fontsize">Delete Account</span>
+                    <span class="fontsize">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "حذف الحساب" : "Delete Account")</span>
                 </li>
 
 
@@ -238,7 +118,7 @@
         </div>
 
         <!-- ✅ RIGHT CONTENT (MOST IMPORTANT) -->
-        <div class="col-9  bg-light rightpage" style="">
+        <div class="col-12 col-md-8 col-lg-9 bg-light rightpage p-3">
             <div id="rightContent">
                 <!-- partials will load here -->
                 <div class="bg-white p-2 rounded shadow-sm text-muted">

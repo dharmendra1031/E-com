@@ -16,16 +16,11 @@
     <!-- SLIDER -->
     <div class="position-relative">
 
-        <!-- PREV (same as banner) -->
-        <button type="button"
-                class="carousel-control-prev brand-control"
-                id="prevBtn">
-            <span class="carousel-control-prev-icon rounded-circle p-3 bg-dark"></span>
-        </button>
+        
 
         <!-- VIEWPORT -->
-        <div class="overflow-hidden">
-            <div class="d-flex" id="brandTrack">
+        <div class="home-brand-viewport">
+            <div id="brandTrack">
                 @if (brands != null && brands.Count > 0)
                 {
                     foreach (var brand in brands)
@@ -43,81 +38,17 @@
             </div>
         </div>
 
-        <!-- NEXT (same as banner) -->
-        <button type="button"
-                class="carousel-control-next brand-control"
-                id="nextBtn">
-            <span class="carousel-control-next-icon rounded-circle p-3 bg-dark"></span>
-        </button>
+        
 
     </div>
 </div>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-    .brand-item {
-        min-width: 180px;
-        padding: 10px;
-    }
-
-        .brand-item img {
-            height: 60px;
-            width: 100%;
-            object-fit: contain;
-        }
-
-    #brandTrack {
-        transition: transform 0.6s ease-in-out;
-    }
-
-    /* banner jaise buttons positioning */
-    .brand-control {
-        width: 50px;
-    }
-
+    #brandTrack { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap: 12px; }
+    #brandTrack > a { min-width: 0; }
+    #brandTrack .brand-item { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    #brandTrack img { width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: contain; }
 </style>
-<script>
-    const track = document.getElementById("brandTrack");
-    const items = document.querySelectorAll(".brand-item");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-
-    const itemWidth = items[0].offsetWidth;
-    const totalItems = items.length;
-
-    const viewport = document.querySelector(".overflow-hidden");
-    const visibleItems = Math.floor(viewport.offsetWidth / itemWidth);
-
-    let index = 0;
-    const maxIndex = totalItems - visibleItems;
-
-    function updateButtons() {
-        prevBtn.disabled = index === 0;
-        nextBtn.disabled = index === maxIndex;
-
-        prevBtn.style.opacity = prevBtn.disabled ? "0.4" : "1";
-        nextBtn.style.opacity = nextBtn.disabled ? "0.4" : "1";
-    }
-
-    function move(step) {
-        index += step; // 🔥 ek-ek item
-
-        if (index < 0) index = 0;
-        if (index > maxIndex) index = maxIndex;
-
-        track.style.transform = `translateX(-${index * itemWidth}px)`;
-        updateButtons();
-    }
-
-    nextBtn.addEventListener("click", () => move(1));
-    prevBtn.addEventListener("click", () => move(-1));
-
-    // initial state
-    updateButtons();
-
-    // resize safe
-    //window.addEventListener("resize", () => location.reload());
-</script>
 <script>
 
     $(document).ready(function () {

@@ -217,8 +217,9 @@
         #siteHeader .toggleRTL { white-space: nowrap; }
         @@media (max-width: 767.98px) {
             #siteHeader #hcompanyLogo { max-width: 80px !important; max-height: 44px !important; }
-            #siteHeader .header-actions { gap: 6px !important; }
-            #siteHeader .header-user-name { max-width: 48px; }
+            #siteHeader .header-actions { gap: 6px !important; flex-wrap: wrap; }
+            #siteHeader .header-user-name { display: none; }
+            
             #siteHeader .category-menu-icon { width: 24px !important; height: 24px !important; }
         }
     </style>
@@ -326,13 +327,13 @@
 							<div class="dropdown">
 
 								<!-- TRIGGER -->
-								<a class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+								<a class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" aria-label="@(lang == "ar" ? "حسابي" : "My account")"
 								   href="#"
 								   role="button"
 								   data-bs-toggle="dropdown"
 								   aria-expanded="false">
 
-									<span class="header-user-name">@fullName</span>
+									<i class="fa fa-user d-md-none" aria-hidden="true"></i><span class="header-user-name">@fullName</span>
 								</a>
 
 								<!-- DROPDOWN MENU -->
@@ -678,6 +679,10 @@
 
 		// Window resize (mobile rotate, responsive)
 		window.addEventListener("resize", adjustPageContent);
+        if (typeof ResizeObserver !== "undefined") {
+            const siteHeader = document.getElementById("siteHeader");
+            if (siteHeader) new ResizeObserver(adjustPageContent).observe(siteHeader);
+        }
 
 		// If fonts/images load later
 		setTimeout(adjustPageContent, 300);

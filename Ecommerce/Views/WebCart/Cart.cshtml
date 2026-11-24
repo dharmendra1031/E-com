@@ -1,14 +1,14 @@
 ﻿@{
-    ViewData["Title"] = "WEb Category";
+    ViewData["Title"] = "Cart";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 
-<div class="row justify-content-center mt-3 mb-3">
-    <div class="container my-4 col-md-11">
+<div class="container py-3 py-md-4 customer-cart">
+    <div>
 
         <!-- HEADER -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
             <h2 class="fw-bold mb-0">@_localizer["Your cart"]</h2>
             <a href="~/WebCategory/Index" class="fw-semibold text-decoration-none">
                 @_localizer["Continue shopping"]
@@ -55,6 +55,13 @@
     </div>
 </div>
 
+<style>
+    .customer-cart .cart-product { min-width: 0; overflow-wrap: anywhere; }
+    .customer-cart .cart-product img { flex: 0 0 72px; width: 72px; height: 72px; object-fit: contain; }
+    .customer-cart .cart-product > div { min-width: 0; }
+    .customer-cart .cart-quantity button { min-height: 44px; min-width: 40px; }
+    .customer-cart .cart-total { white-space: nowrap; font-size: clamp(.8rem, 2.5vw, 1rem); }
+</style>
 <script>
     function loadCart() {
 
@@ -65,7 +72,7 @@
             let subtotal = 0;
 
             if (!cart || cart.length === 0) {
-                $('#cartList').html('<p class="text-muted text-center">Cart is empty</p>');
+                $('#cartList').html(`<p class="text-muted text-center">${document.documentElement.lang === "ar" ? "السلة فارغة" : "Cart is empty"}</p>`);
                 $('#cartSubtotal').text('0.000 KD');
                 $('#OrderAmount').val(0);
                 return;
@@ -80,17 +87,17 @@
                 subtotal += total;
 
                 html += `
-                <div class="row align-items-center py-4 border-bottom" data-productid="${item.productId}">
-                    <div class="col-md-6 d-flex gap-3">
+                <div class="row align-items-center gy-3 py-3 border-bottom" data-productid="${item.productId}">
+                    <div class="col-12 col-md-6 d-flex gap-3 cart-product">
                         <img src="${item.imageBase64 ?? 'https://via.placeholder.com/80'}"
-                             class="img-fluid rounded" style="max-width:80px">
+                             class="img-fluid rounded" alt="" loading="lazy">
                         <div>
                             <div class="fw-semibold">${item.productName}</div>
                             <small class="text-muted">${unitPrice.toFixed(3)} KD</small>
                         </div>
                     </div>
 
-                    <div class="col-md-3 text-center">
+                    <div class="col-8 col-md-3 text-start text-md-center cart-quantity">
                         <button class="btn btn-light qty-minus">−</button>
                         <span class="qty px-2">${qty}</span>
                         <button class="btn btn-light qty-plus">+</button>
@@ -100,7 +107,7 @@
                     </div>
 
 
-                    <div class="col-md-3 text-end fw-semibold">
+                    <div class="col-4 col-md-3 text-end fw-semibold cart-total" dir="ltr">
                         ${total.toFixed(3)} KD
                     </div>
                 </div>`;
@@ -155,7 +162,6 @@
             productId: productId,
             qty: change
         }, function (response) {
-            debugger;
                if (response && response.success === false && response.notStock) {
         Swal.fire({
             icon: 'warning',

@@ -8,16 +8,11 @@
     <!-- SLIDER -->
     <div class="position-relative">
 
-        <!-- PREV -->
-        <button type="button"
-                class="carousel-control-prev category-control"
-                id="catPrevBtn">
-            <span class="carousel-control-prev-icon rounded-circle p-3 bg-dark"></span>
-        </button>
+        
 
         <!-- VIEWPORT -->
-        <div class="overflow-hidden">
-            <div class="justify-content-center d-flex" id="categoryTrack">
+        <div class="home-category-viewport">
+            <div id="categoryTrack">
 
                 @if (categories != null && categories.Count > 0)
                 {
@@ -29,7 +24,7 @@
                                class="text-decoration-none text-dark">
 
                                 <img src="@cat.ImageBase64"
-                                     class="category-img rounded-circle p-2" />
+                                     class="category-img rounded-circle p-2" alt="" loading="lazy" />
 
                                 <p class="fw-bold mt-2 small">@cat.CName</p>
                             </a>
@@ -41,215 +36,15 @@
             </div>
         </div>
 
-        <!-- NEXT -->
-        <button type="button"
-                class="carousel-control-next category-control"
-                id="catNextBtn">
-            <span class="carousel-control-next-icon rounded-circle p-3 bg-dark"></span>
-        </button>
+        
 
     </div>
 </div>
 
 
 <style>
-    /* .position-relative {
-        width: 100%;
-    } */
-
-    .overflow-hidden {
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
-        scroll-behavior: smooth;
-        cursor: grab;
-    }
-
-        .overflow-hidden:active {
-            cursor: grabbing;
-        }
-
-    .category-item {
-        min-width: 180px;
-        padding: 10px;
-        /* flex: 0 0 auto; */
-    }
-
-    .category-img {
-        width: 140px;
-        height: 140px;
-        object-fit: cover;
-        border: 4px solid #FFD700;
-        border-top-color: transparent;
-        box-sizing: border-box;
-    }
-
-    .category-control {
-        width: 45px;
-        display: none; /* hidden by default */
-        z-index: 10;
-    }
-
-    /* Hide scrollbar */
-    .overflow-hidden::-webkit-scrollbar {
-        display: none;
-    }
-
-    .overflow-hidden {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-</style> 
-@* <script>
-    const catTrack = document.getElementById("categoryTrack");
-    const catItems = document.querySelectorAll(".category-item");
-    const catPrevBtn = document.getElementById("catPrevBtn");
-    const catNextBtn = document.getElementById("catNextBtn");
-
-    const catItemWidth = catItems[0].offsetWidth;
-    const catTotalItems = catItems.length;
-
-    const catViewport = document.querySelector(".overflow-hidden");
-    const catVisibleItems = Math.floor(catViewport.offsetWidth / catItemWidth);
-
-    let catIndex = 0;
-    const catMaxIndex = catTotalItems - catVisibleItems;
-
-    function updateCatButtons() {
-        catPrevBtn.disabled = catIndex === 0;
-        catNextBtn.disabled = catIndex === catMaxIndex;
-
-        catPrevBtn.style.opacity = catPrevBtn.disabled ? "0.4" : "1";
-        catNextBtn.style.opacity = catNextBtn.disabled ? "0.4" : "1";
-    }
-
-    function moveCategory(step) {
-        catIndex += step; // 🔥 ek-ek item slide
-
-        if (catIndex < 0) catIndex = 0;
-        if (catIndex > catMaxIndex) catIndex = catMaxIndex;
-
-        catTrack.style.transform = `translateX(-${catIndex * catItemWidth}px)`;
-        updateCatButtons();
-    }
-
-    catNextBtn.addEventListener("click", () => moveCategory(1));
-    catPrevBtn.addEventListener("click", () => moveCategory(-1));
-
-    // initial state
-    updateCatButtons();
-
-    setInterval(() => {
-        if (catIndex >= catMaxIndex) {
-            catIndex = 0; // ⬅️ wapas start
-        } else {
-            catIndex++;
-        }
-    
-        catTrack.style.transform =
-            `translateX(-${catIndex * catItemWidth}px)`;
-    
-        updateCatButtons();
-    
-    }, 3000); // 3 seconds
-</script> 
- *@
-
-<script>
-    const viewport = document.querySelector(".overflow-hidden");
-    const track = document.getElementById("categoryTrack");
-    const prevBtn = document.getElementById("catPrevBtn");
-    const nextBtn = document.getElementById("catNextBtn");
-
-    /* ----------------------------
-       SHOW / HIDE BUTTONS
-    -----------------------------*/
-    function checkOverflow() {
-        if (track.scrollWidth > viewport.clientWidth + 5) {
-            prevBtn.style.display = "block";
-            nextBtn.style.display = "block";
-        } else {
-            prevBtn.style.display = "none";
-            nextBtn.style.display = "none";
-        }
-    }
-
-    function updateButtons() {
-        prevBtn.disabled = viewport.scrollLeft <= 0;
-        nextBtn.disabled =
-            viewport.scrollLeft + viewport.clientWidth >= track.scrollWidth - 5;
-
-        prevBtn.style.opacity = prevBtn.disabled ? "0.3" : "1";
-        nextBtn.style.opacity = nextBtn.disabled ? "0.3" : "1";
-    }
-
-    function scrollByAmount(dir) {
-        const amount = viewport.clientWidth / 2;
-        viewport.scrollBy({ left: dir * amount, behavior: "smooth" });
-    }
-
-    prevBtn.addEventListener("click", () => scrollByAmount(-1));
-    nextBtn.addEventListener("click", () => scrollByAmount(1));
-
-    viewport.addEventListener("scroll", updateButtons);
-
-    window.addEventListener("load", () => {
-        checkOverflow();
-        updateButtons();
-    });
-
-    window.addEventListener("resize", () => {
-        checkOverflow();
-        updateButtons();
-    });
-
-    /* ----------------------------
-       DRAG WITH MOUSE SUPPORT
-    -----------------------------*/
-    let isDown = false;
-    let startX;
-    let scrollLeft;
-
-    viewport.addEventListener("mousedown", (e) => {
-        isDown = true;
-        viewport.classList.add("active");
-        startX = e.pageX - viewport.offsetLeft;
-        scrollLeft = viewport.scrollLeft;
-    });
-
-    viewport.addEventListener("mouseleave", () => {
-        isDown = false;
-    });
-
-    viewport.addEventListener("mouseup", () => {
-        isDown = false;
-    });
-
-    viewport.addEventListener("mousemove", (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX - viewport.offsetLeft;
-        const walk = (x - startX) * 1.5; // drag speed
-        viewport.scrollLeft = scrollLeft - walk;
-    });
-
-    /* ----------------------------
-       TOUCH SWIPE SUPPORT
-    -----------------------------*/
-    let touchStartX = 0;
-    let touchScrollLeft = 0;
-
-    viewport.addEventListener("touchstart", (e) => {
-        touchStartX = e.touches[0].pageX;
-        touchScrollLeft = viewport.scrollLeft;
-    });
-
-    viewport.addEventListener("touchmove", (e) => {
-        const x = e.touches[0].pageX;
-        const walk = (x - touchStartX) * 1.5;
-        viewport.scrollLeft = touchScrollLeft - walk;
-    });
-</script>
-
-
-
+    #categoryTrack { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr)); gap: 12px; }
+    #categoryTrack .category-item { min-width: 0; padding: 8px; }
+    #categoryTrack .category-img { width: min(100%, 108px); aspect-ratio: 1; object-fit: contain; border: 1px solid #e2e8f0; }
+    #categoryTrack p { overflow-wrap: anywhere; color: #111; margin-block-end: 0; }
+</style>

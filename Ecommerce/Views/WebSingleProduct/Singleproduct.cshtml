@@ -2,7 +2,8 @@
 @model EcommerceWebApplication.Models.ViewModels.SingleProductVM
 
 @{
-    ViewData["Title"] = "Product Details";
+    var isArabic = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = isArabic ? "تفاصيل المنتج" : "Product details";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
 <style>
@@ -15,30 +16,46 @@
         border-radius: 20px;
         font-size: 0.75rem;
     }
+    .product-gallery { display: grid; grid-template-columns: minmax(0, 76px) minmax(0, 1fr); gap: 12px; align-items: start; }
+    .product-thumbnails { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .product-thumbnails img { width: 100%; aspect-ratio: 1; object-fit: contain; cursor: pointer; }
+    .product-main-image { min-width: 0; text-align: center; }
+    .product-main-image img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+    .product-detail-name { overflow-wrap: anywhere; font-size: clamp(1.25rem, 2.5vw, 2rem); }
+    .product-detail .spec-name { flex: 0 0 35%; min-width: 0; overflow-wrap: anywhere; }
+    .product-detail .spec-name ~ .flex-grow-1 { min-width: 0; overflow-wrap: anywhere; }
+    .product-detail .add-cart { min-height: 44px; }
+    @@media (max-width: 575.98px) {
+        .product-gallery { grid-template-columns: minmax(0, 1fr); }
+        .product-main-image { grid-row: 1; }
+        .product-thumbnails { flex-direction: row; overflow-x: auto; }
+        .product-thumbnails img { flex: 0 0 64px; width: 64px; }
+        .product-detail .add-cart { flex: 1 1 100%; }
+    }
 </style>
-<div class="container py-5">
-    <div class="row g-5">
+<div class="container py-3 py-md-5 product-detail">
+    <div class="row g-3 g-lg-5">
 
         <!-- LEFT IMAGE SECTION -->
-        <div class="col-md-6 d-flex">
+        <div class="col-md-6 product-gallery">
 
             <!-- Thumbnails -->
-            <div class="d-flex flex-column gap-2 me-3 overflow-auto" style="max-height: 400px;">
+            <div class="product-thumbnails">
                 @foreach (var img in Model.Images)
                 {
                     <img src="@img.Base64"
                          onclick="changeImage(this)"
                          class="img-thumbnail rounded-2"
-                         style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" />
+                         alt="@Model.Name" loading="lazy" />
                 }
             </div>
 
             <!-- MAIN IMAGE -->
-            <div class="flex-grow-1 text-center">
+            <div class="product-main-image">
                 <img id="mainImg"
                      src="@(Model.Images.FirstOrDefault()?.Base64 ?? "/images/default-product.png")"
                      class="img-fluid rounded-3 border"
-                     style="max-width: 450px;" />
+                     alt="@Model.Name" />
             </div>
 
         </div>
@@ -53,12 +70,12 @@
                     <span>★</span>
                 }
                 <span class="text-muted fw-normal ms-2">
-                    @Model.TotalReviews review(s)
+                    @Model.TotalReviews @(isArabic ? "تقييمات" : "reviews")
                 </span>
             </div>
 
             <!-- Product Name -->
-            <h2 class="fw-bold mb-2">@Model.Name</h2>
+            <h2 class="fw-bold mb-2 product-detail-name">@Model.Name</h2>
 
 
             <!-- SKU & Product Code -->
@@ -71,26 +88,20 @@
                     }
                     @if (!string.IsNullOrEmpty(Model.Ds_ProdID))
                     {
-                        <span class="ms-2">Product ID: @Model.Ds_ProdID</span>
+                        <span class="ms-2">@(isArabic ? "رمز المنتج:" : "Product ID:") @Model.Ds_ProdID</span>
                     }
                 </p>
             }
 
             <!-- Stock -->
             <p class="fw-semibold @(Model.Stock > 0 ? "text-success" : "text-danger")">
-                Availability: @(Model.Stock > 0 ? "In Stock" : "Out of Stock")
+                @(isArabic ? "التوفر:" : "Availability:") @(Model.Stock > 0 ? (isArabic ? "متوفر" : "In stock") : (isArabic ? "غير متوفر" : "Out of stock"))
             </p>
 
             <!-- Weight -->
             @if (Model.Weight > 0)
             {
-                <p class="text-muted">Weight: @Model.Weight GM</p>
-            }
-
-            <!-- Cost Price -->
-            @if (Model.CoastPrice.HasValue)
-            {
-                <p class="text-muted">Cost Price: @Model.CoastPrice KWD</p>
+                <p class="text-muted">@(isArabic ? "الوزن:" : "Weight:") @Model.Weight @(isArabic ? "غرام" : "g")</p>
             }
 
             <!-- Warranty -->
@@ -120,7 +131,7 @@
             @if (!string.IsNullOrEmpty(Model.ProductsModel))
             {
                 <div class="mb-3">
-                    <strong>Model:</strong> @Model.ProductsModel
+                    <strong>@(isArabic ? "الموديل:" : "Model:")</strong> @Model.ProductsModel
                 </div>
             }
 
@@ -163,19 +174,8 @@
 
 
             <!-- Quantity & Add to Cart -->
-            @* <div class="d-flex align-items-center gap-3">
-                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
-                    <button type="button" class="btn btn-outline-secondary px-3" onclick="decrementQty()">-</button>
-                    <span id="qty" class="px-3">@Model.Units</span>
-                    <button type="button" class="btn btn-outline-secondary px-3" onclick="incrementQty()">+</button>
-                </div>
-
-                <button class="btn btn-dark rounded-pill px-4 py-2 add-cart"
-                        data-productid="@Model.ProductId">
-                    🛒 ADD TO CART
-                </button>
-            </div> *@
-            <div class="d-flex align-items-center gap-3">
+            
+            <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
                 <div class="d-flex align-items-center border rounded-3 overflow-hidden">
                     <button type="button" class="btn btn-outline-secondary px-3" onclick="decrementQty()">-</button>
                     <span id="qty" class="px-3">1</span>
@@ -183,8 +183,8 @@
                 </div>
 
                 <button class="btn btn-dark rounded-pill px-4 py-2 add-cart"
-                        data-productid="@Model.ProductId">
-                    🛒 ADD TO CART
+                        data-productid="@Model.ProductId" disabled="@(!Model.IsInStock)">
+                    @(isArabic ? "أضف للسلة" : "Add to cart")
                 </button>
             </div>
         </div>
@@ -195,14 +195,14 @@
     {
         <div class="mt-5">
             <h5 class="fw-bold">
-                Customer Reviews (@Model.TotalReviews)
+                @(isArabic ? "تقييمات العملاء" : "Customer reviews") (@Model.TotalReviews)
             </h5>
 
             <ul class="list-group mt-3">
                 @foreach (var review in Model.Reviews)
                 {
                     <li class="list-group-item">
-                        <strong>Rating:</strong> @review.Rating / 5
+                        <strong>@(isArabic ? "التقييم:" : "Rating:")</strong> @review.Rating / 5
                         <p class="mb-0">@review.Comment</p>
                     </li>
                 }
@@ -214,7 +214,7 @@
     @if (Model.Specifications != null && Model.Specifications.Any())
     {
         <div class="mt-5">
-            <h4 class="mb-4">Specifications</h4>
+            <h4 class="mb-4">@(isArabic ? "المواصفات" : "Specifications")</h4>
 
             <div class="border rounded">
                 @foreach (var spec in Model.Specifications)
@@ -223,8 +223,8 @@
                                                     @(Model.Specifications.IndexOf(spec) % 2 == 0 ? "bg-light" : "")">
 
                         <!-- Spec Name -->
-                        <div class="fw-semibold" style="min-width:200px;">
-                            @spec.SpeciNameEn
+                        <div class="fw-semibold spec-name">
+                            @(isArabic && !string.IsNullOrWhiteSpace(spec.SpeciNameAr) ? spec.SpeciNameAr : spec.SpeciNameEn)
                         </div>
 
                         <!-- Vertical Line -->
@@ -232,7 +232,7 @@
 
                         <!-- Spec Value -->
                         <div class="flex-grow-1">
-                            @spec.SpecivalueEn
+                            @(isArabic && !string.IsNullOrWhiteSpace(spec.SpecivalueAr) ? spec.SpecivalueAr : spec.SpecivalueEn)
                         </div>
 
                     </div>
