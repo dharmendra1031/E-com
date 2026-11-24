@@ -36,15 +36,14 @@
                     foreach (var deal in Model.WeekendDeals)
                     {
                        
-                        <div class="col-lg-4 col-md-6 col-12">
+                        <div class="col-6 col-xl-4">
                             <a href="@Url.Action("SingleProduct", "WebSingleProduct", new { id = deal.ProductId })" class="text-decoration-none text-dark">
 
                             <div class="card h-100 shadow-sm position-relative overflow-hidden transition" style="font-size:0.85rem; cursor:pointer;"
-                                 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.25)';"
-                                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='';">
+                                 >
                                 <span class="badge bg-danger position-absolute top-0 start-0 m-1">@deal.DiscPer% OFF</span>
                                 <img src="@(deal.ProductImagesBase64 != null && deal.ProductImagesBase64.Any() ? deal.ProductImagesBase64.First() : "/images/default-product.png")"
-                                     class="card-img-top" style="height:150px; object-fit:contain;" alt="@deal.ProductName" />
+                                     class="card-img-top" style="aspect-ratio:4/3; object-fit:contain;" alt="@deal.ProductName" />
                                 <div class="card-body p-2">
                                     <p class="card-title fw-semibold mb-1" style="font-size:0.9rem;">
                                         @(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft? deal.ProductNameAr: deal.ProductName)
@@ -52,7 +51,7 @@
 
                                         @if (deal.ProductPrice > 0 && deal.OfferPrice > 0)
                                     {
-                                        <p class="text-muted mb-1 text-decoration-line-through" style="font-size:0.8rem;">KD @deal.ProductPrice.ToString("F3")</p>
+                                        <p class="text-muted mb-1 text-decoration-line-through" style="font-size:0.8rem;">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</p>
                                             <p class="fw-bold mb-0" style="font-size:0.9rem;"> @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture) KD</p>
                                     }
                                 </div>
@@ -108,17 +107,16 @@
 
                 data.slice(0, 2).forEach(function (item) {
                     var html = `
-                        <div class="col-md-6 mb-2">
+                        <div class="col-6 mb-2">
                              <a href="/WebSingleProduct/SingleProduct?id=${item.productId}"
        class="text-decoration-none text-dark">
         <div class="card h-100 shadow-sm overflow-hidden transition"
              style="font-size:0.85rem; cursor:pointer;"
-             onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.25)';"
-             onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='';">
+             >
 
             <img src="${item.imageUrl}"
                  class="card-img-top rounded"
-                 style="height:150px; object-fit:contain;" />
+                 style="aspect-ratio:4/3; object-fit:contain;" />
 
             <div class="card-body p-2">
                 <p class="fw-bold mb-1" style="font-size:0.9rem;">

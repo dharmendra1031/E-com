@@ -223,9 +223,10 @@
             #siteHeader .category-menu-icon { width: 24px !important; height: 24px !important; }
         }
     </style>
+    <link rel="stylesheet" href="~/css/storefront.css" asp-append-version="true" />
 </head>
 
-<body dir="@direction">
+<body dir="@direction" class="storefront">
 	<div class="fixed-header" id="siteHeader">
 		<div class="py-2" style="background-color:#fff; color:#075a96; font-size:0.875rem;">
 			<div class="container text-center fw-bold text-uppercase">
@@ -1106,5 +1107,27 @@ document.addEventListener("DOMContentLoaded", function () {
 			});
 		}
 	</script>
+<script>
+    $(document).on("click", ".add-to-cart-btn", function () {
+        const button = $(this);
+        if (button.prop("disabled")) return;
+        const arabic = document.documentElement.lang === "ar";
+        button.prop("disabled", true);
+        $.post('/WebCart/AddOrUpdateCart', { productId: button.data("productid"), qty: 1 })
+            .done(function (res) {
+                if (res.success) {
+                    loadCartCount();
+                    Swal.fire({ toast: true, position: 'bottom-end', icon: 'success',
+                        text: arabic ? 'تمت الإضافة إلى السلة' : 'Added to cart', showConfirmButton: false, timer: 1800 });
+                } else {
+                    Swal.fire({ icon: 'warning', text: res.message || (arabic ? 'تعذرت الإضافة' : 'Unable to add item') });
+                }
+            })
+            .fail(function () {
+                Swal.fire({ icon: 'error', text: arabic ? 'حدث خطأ. حاول مرة أخرى.' : 'Something went wrong. Please try again.' });
+            })
+            .always(function () { button.prop("disabled", false); });
+    });
+</script>
 </body>
 </html>

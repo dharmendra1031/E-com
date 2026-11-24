@@ -14,11 +14,11 @@
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 <script src="~/js/navigation.js"></script>
-<div class="container">
+<div class="container store-auth">
     <div class="row justify-content-center">
-        <div class="col-md-5 col-lg-4">
+        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
 
-            <div class="text-center my-5" id="NavigationKey">
+            <div class="store-auth-card text-center my-3 my-md-5" id="NavigationKey">
                 <h2 class="fw-semibold mb-4">@_localizer["Create Account"]</h2>
 
                 <form id="registerForm" method="post" onsubmit="return validateFormJS();">
@@ -26,8 +26,8 @@
                     <!-- Full Name -->
                     <div class="form-floating mb-3">
                         <input id="FullName" name="FullName"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
-                               placeholder="Full Name" />
+                               class="form-control form-control-lg bg-white rounded-3"
+                               placeholder="@_localizer["Full Name"]" />
                         <label for="FullName">@_localizer["Full Name"]</label>
                         @if (isArabic)
                         {
@@ -43,8 +43,8 @@
                     <!-- Email -->
                     @*  <div class="form-floating mb-3">
                         <input id="Email" name="Email"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
-                               placeholder="Email" />
+                               class="form-control form-control-lg bg-white rounded-3"
+                               placeholder="@_localizer["Email"]" />
                         <label for="Email">@_localizer["Email"]</label>
        
                         @if (isArabic)
@@ -64,8 +64,8 @@
                         <!-- EMAIL INPUT -->
                         <div class="form-floating">
                             <input id="Email" name="Email"
-                                   class="form-control form-control-lg bg-light border-0 rounded-3"
-                                   placeholder="Email" />
+                                   class="form-control form-control-lg bg-white rounded-3"
+                                   placeholder="@_localizer["Email"]" />
                             <label for="Email">@_localizer["Email"]</label>
                         </div>
 
@@ -94,7 +94,7 @@
                     <div class="form-floating mb-3 position-relative">
                         <input type="hidden" id="BirthDate" name="BirthDate" />
                         <input type="text" id="BirthDate_Display"
-                               class="form-control form-control-lg bg-light border-0 rounded-3 ps-3"
+                               class="form-control form-control-lg bg-white rounded-3 ps-3"
                                placeholder="DD-MM-YYYY" maxlength="10" />
                         <label for="BirthDate_Display">@_localizer["Birth Date"]</label>
                         @if (isArabic)
@@ -114,7 +114,7 @@
                     <!-- Phone -->
                     <div class="form-floating mb-3">
                         <input id="Phone" name="Phone"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
+                               class="form-control form-control-lg bg-white rounded-3"
                                placeholder="Phone" maxlength="8" onkeypress="return numericOnly(event)" />
                         <label for="Phone">@_localizer["Phone"]</label>
                       
@@ -132,8 +132,8 @@
                     <div class="form-floating mb-3">
                         <input id="Password" name="Password"
                                type="password"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
-                               placeholder="Password" />
+                               class="form-control form-control-lg bg-white rounded-3"
+                               placeholder="@_localizer["Password"]" />
                         <label for="Password">@_localizer["Password"]</label>
                         
                         @if (isArabic)
@@ -149,8 +149,8 @@
                     <!-- Confirm Password -->
                     <div class="form-floating mb-3">
                         <input type="password" id="ConfirmPassword" name="ConfirmPassword"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
-                               placeholder="Confirm Password" />
+                               class="form-control form-control-lg bg-white rounded-3"
+                               placeholder="@_localizer["Confirm Password"]" />
                         <label for="ConfirmPassword">@_localizer["Confirm Password"]</label>
                   
 
@@ -164,7 +164,7 @@
                         }
                     </div>
 
-                    <button type="submit" class="btn btn-warning btn-lg w-100 fw-semibold rounded-3">@_localizer["Create"]</button>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-semibold rounded-3">@_localizer["Create"]</button>
                 </form>
 
 

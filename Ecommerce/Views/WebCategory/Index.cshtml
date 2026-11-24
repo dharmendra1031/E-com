@@ -42,43 +42,6 @@
     </div>
 </div>
 <script>
-    $(document).on("click", ".add-to-cart-btn", function () {
-
-        var productId = $(this).data("productid");
-
-        $.ajax({
-            url: '/WebCart/AddOrUpdateCart',
-            type: 'POST',
-            data: {
-                productId: productId,
-                qty: 1
-            },
-            success: function (res) {
-
-                if (res.notStock) {
-                    Swal.fire({
-                        icon: 'warning',
-                       text: res.message,
-                        confirmButtonText: 'OK',
-                        width: 500
-                    });
-                    return;
-                }
-
-                if (res.success) {
-                    loadCartCount();
-                }
-            },
-            error: function () {
-                Swal.fire({
-                    icon: 'error',
-                    text: 'Something went wrong'
-                });
-            }
-        });
-    });
-</script>
-<script>
     let selectedCategoryName = "";
     let selectedSubCategoryName = "";
 

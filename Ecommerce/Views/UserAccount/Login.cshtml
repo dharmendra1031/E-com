@@ -10,11 +10,11 @@
     var culture = CultureInfo.CurrentCulture;
     bool isArabic = culture.TextInfo.IsRightToLeft;
 }
-<div class="container">
+<div class="container store-auth">
     <div class="row justify-content-center">
-        <div class="col-md-5 col-lg-4">
+        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
 
-            <div class="text-center my-5">
+            <div class="store-auth-card text-center my-3 my-md-5">
                 <a asp-controller="WebCheckout"
                    asp-action="Index"
                    asp-route-Usertype="Guest"
@@ -38,9 +38,9 @@
                     <!-- Email -->
                     <div class="form-floating mb-3">
                         <input asp-for="Email"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
+                               class="form-control form-control-lg bg-white rounded-3"
                                id="Email"
-                               placeholder="Email">
+                               placeholder="@_localizer["Email"]">
                         <label asp-for="Email">@_localizer["Email"]</label>
                         <span asp-validation-for="Email" class="text-danger"></span>
                     </div>
@@ -48,10 +48,10 @@
                     <!-- Password -->
                     <div class="form-floating mb-4">
                         <input asp-for="Password"
-                               class="form-control form-control-lg bg-light border-0 rounded-3"
+                               class="form-control form-control-lg bg-white rounded-3"
                                type="password"
                                id="Password"
-                               placeholder="Password">
+                               placeholder="@_localizer["Password"]">
                         <label asp-for="Password">@_localizer["Password"]</label>
                         <span asp-validation-for="Password" class="text-danger"></span>
                     </div>
@@ -59,7 +59,7 @@
 
                     <!-- Submit Button -->
                     <button type="submit"
-                            class="btn btn-warning btn-lg w-100 fw-semibold rounded-3">
+                            class="btn btn-primary btn-lg w-100 fw-semibold rounded-3">
                         @_localizer["SignIn"]
                     </button>
                 </form>
