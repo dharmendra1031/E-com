@@ -112,11 +112,17 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 _context.CompanyDetails.Update(existingCompany);
-                TempData["Success"] = "Company details updated successfully.";
+
                
             }
 
+            if (existingCompany == null)
+            {
+                TempData["Error"] = "Company profile not found.";
+                return RedirectToAction("Index");
+            }
             await _context.SaveChangesAsync();
+            TempData["Success"] = "Company details updated successfully.";
             return RedirectToAction("Index");
 
         }

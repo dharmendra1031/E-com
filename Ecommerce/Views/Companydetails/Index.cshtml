@@ -265,7 +265,7 @@
                 // Check if number is exactly 8 digits
                 if (!/^\d{8}$/.test(number)) {
                     e.preventDefault();
-                    alert("Phone number must be exactly 8 digits.");
+                    AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "يجب أن يتكون رقم الهاتف من 8 أرقام." : "Phone number must be exactly 8 digits.");
                     return false;
                 }
 

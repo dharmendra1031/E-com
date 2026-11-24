@@ -151,6 +151,11 @@ namespace EcommerceWebApplication.Controllers
                 if (model.WdId > 0)   // Update
                 {
                     var coupon = _context.WekendDeals.FirstOrDefault(c => c.WdId == model.WdId);
+                    if (coupon == null)
+                    {
+                        TempData["Error"] = "Weekend deal not found.";
+                        return RedirectToAction("WekendDealsList");
+                    }
 
                     coupon.WdNameAr = model.WdNameAr;
                     coupon.WdNameEn = model.WdNameEn;
@@ -162,7 +167,7 @@ namespace EcommerceWebApplication.Controllers
                     coupon.UpdatedBy = 1;
                     coupon.UpdatedAt = DateTime.Now;
 
-                    TempData["Success"] = "Weekend Deal updated successfully!";
+
                 }
                 else  // Save
                 {
@@ -171,14 +176,16 @@ namespace EcommerceWebApplication.Controllers
 
                     _context.WekendDeals.Add(model);
 
-                    TempData["Success"] = "Weekend Deal created successfully!";
+
                 }
 
                 _context.SaveChanges();
+                TempData["Success"] = "Weekend deal saved successfully.";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error: " + ex.Message;
+                TempData.Remove("Success");
+                TempData["Error"] = "Unable to save weekend deal. Review the details before retrying.";
             }
 
             return RedirectToAction("WekendDealsList");
@@ -203,7 +210,7 @@ namespace EcommerceWebApplication.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error: " + ex.Message });
+                return Json(new { success = false, message = "Unable to delete weekend deal." });
             }
         }
         [HttpGet]

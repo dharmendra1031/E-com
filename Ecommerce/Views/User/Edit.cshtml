@@ -148,26 +148,7 @@
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        $(document).ready(function () {
-            @if (TempData["SuccessMessage"] != null)
-            {
-                        <text>
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: '@TempData["SuccessMessage"]',
-                                confirmButtonColor: '#3085d6'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    // Replace this with the URL where you want to go after success
-                                    window.location.href = '/User/UserList';
-                                }
-                            });
-                        </text>
-            }
-        });
-    </script>
+    
     <script>
         document.querySelector("form").addEventListener("submit", function (e) {
 
@@ -177,7 +158,7 @@
             // ✅ validation
             if (!/^\d{8}$/.test(number)) {
                 e.preventDefault();
-                alert("Phone number must be exactly 8 digits");
+                AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "يجب أن يتكون رقم الهاتف من 8 أرقام." : "Phone number must be exactly 8 digits.");
                 return false;
             }
 

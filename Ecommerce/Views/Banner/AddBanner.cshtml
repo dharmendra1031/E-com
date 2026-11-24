@@ -155,21 +155,6 @@
 
    
 </script>
-@if (TempData["Success"] != null)
-{
-    <script>
-        Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: '@TempData["Success"]',
-            confirmButtonText: 'OK'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                    window.location.href = '@Url.Action("AddBanner", "Banner")';
-            }
-        });
-    </script>
-}
 <script>
     document.getElementById("bannerForm").addEventListener("submit", function (e) {
 

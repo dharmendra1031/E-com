@@ -74,12 +74,17 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 _context.Banner.Add(newBanner);
-                TempData["Success"] = "Banner added successfully!";
+
             }
             else
             {
                 // UPDATE BANNER
                 var banner = _context.Banner.FirstOrDefault(x => x.BannerId == model.BannerId);
+                if (banner == null)
+                {
+                    TempData["Error"] = "Banner not found.";
+                    return RedirectToAction("AddBanner");
+                }
 
                 banner.Title = model.Title;
                 banner.TitleArabic = model.TitleArabic;
@@ -106,10 +111,11 @@ namespace EcommerceWebApplication.Controllers
                     banner.BannerImage = finalImage;
                 }
 
-                TempData["Success"] = "Banner updated successfully!";
+
             }
 
             await _context.SaveChangesAsync();
+            TempData["Success"] = "Banner saved successfully.";
             return RedirectToAction("AddBanner");
         }
 
@@ -159,7 +165,7 @@ namespace EcommerceWebApplication.Controllers
             _context.Update(banner);
             await _context.SaveChangesAsync();
 
-            TempData["msg"] = "Banner updated successfully!";
+            TempData["Success"] = "Banner updated successfully!";
             return RedirectToAction("AddBanner");
         }
 

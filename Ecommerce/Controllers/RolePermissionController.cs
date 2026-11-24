@@ -137,10 +137,10 @@ namespace EcommerceWebApplication.Controllers
                 {
                     _context.RolePermission.RemoveRange(allPermissions);
                     _context.SaveChanges();
-                    TempData["SuccessMessage"] = "All permissions removed for this role successfully!";
+                    TempData["Success"] = "All permissions removed for this role successfully!";
                 }
 
-                return RedirectToAction("RoleIndex");
+                return RedirectToAction("PermissionList");
             }
 
            
@@ -207,15 +207,15 @@ namespace EcommerceWebApplication.Controllers
 
            
             if (anyUpdated && anyCreated)
-                TempData["SuccessMessage"] = "Permissions updated and new entries added successfully!";
+                TempData["Success"] = "Permissions updated and new entries added successfully!";
             else if (anyUpdated)
-                TempData["SuccessMessage"] = "Permissions updated successfully!";
+                TempData["Success"] = "Permissions updated successfully!";
             else if (anyCreated)
-                TempData["SuccessMessage"] = "Permissions saved successfully!";
+                TempData["Success"] = "Permissions saved successfully!";
             else if (toDelete.Any())
-                TempData["SuccessMessage"] = "Old permissions removed successfully!";
+                TempData["Success"] = "Old permissions removed successfully!";
 
-            return RedirectToAction("RoleIndex");
+            return RedirectToAction("PermissionList");
         }
 
 

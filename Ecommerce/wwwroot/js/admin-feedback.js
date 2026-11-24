@@ -87,10 +87,11 @@
         let success = false;
         try {
             const headers = new Headers(options.headers);
+            headers.set("Accept", "application/json");
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             if (token && !headers.has("RequestVerificationToken")) headers.set("RequestVerificationToken", token);
             const response = await fetch(url, {...options, headers});
-            if (!response.ok) throw new Error("HTTP " + response.status);
+            if (!response.ok || response.redirected) throw new Error("Unexpected response (HTTP " + response.status + ")");
             const result = await response.json();
             if (result.success !== true) {
                 await show("error", ar ? "لم تكتمل العملية. راجع البيانات والصلاحيات." : "The operation was rejected. Check the details and permissions.");

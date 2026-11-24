@@ -139,8 +139,8 @@ namespace EcommerceWebApplication.Controllers
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "Saved Successfully!";
-                //return RedirectToAction("UserList");
+                TempData["Success"] = "User saved successfully.";
+                return RedirectToAction("UserList");
             }
             catch
             {
@@ -203,10 +203,10 @@ namespace EcommerceWebApplication.Controllers
             await _context.SaveChangesAsync();
 
           
-            TempData["SuccessMessage"] = "Updated Successfully!";
+            TempData["Success"] = "User updated successfully.";
 
        
-            return RedirectToAction("Edit", new { id = user.UserId });
+            return RedirectToAction("UserList");
         }
         [HttpPost]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -214,12 +214,17 @@ namespace EcommerceWebApplication.Controllers
 
             var user = await _context.Users.FindAsync(id);
 
-            if (user != null)
+            bool ajax = Request.Headers["Accept"].ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
+            if (user == null)
             {
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
+                if (ajax) return Json(new { success = false, message = "User not found." });
+                TempData["Error"] = "User not found.";
+                return RedirectToAction("UserList");
             }
-
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+            if (ajax) return Json(new { success = true, message = "User deleted successfully." });
+            TempData["Success"] = "User deleted successfully.";
             return RedirectToAction("UserList");
         }
         public async Task<IActionResult> Delete(int id)

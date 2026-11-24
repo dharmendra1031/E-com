@@ -186,21 +186,6 @@
     <!-- ASP.NET Validation -->
     <partial name="_ValidationScriptsPartial" />
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: '@TempData["SuccessMessage"]',
-                confirmButtonText: 'OK'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '@Url.Action("PermissionList", "RolePermission")';
-                }
-            });
-        </script>
-    }
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const selectAll = document.getElementById("selectAllPages");
