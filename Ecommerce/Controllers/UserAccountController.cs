@@ -50,9 +50,16 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModals model)
         {
-            
+            if (model.BirthDate == default || model.BirthDate.Date > DateTime.Today)
+                ModelState.AddModelError(nameof(model.BirthDate), "Enter a valid birth date.");
+            if (!string.Equals(HttpContext.Session.GetString("RegistrationVerifiedEmail"), model.Email, StringComparison.OrdinalIgnoreCase) ||
+                !long.TryParse(HttpContext.Session.GetString("RegistrationVerifiedUntil"), out var until) ||
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds() > until)
+                ModelState.AddModelError(nameof(model.Email), "Verify your email first.");
+            if (!ModelState.IsValid) return View(model);
 
             // Check if email already exists
             bool emailExists = await _context.Customers
@@ -71,8 +78,8 @@ namespace EcommerceWebApplication.Controllers
                 Email = model.Email,
                 Phone =  model.Phone,
                 PasswordHash = model.Password,
-                IsActive = model.IsActive,
-                RoleId = model.RoleId,
+                IsActive = true,
+                RoleId = 2,
                 CreatedAt = DateTime.UtcNow,
                 BirthDate = model.BirthDate,
                 CustType = "Customer" ,
@@ -81,6 +88,8 @@ namespace EcommerceWebApplication.Controllers
 
             _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
+            HttpContext.Session.Remove("RegistrationVerifiedEmail");
+            HttpContext.Session.Remove("RegistrationVerifiedUntil");
 
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
 
@@ -193,7 +202,7 @@ namespace EcommerceWebApplication.Controllers
                     ? "كلمة مرورك لمرة واحدة "
                     : "Your One-Time Password (OTP)";
 
-                if (string.IsNullOrEmpty(request.email) && string.IsNullOrEmpty(request.mobile))
+                if (request == null || (string.IsNullOrEmpty(request.email) && string.IsNullOrEmpty(request.mobile)))
                 {
                     return BadRequest(new { success = false, message = "Email or Mobile required" });
                 }
@@ -287,8 +296,11 @@ namespace EcommerceWebApplication.Controllers
                 HttpContext.Session.Remove("PasswordResetVerifiedEmail");
                 HttpContext.Session.Remove("PasswordResetVerifiedUntil");
                 HttpContext.Session.Remove("PasswordResetPendingEmail");
-                if (request.fp == "fp" && !string.IsNullOrWhiteSpace(request.email))
-                    HttpContext.Session.SetString("PasswordResetPendingEmail", request.email);
+                HttpContext.Session.Remove("RegistrationPendingEmail");
+                HttpContext.Session.Remove("RegistrationVerifiedEmail");
+                HttpContext.Session.Remove("RegistrationVerifiedUntil");
+                if (!string.IsNullOrWhiteSpace(request.email))
+                    HttpContext.Session.SetString(request.fp == "fp" ? "PasswordResetPendingEmail" : "RegistrationPendingEmail", request.email);
 
                 var existing = _context.UserOtps.FirstOrDefault(x => x.Email == key);
 
@@ -304,7 +316,7 @@ namespace EcommerceWebApplication.Controllers
                     {
                         Email = key, // store email OR mobile
                         Otp = otp,
-                        Expiry = DateTime.Now.AddMinutes(2),
+                        Expiry = DateTime.Now.AddMinutes(5),
                         IsVerified = false
                     });
                 }
@@ -349,6 +361,11 @@ namespace EcommerceWebApplication.Controllers
                     ? "تم التحقق من رمز التفعيل بنجاح."
                     : "OTP verified successfully";
 
+                if (req == null || string.IsNullOrWhiteSpace(req.email) ||
+                    !(string.Equals(HttpContext.Session.GetString("PasswordResetPendingEmail"), req.email, StringComparison.OrdinalIgnoreCase) ||
+                      string.Equals(HttpContext.Session.GetString("RegistrationPendingEmail"), req.email, StringComparison.OrdinalIgnoreCase)))
+                    return Ok(new { success = false, message = invalidOtpMsg });
+
                 var otpRecord = await _context.UserOtps
                     .FirstOrDefaultAsync(x => x.Email == req.email);
 
@@ -371,6 +388,12 @@ namespace EcommerceWebApplication.Controllers
                     HttpContext.Session.SetString("PasswordResetVerifiedUntil", DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds().ToString());
                 }
 
+                else if (string.Equals(HttpContext.Session.GetString("RegistrationPendingEmail"), req.email, StringComparison.OrdinalIgnoreCase))
+                {
+                    HttpContext.Session.Remove("RegistrationPendingEmail");
+                    HttpContext.Session.SetString("RegistrationVerifiedEmail", req.email);
+                    HttpContext.Session.SetString("RegistrationVerifiedUntil", DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds().ToString());
+                }
                 return Ok(new { success = true, message = successMsg });
             }
             catch
@@ -405,6 +428,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModals model, string? returnUrl)
         {
             if (!ModelState.IsValid)
@@ -412,7 +436,7 @@ namespace EcommerceWebApplication.Controllers
 
             var customer = await _context.Customers
         .Include(c => c.Role )
-        .FirstOrDefaultAsync(c => c.Email == model.Email && c.IsActive && c.IsDeleted == 0);
+        .FirstOrDefaultAsync(c => c.Email == model.Email && c.IsActive && c.IsDeleted == 0 && c.CustType == "Customer" && c.Role.RoleName == "Customer");
 
             if (customer == null || customer.PasswordHash != model.Password)
             {
@@ -590,7 +614,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpPost]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.NewPassword))
+            if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.NewPassword) || model.NewPassword.Length < 8 || model.NewPassword.Length > 50)
                 return BadRequest(new { success = false, message = "Invalid reset request." });
 
             var verifiedEmail = HttpContext.Session.GetString("PasswordResetVerifiedEmail");

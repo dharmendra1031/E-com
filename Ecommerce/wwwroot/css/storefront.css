@@ -181,3 +181,11 @@
 .store-filter-actions button,#loadMoreProducts { min-height:44px; }
 @media(max-width:767.98px) { .store-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:359.98px) { .store-filter-actions button { flex:1 1 auto; } }
+
+.store-auth-narrow { max-width: 480px; margin-inline: auto; text-align: start; }
+.store-auth .form-label { font-weight: 600; color: #111; }
+.store-auth :is(.form-control,.input-group-text,.input-group .btn,.store-auth-submit) { min-height: 48px; }
+.store-auth .input-group .form-control { min-width: 0; }
+.store-auth .store-otp { text-align: center; letter-spacing: .35em; font-size: 1.4rem; }
+.store-auth .validation-summary-valid { display: none; }
+.store-auth .validation-summary-errors ul { padding-inline-start: 20px; }

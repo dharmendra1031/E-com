@@ -24,6 +24,9 @@ namespace EcommerceWebApplication.Models.ViewModels
         [StringLength(50, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters long")]
         public string Password { get; set; }
 
+        [Required, DataType(DataType.Password), Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
+        public string ConfirmPassword { get; set; }
+
 
 
         [Required(ErrorMessage = "Phone number is required")]
