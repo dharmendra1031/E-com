@@ -169,12 +169,16 @@ namespace EcommerceWebApplication.Controllers
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
-            if (string.IsNullOrWhiteSpace(term))
+            if (string.IsNullOrWhiteSpace(term) || term.Trim().Length > 100)
                 return Ok(new List<object>());
+            term = term.Trim();
 
 
             var products = await _context.Products
-                .Where(p => p.IsActive && (p.Name.Contains(term) || p.NameArb.Contains(term))
+                .Where(p => p.IsActive && (p.Name.Contains(term) || p.NameArb.Contains(term) ||
+                    (p.SKUId != null && p.SKUId.Contains(term)) ||
+                    (p.ProductsModel != null && p.ProductsModel.Contains(term)) ||
+                    _context.Brand.Any(b => b.BrandId == p.BrandId && (b.BrandNameAEn.Contains(term) || b.BrandNameAr.Contains(term))))
                 )
                 .OrderBy(p => p.Name)
                 .Take(6)
@@ -182,7 +186,7 @@ namespace EcommerceWebApplication.Controllers
                 {
                     productId = p.ProductId,
                     //name = lang == "ar" ? p.NameArb : p.Name,
-                    name = isArabic ? p.NameArb : p.Name,
+                    name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
                     description = isArabic ? p.DescriptionArb : p.Description,
                     //description = lang == "ar" ? p.DescriptionArb : p.Description,
                     price = Math.Round(p.Price, 3),

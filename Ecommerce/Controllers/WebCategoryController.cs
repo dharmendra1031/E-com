@@ -51,12 +51,42 @@ namespace EcommerceWebApplication.Controllers
 
             return PartialView("_CategoryPartial", categories);
         }
-        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null, bool brandedOnly = false)
+        [HttpGet]
+        public IActionResult Search(string? term, string sortBy = "newest", int page = 1, bool inStock = false)
+        {
+            ViewBag.SearchTerm = term?.Trim() ?? "";
+            ViewBag.SortBy = sortBy;
+            ViewBag.InStock = inStock;
+            ViewBag.Page = page;
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                ViewBag.TotalProducts = 0;
+                return View(new List<ProductListViewModel>());
+            }
+            return CatalogProducts(null, null, sortBy, page, null, null, null, inStock, null, false, term, true);
+        }
+
+        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null, bool brandedOnly = false) =>
+            CatalogProducts(categoryId, subCategoryId, sortBy, page, brandId, minPrice, maxPrice, inStock, minRating, brandedOnly, null, false);
+
+        private IActionResult CatalogProducts(int? categoryId, int? subCategoryId, string sortBy, int page, int? brandId,
+            decimal? minPrice, decimal? maxPrice, bool inStock, int? minRating, bool brandedOnly, string? term, bool searchPage)
         {
             const int pageSize = 24;
             if (page < 1 || page > int.MaxValue / pageSize) return BadRequest();
             bool isArabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var query = _context.Products.AsNoTracking().Where(p => p.IsActive);
+            if (searchPage)
+            {
+                term = term?.Trim();
+                if (string.IsNullOrEmpty(term) || term.Length > 100) return BadRequest();
+                var keyword = term;
+                query = query.Where(p => p.Name.Contains(keyword) || p.NameArb.Contains(keyword) ||
+                    (p.SKUId != null && p.SKUId.Contains(keyword)) ||
+                    (p.ProductsModel != null && p.ProductsModel.Contains(keyword)) ||
+                    _context.Brand.Any(b => b.BrandId == p.BrandId &&
+                        (b.BrandNameAEn.Contains(keyword) || b.BrandNameAr.Contains(keyword))));
+            }
             if (categoryId.HasValue) query = query.Where(p => p.CategoryId == categoryId);
             if (subCategoryId.HasValue) query = query.Where(p => p.SubCategoryId == subCategoryId);
             if (!ModelState.IsValid || minPrice < 0 || maxPrice < 0 ||
@@ -80,6 +110,7 @@ namespace EcommerceWebApplication.Controllers
                 .Select(p => new ProductListViewModel
                 {
                     ProductId = p.ProductId,
+                    BrandId = p.BrandId,
                     Name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
                     Price = p.Price,
                     AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
@@ -91,7 +122,18 @@ namespace EcommerceWebApplication.Controllers
                 }).ToList();
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
             ViewBag.TotalProducts = query.Count();
-            return PartialView("_ProductsPartial", products.Take(pageSize).ToList());
+            var items = products.Take(pageSize).ToList();
+            var brandIds = items.Where(p => p.BrandId.HasValue).Select(p => p.BrandId.Value).Distinct().ToList();
+            if (brandIds.Count > 0)
+            {
+                var names = _context.Brand.AsNoTracking().Where(b => brandIds.Contains(b.BrandId))
+                    .Select(b => new { b.BrandId, Name = isArabic && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn })
+                    .ToDictionary(b => b.BrandId, b => b.Name);
+                foreach (var item in items)
+                    if (item.BrandId.HasValue && names.TryGetValue(item.BrandId.Value, out var name)) item.BrandName = name;
+            }
+            if (searchPage) return View("Search", items);
+            return PartialView("_ProductsPartial", items);
         }
 
         [HttpGet]

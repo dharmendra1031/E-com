@@ -255,14 +255,15 @@
 						</a>
 					</div>
 
-                    <div class="store-search" id="searchForm" role="search">
+                    <form class="store-search" id="searchForm" role="search" method="get" action="@Url.Action("Search", "WebCategory")">
                         <label class="visually-hidden" for="searchInput">@_localizer["Search"]</label>
-                        <i class="bi bi-search store-search-icon" aria-hidden="true"></i>
-                        <input type="search" id="searchInput" class="form-control"
+                        
+                        <input type="search" id="searchInput" name="term" class="form-control" maxlength="100" required value="@(ViewBag.SearchTerm as string)"
                                placeholder="@(lang == "ar" ? "ابحث عن المنتجات" : "Search products...")"
                                autocomplete="off" aria-controls="searchDropdown" />
+                        <button type="submit" class="store-search-submit" aria-label="@(lang == "ar" ? "بحث" : "Search")"><i class="bi bi-search" aria-hidden="true"></i></button>
                         <div id="searchDropdown" class="list-group d-none" aria-live="polite"></div>
-                    </div>
+                    </form>
                     <div class="header-actions">
 						@{
 							var userId = Context.Session.GetInt32("UserId");
@@ -792,7 +793,7 @@
                             link.className = "list-group-item list-group-item-action store-search-result";
                             link.href = "/WebSingleProduct/SingleProduct/" + encodeURIComponent(product.productId);
                             const image = document.createElement("img");
-                            image.src = product.imageBase64 || "/images/default-product.png";
+                            if (product.imageBase64) image.src = product.imageBase64;
                             image.alt = "";
                             const details = document.createElement("div");
                             const name = document.createElement("div");
@@ -801,9 +802,15 @@
                             const price = document.createElement("bdi");
                             price.textContent = "KD " + Number(product.price).toFixed(3);
                             details.append(name, price);
-                            link.append(image, details);
+                            if (product.imageBase64) link.append(image);
+                            link.append(details);
                             results.append(link);
                         }
+                        const all = document.createElement("a");
+                        all.className = "list-group-item list-group-item-action store-search-all";
+                        all.href = search.action + "?" + new URLSearchParams({term});
+                        all.textContent = arabic ? "عرض جميع النتائج" : "View all results";
+                        results.append(all);
                         if (search.contains(document.activeElement)) results.classList.remove("d-none");
                     } catch (error) {
                         if (error.name !== "AbortError") message(arabic ? "تعذر البحث. حاول مرة أخرى." : "Unable to search. Try again.");
