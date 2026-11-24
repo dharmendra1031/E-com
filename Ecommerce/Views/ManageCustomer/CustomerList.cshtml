@@ -652,43 +652,12 @@
         }
         
         function toggleUserStatus(userId, currentStatus) {
-            const action = currentStatus ? "block" : "unblock";
-
-            Swal.fire({
-                title: `Are you sure you want to ${action} this Customer?`,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: `Yes, ${action} it`,
-                cancelButtonText: "Cancel"
-            }).then(result => {
-                if (result.isConfirmed) {
-                    fetch(`/ManageCustomer/ToggleUserStatus?id=${userId}`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() // if using anti-forgery
-                        }
-                    })
-                    .then(res => {
-                        if (!res.ok) throw new Error("Failed to update Customer status.");
-                        return res.json();
-                    })
-                           .then(data => {
-            if (data.success) {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success",
-                    text: `Customer ${action}ed successfully`
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: data.message || "Update failed"
-                });
-            }
+            const ar = document.documentElement.dir === "rtl";
+            const question = currentStatus
+                ? (ar ? "هل تريد حظر هذا العميل؟" : "Block this customer?")
+                : (ar ? "هل تريد إلغاء حظر هذا العميل؟" : "Unblock this customer?");
+            return AdminFeedback.confirmPost("/ManageCustomer/ToggleUserStatus?id=" + encodeURIComponent(userId),
+                {method:"POST"}, question, () => location.reload());
         })
                     .catch(err => {
                         console.error(err);
@@ -807,36 +776,19 @@
             const userId = document.getElementById("changePwdUserId").value;
             const newPassword = document.getElementById("newPassword").value;
             const confirmPassword = document.getElementById("confirmPassword").value;
-
-            if (!newPassword || !confirmPassword) {
-                Swal.fire("Warning", "Please fill all fields", "warning");
+            const ar = document.documentElement.dir === "rtl";
+            if (!newPassword || !confirmPassword || newPassword !== confirmPassword) {
+                AdminFeedback.show("warning", ar ? "أدخل كلمتي مرور متطابقتين." : "Enter matching passwords in both fields.");
                 return;
             }
-
-            if (newPassword !== confirmPassword) {
-                Swal.fire("Error", "Passwords do not match", "error");
-                return;
-            }
-
-            fetch('/ManageCustomer/ChangePassword', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ userId, newPassword })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire("Success", "Password changed successfully", "success");
-                    $('#changePasswordModal').modal('hide');
-                } else {
-                    Swal.fire("Error", data.message || "Failed to change password", "error");
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                Swal.fire("Error", "Something went wrong", "error");
+            return AdminFeedback.post("/ManageCustomer/ChangePassword", {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({userId,newPassword})
+            }, () => {
+                document.getElementById("newPassword").value = "";
+                document.getElementById("confirmPassword").value = "";
+                $("#changePasswordModal").modal("hide");
             });
         }
     </script>

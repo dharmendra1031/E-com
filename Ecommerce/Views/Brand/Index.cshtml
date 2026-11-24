@@ -174,19 +174,7 @@
 
     <script>
         function deleteBrand(id) {
-            if (!confirm("Are you sure you want to delete this Brand?")) return;
-
-            $.ajax({
-                url: '/Brand/Delete/' + id,
-                type: 'POST',
-                success: function () {
-                    alert("Brand deleted successfully!");
-                    location.reload();
-                },
-                error: function () {
-                    alert("Failed to delete Brand.");
-                }
-            });
+            return AdminFeedback.remove("/Brand/Delete/" + encodeURIComponent(id));
         }
       
             $(document).ready(function () {

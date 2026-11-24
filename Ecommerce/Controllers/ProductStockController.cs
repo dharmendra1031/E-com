@@ -101,6 +101,9 @@ namespace EcommerceWebApplication.Controllers.Admin
         [HttpPost]
         public IActionResult AddStock(int productId, int newStock)
         {
+            if (!ModelState.IsValid || newStock <= 0 || !_context.Products.Any(p => p.ProductId == productId))
+                return Json(new { success = false, message = "Invalid product or stock quantity." });
+
             var stock = new ProductStock
             {
                 ProductId = productId,

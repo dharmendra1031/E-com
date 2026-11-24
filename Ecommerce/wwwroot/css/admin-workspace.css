@@ -158,7 +158,10 @@
 .admin-workspace .admin-feedback[data-state=success] .admin-feedback-symbol { background:#e7f5ec; color:#176b36; }
 .admin-workspace .admin-feedback[data-state=error] .admin-feedback-symbol { background:#fcebec; color:#a51e27; }
 .admin-workspace .admin-feedback[data-state=warning] .admin-feedback-symbol { background:#fff4d8; color:#765000; }
-.admin-workspace .admin-feedback-ok { margin-top:22px; min-width:120px; min-height:44px; }
-.admin-workspace .admin-feedback-ok[hidden] { display:none!important; }
+.admin-workspace .admin-feedback-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
+.admin-workspace .admin-feedback-actions .btn { margin-top:22px; min-width:120px; min-height:44px; }
+.admin-workspace .admin-feedback-actions .btn[hidden] { display:none!important; }
+.admin-workspace .admin-feedback[data-state=confirm] .admin-feedback-symbol { background:#fff4d8; color:#765000; }
+.admin-workspace .admin-feedback[data-state=confirm] .admin-feedback-symbol::before { content:"?"; }
 @keyframes admin-feedback-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .admin-workspace .admin-feedback[data-state=processing] .admin-feedback-symbol { animation:none; } }

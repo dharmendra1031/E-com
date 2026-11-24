@@ -188,19 +188,7 @@
 @section Scripts {
     <script>
         function deletecoupon(id) {
-            if (!confirm("Are you sure you want to delete this Coupon?")) return;
-
-            $.ajax({
-                url: '/Coupon/Delete/' + id,
-                type: 'POST',
-                success: function () {
-                    alert("Coupon deleted successfully!");
-                    location.reload();
-                },
-                error: function () {
-                    alert("Failed to delete Coupon.");
-                }
-            });
+            return AdminFeedback.remove("/Coupon/Delete/" + encodeURIComponent(id));
         }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
@@ -292,36 +280,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(document).on('click', '.delete-btn', function () {
-            var couponId = $(this).data('id');
-
-            Swal.fire({
-                title: '@_localizer["Are you sure?"]',
-                text: "@_localizer["You won't be able to revert this!"]",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: '@_localizer["Yes, delete it!"]'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: '/Coupon/Delete/' + couponId,
-                        type: 'POST',
-                        success: function (response) {
-                            if (response.success) {
-                                Swal.fire('@_localizer["Deleted!"]', response.message, 'success').then(() => {
-                                    location.reload();
-                                });
-                            } else {
-                                Swal.fire('@_localizer["Error!"]', response.message, 'error');
-                            }
-                        },
-                        error: function () {
-                            Swal.fire('@_localizer["Error!"]', '@_localizer["Something went wrong on the server."]', 'error');
-                        }
-                    });
-                }
-            });
+            deletecoupon($(this).data('id'));
         });
     </script>
 

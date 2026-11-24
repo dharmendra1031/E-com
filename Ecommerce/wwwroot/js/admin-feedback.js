@@ -6,19 +6,22 @@
     const message = dialog.querySelector("p");
     const symbol = dialog.querySelector(".admin-feedback-symbol");
     const ok = dialog.querySelector(".admin-feedback-ok");
+    const cancel = dialog.querySelector(".admin-feedback-cancel");
     const ar = document.documentElement.dir === "rtl";
     const copy = ar ? {
         processing: ["جارٍ المعالجة", "يرجى عدم إغلاق الصفحة أو إعادة إرسال الطلب."],
         success: ["تم بنجاح", "تم حفظ العملية بنجاح."],
         error: ["تعذر إكمال العملية", "تعذر تأكيد نجاح العملية. تحقق من النتيجة قبل إعادة المحاولة."],
         warning: ["تحقق من البيانات", "يرجى مراجعة الحقول المطلوبة."],
-        ok: "حسناً"
+        confirm: ["تأكيد العملية", "هل تريد المتابعة؟"],
+        proceed: "متابعة", cancel: "إلغاء", ok: "حسناً"
     } : {
         processing: ["Processing…", "Please do not close the page or submit again."],
         success: ["Saved successfully", "The operation was completed."],
         error: ["Unable to complete", "The operation could not be confirmed. Check the result before retrying."],
         warning: ["Check your details", "Please review the highlighted fields."],
-        ok: "OK"
+        confirm: ["Confirm operation", "Do you want to continue?"],
+        proceed: "Continue", cancel: "Cancel", ok: "OK"
     };
     let pending = false;
     let activeForm = null;
@@ -26,25 +29,32 @@
     let previousFocus = null;
     function show(state, text, heading) {
         if (!copy[state]) state = "warning";
-        if (!dialog.open) previousFocus = document.activeElement;
+        if (!dialog.open) {
+            previousFocus = document.activeElement;
+            dialog.returnValue = "";
+        }
         dialog.dataset.state = state;
         title.textContent = heading || copy[state][0];
         message.textContent = text || copy[state][1];
         symbol.textContent = ({success:"✓", error:"!", warning:"!"})[state] || "";
-        ok.textContent = copy.ok;
+        ok.textContent = state === "confirm" ? copy.proceed : copy.ok;
         ok.hidden = state === "processing";
+        cancel.textContent = copy.cancel;
+        cancel.hidden = state !== "confirm";
         dialog.setAttribute("aria-busy", String(state === "processing"));
         if (!dialog.open) dialog.showModal();
-        if (!ok.hidden) ok.focus();
+        if (!cancel.hidden) cancel.focus();
+        else if (!ok.hidden) ok.focus();
         if (state === "processing") return;
         return new Promise(resolve => { resolveClose = resolve; });
     }
-    ok.addEventListener("click", () => dialog.close());
+    ok.addEventListener("click", () => dialog.close("confirmed"));
+    cancel.addEventListener("click", () => dialog.close("cancelled"));
     dialog.addEventListener("cancel", e => {
         if (pending || dialog.dataset.state === "processing") e.preventDefault();
     });
     dialog.addEventListener("close", () => {
-        if (resolveClose) { const done = resolveClose; resolveClose = null; done(); }
+        if (resolveClose) { const done = resolveClose; resolveClose = null; done(dialog.returnValue === "confirmed"); }
         if (previousFocus && previousFocus.isConnected) previousFocus.focus();
     });
     // Native POST navigation: observe after form-specific and validation handlers.
@@ -76,10 +86,16 @@
         show("processing");
         let success = false;
         try {
-            const response = await fetch(url, options);
+            const headers = new Headers(options.headers);
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            if (token && !headers.has("RequestVerificationToken")) headers.set("RequestVerificationToken", token);
+            const response = await fetch(url, {...options, headers});
             if (!response.ok) throw new Error("HTTP " + response.status);
             const result = await response.json();
-            if (result.success !== true) throw new Error("Operation rejected");
+            if (result.success !== true) {
+                await show("error", ar ? "لم تكتمل العملية. راجع البيانات والصلاحيات." : "The operation was rejected. Check the details and permissions.");
+                return false;
+            }
             success = true;
             await show("success", result.message);
         } catch (error) {
@@ -91,7 +107,17 @@
         if (success && onSuccess) onSuccess();
         return success;
     }
-    window.AdminFeedback = { show, post };
+    async function confirmPost(url, options, question, onSuccess) {
+        if (pending || dialog.open) return false;
+        if (!await show("confirm", question)) return false;
+        return post(url, options, onSuccess);
+    }
+    function remove(url) {
+        return confirmPost(url, {method:"POST"},
+            ar ? "هل أنت متأكد من حذف هذا السجل؟" : "Are you sure you want to delete this record?",
+            () => location.reload());
+    }
+    window.AdminFeedback = { show, post, confirmPost, remove };
     window.showAlert = (heading, text, icon = "success") => show(icon, text, heading);
     document.addEventListener("DOMContentLoaded", () => {
         if (dialog.dataset.error) show("error", dialog.dataset.error);

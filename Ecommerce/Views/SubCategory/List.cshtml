@@ -216,19 +216,7 @@
 
     <script>
         function deleteSubCategory(id) {
-            if (!confirm("Are you sure you want to delete this SubCategory?")) return;
-
-            $.ajax({
-                url: '/SubCategory/DeleteSubCategory/' + id,
-                type: 'POST',
-                success: function () {
-                    alert("SubCategory deleted successfully!");
-                    location.reload();
-                },
-                error: function () {
-                    alert("Failed to delete SubCategory.");
-                }
-            });
+            return AdminFeedback.remove("/SubCategory/DeleteSubCategory/" + encodeURIComponent(id));
         }
     </script>
     <script>

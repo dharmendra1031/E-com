@@ -215,19 +215,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         function deletecategory(id) {
-            if (!confirm("Are you sure you want to delete this Category?")) return;
-            debugger;
-            $.ajax({
-                url: '/Category/DeleteCategory/' + id,
-                type: 'POST',
-                success: function () {
-                    alert("Category deleted successfully!");
-                    location.reload();
-                },
-                error: function () {
-                    alert("Failed to delete Category.");
-                }
-            });
+            return AdminFeedback.remove("/Category/DeleteCategory/" + encodeURIComponent(id));
         }
    
         function submitFilter() {

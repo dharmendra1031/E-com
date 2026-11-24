@@ -801,7 +801,10 @@
         <div class="admin-feedback-symbol" aria-hidden="true"></div>
         <h2 id="adminFeedbackTitle"></h2>
         <p id="adminFeedbackMessage" role="status" aria-live="polite"></p>
-        <button type="button" class="btn btn-primary admin-feedback-ok" hidden>OK</button>
+        <div class="admin-feedback-actions">
+            <button type="button" class="btn btn-default admin-feedback-cancel" hidden>Cancel</button>
+            <button type="button" class="btn btn-primary admin-feedback-ok" hidden>OK</button>
+        </div>
     </dialog>
     <script src="~/js/admin-feedback.js" asp-append-version="true"></script>
     @RenderSection("Scripts", required: false)
