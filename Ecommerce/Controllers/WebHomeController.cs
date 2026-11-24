@@ -19,7 +19,9 @@ namespace EcommerceWebApplication.Controllers
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
             var banners = _context.Banner
-                                  .OrderBy(b => b.BannerId)
+                                  .Where(b => b.BannerImage != null)
+                                  .OrderBy(b => b.DisplayOrder).ThenBy(b => b.BannerId)
+                                  .Select(b => new BannerModel { BannerId = b.BannerId, Title = b.Title, TitleArabic = b.TitleArabic })
                                   .ToList();
             //var categories = _context.Categories
             //                  .Where(c => c.IsActive)
@@ -46,7 +48,7 @@ namespace EcommerceWebApplication.Controllers
                     CName = isArabic ? c.CNameArb : c.CName,
 
                     ImageBase64 = c.CategoryImage != null
-                        ? "data:image/png;base64," + Convert.ToBase64String(c.CategoryImage)
+                        ? "/StoreImage/Category/" + c.CategoryId
                         : "/images/default-category.png"
                 })
                 .ToList();
@@ -63,7 +65,7 @@ namespace EcommerceWebApplication.Controllers
 
                              // 🔥 Base64 conversion
                              BrandlogoBase64 = d.BrandLogo != null
-                                 ? "data:image/png;base64," + Convert.ToBase64String(d.BrandLogo)
+                                 ? "/StoreImage/Brand/" + d.BrandId
                                  : "/images/default-brand.png"
                          })
                          .ToList();
@@ -75,7 +77,7 @@ namespace EcommerceWebApplication.Controllers
                                 join p in _context.Products
                                     on wd.ProductId equals p.ProductId
                                 where wd.FromDate <= DateTime.Now
-                      && wd.ToDate >= DateTime.Now
+                      && wd.ToDate >= DateTime.Now && p.IsActive
                                 select new WeekendDealProductVM
                                 {
                                     DealId = wd.WdId,
@@ -94,7 +96,8 @@ namespace EcommerceWebApplication.Controllers
                                     OfferPrice = p.Price - ((p.Price * wd.DiscPer) / 100),
 
                                     ProductImagesBase64 = p.ProductImages
-                                        .Select(img => $"data:image/png;base64,{Convert.ToBase64String(img.ImageData)}")
+                                        .OrderBy(img => img.ImageId).Take(1)
+                                        .Select(img => "/StoreImage/Product/" + img.ImageId)
                                         .ToList()
                                 }).OrderByDescending(x => x.DealId)
                                .Take(6)
@@ -109,10 +112,6 @@ namespace EcommerceWebApplication.Controllers
             vm.WeekendDeals = weekendDeals;
 
             return View(vm);
-            vm.WeekendDeals = weekendDeals;
-
-
-            return View();
         }
          
         public IActionResult _TopHeader()
@@ -143,7 +142,7 @@ namespace EcommerceWebApplication.Controllers
                 .ThenByDescending(x => x.TotalReviews)
                 .Take(4)
                 .Join(
-                    _context.Products.Include(p => p.ProductImages),
+                    _context.Products.Where(p => p.IsActive),
                     review => review.ProductId,
                     product => product.ProductId,
                     (review, product) => new
@@ -155,7 +154,7 @@ namespace EcommerceWebApplication.Controllers
 
                         // ImageUrl => imageUrl (camelCase) — taaki JS mein easily access ho sake
                         imageUrl = product.ProductImages.Any()
-                    ? $"data:image/png;base64,{Convert.ToBase64String(product.ProductImages.First().ImageData)}"
+                    ? "/StoreImage/Product/" + product.ProductImages.OrderBy(img => img.ImageId).Select(img => img.ImageId).FirstOrDefault()
                      : "/images/default-focus.png"
 
                     }
@@ -174,7 +173,7 @@ namespace EcommerceWebApplication.Controllers
 
 
             var products = await _context.Products
-                .Where(p => p.Name.Contains(term) || p.NameArb.Contains(term)
+                .Where(p => p.IsActive && (p.Name.Contains(term) || p.NameArb.Contains(term))
                 )
                 .OrderBy(p => p.Name)
                 .Take(6)
@@ -206,7 +205,7 @@ namespace EcommerceWebApplication.Controllers
 
                     imageBase64 = p.ProductImages
                         .OrderBy(img => img.ImageId)
-                        .Select(img => "data:" + img.ContentType + ";base64," + Convert.ToBase64String(img.ImageData))
+                        .Select(img => "/StoreImage/Product/" + img.ImageId)
                         .FirstOrDefault(),
 
                     totalReviews = _context.ProductReviews.Count(r => r.ProductId == p.ProductId),

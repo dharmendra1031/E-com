@@ -14,6 +14,7 @@
         public int Rating { get; set; }
         // ✅ Primary image as Base64 for display
         public string ProductImageBase64 { get; set; }
+        public int? ProductImageId { get; set; }
     }
 
 }

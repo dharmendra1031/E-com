@@ -43,7 +43,7 @@
                                  >
                                 <span class="badge bg-danger position-absolute top-0 start-0 m-1">@deal.DiscPer% OFF</span>
                                 <img src="@(deal.ProductImagesBase64 != null && deal.ProductImagesBase64.Any() ? deal.ProductImagesBase64.First() : "/images/default-product.png")"
-                                     class="card-img-top" style="aspect-ratio:4/3; object-fit:contain;" alt="@deal.ProductName" />
+                                     class="card-img-top" style="aspect-ratio:4/3; object-fit:contain;" alt="@deal.ProductName" loading="lazy" decoding="async" />
                                 <div class="card-body p-2">
                                     <p class="card-title fw-semibold mb-1" style="font-size:0.9rem;">
                                         @(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft? deal.ProductNameAr: deal.ProductName)
@@ -116,7 +116,7 @@
 
             <img src="${item.imageUrl}"
                  class="card-img-top rounded"
-                 style="aspect-ratio:4/3; object-fit:contain;" />
+                 style="aspect-ratio:4/3; object-fit:contain;" loading="lazy" decoding="async" alt="" />
 
             <div class="card-body p-2">
                 <p class="fw-bold mb-1" style="font-size:0.9rem;">

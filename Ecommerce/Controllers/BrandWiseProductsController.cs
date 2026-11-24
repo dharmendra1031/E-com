@@ -26,7 +26,7 @@ namespace EcommerceWebApplication.Controllers
             //BrandName = b.BrandNameAEn,
             BrandName = isArabic ? b.BrandNameAr : b.BrandNameAEn,
             BrandImageBase64 = b.BrandLogo != null
-                ? "data:image/png;base64," + Convert.ToBase64String(b.BrandLogo)
+                ? "/StoreImage/Brand/" + b.BrandId
                 : null
         })
         .ToList();
@@ -61,11 +61,10 @@ namespace EcommerceWebApplication.Controllers
                                     .Where(o => o.ProductId == p.ProductId)
                                     .Sum(o => (int?)o.Quantity) ?? 0),
 
-                            ProductImageBase64 = _context.ProductImages
+                            ProductImageId = _context.ProductImages
                                 .Where(img => img.ProductId == p.ProductId)
                                 .OrderBy(img => img.ImageId)
-                                .Select(img => "data:" + img.ContentType + ";base64," +
-                                               Convert.ToBase64String(img.ImageData))
+                                .Select(img => (int?)img.ImageId)
                                 .FirstOrDefault()
                         }).ToList()
                 })

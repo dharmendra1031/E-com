@@ -1,5 +1,6 @@
 ﻿@{
-    var banners = ViewBag.Banners as dynamic;
+    var banners = ViewBag.Banners as List<EcommerceWebApplication.Models.BannerModel>;
+    var arabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 }
 
 <div class="col-12 col-md-11">
@@ -11,7 +12,7 @@
                 {
                     var banner = banners[i];
                     <div class="carousel-item @(i == 0 ? "active" : "")">
-                        <img src="@banner.BannerImageBase64" class="d-block w-100 banner-image" />
+                        <img src="@Url.Action("Banner", "StoreImage", new { id = banner.BannerId })" class="d-block w-100 banner-image" alt="@(arabic ? banner.TitleArabic : banner.Title)" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")" />
                     </div>
                 }
             }
@@ -19,7 +20,7 @@
             {
                 <!-- Fallback default images -->
                 <div class="carousel-item active">
-                    <img src="~/images/new1.jpg" class="d-block w-100 banner-image" />
+                    <img src="~/Images/new1.jpg" class="d-block w-100 banner-image" alt="" fetchpriority="high" />
                 </div>
             }
         </div>

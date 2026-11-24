@@ -36,6 +36,10 @@
             <div id="ProductContainer" aria-live="polite">
                 <!-- Products grid yahan -->
             </div>
+            <div class="text-center my-3">
+                <button type="button" id="loadMoreProducts" class="btn btn-outline-primary px-4 py-2 d-none">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "عرض المزيد" : "Load more products")</button>
+                <p id="catalogStatus" class="small text-danger mt-2" role="status"></p>
+            </div>
 
         </main>
 
@@ -51,6 +55,9 @@
         const selectedSubcategory = "@ViewBag.SelectedSubCategoryId";
         let categoryId = "", subcategoryId = "";
         let categoryRequest, productRequest;
+        let nextPage = 0;
+        const more = document.getElementById("loadMoreProducts");
+        const catalogStatus = document.getElementById("catalogStatus");
 
         async function getPartial(url, signal) {
             const response = await fetch(url, { signal });
@@ -95,23 +102,49 @@
             title.textContent = child ? parent + " / " + child : parent;
         }
 
-        async function loadProducts() {
+        async function loadProducts(append = false) {
+            if (append && (!nextPage || more.disabled)) return;
             productRequest?.abort();
             const request = new AbortController();
             productRequest = request;
-            const params = new URLSearchParams({ categoryId, sortBy: document.getElementById("sortProducts")?.value || "newest" });
+            const page = append ? nextPage : 1;
+            if (!append) {
+                nextPage = 0;
+                more.classList.add("d-none");
+                status(products, arabic ? "جارٍ تحميل المنتجات…" : "Loading products…");
+            }
+            more.disabled = true;
+            catalogStatus.textContent = "";
+            const params = new URLSearchParams({ categoryId, page, sortBy: document.getElementById("sortProducts")?.value || "newest" });
             if (subcategoryId) params.set("subCategoryId", subcategoryId);
-            status(products, arabic ? "جارٍ تحميل المنتجات…" : "Loading products…");
             products.setAttribute("aria-busy", "true");
             try {
                 const html = await getPartial("/WebCategory/ProductPartial?" + params, request.signal);
-                if (!request.signal.aborted) products.innerHTML = html;
+                if (request.signal.aborted) return;
+                const template = document.createElement("template");
+                template.innerHTML = html;
+                const incoming = template.content.querySelector(".cart-grid-container");
+                if (!incoming) throw new Error("Invalid catalog response");
+                if (append) {
+                    const grid = products.querySelector(".store-product-grid");
+                    if (!grid) throw new Error("Missing catalog grid");
+                    grid.append(...incoming.querySelectorAll(".cart-item-col"));
+                } else products.replaceChildren(template.content);
+                nextPage = Number(incoming.dataset.nextPage) || 0;
+                more.classList.toggle("d-none", !nextPage);
             } catch (error) {
-                if (error.name !== "AbortError") status(products, arabic ? "تعذر تحميل المنتجات." : "Unable to load products.");
+                if (error.name !== "AbortError") {
+                    if (append) catalogStatus.textContent = arabic ? "تعذر تحميل المزيد. حاول مرة أخرى." : "Unable to load more. Try again.";
+                    else status(products, arabic ? "تعذر تحميل المنتجات." : "Unable to load products.");
+                }
             } finally {
-                if (productRequest === request) products.removeAttribute("aria-busy");
+                if (productRequest === request) {
+                    products.removeAttribute("aria-busy");
+                    more.disabled = false;
+                }
             }
         }
+        more.addEventListener("click", () => loadProducts(true));
 
         async function selectCategory(link, initialSubcategory = "", historyMode = "push") {
             categoryRequest?.abort();
@@ -124,6 +157,9 @@
             status(subcategories, arabic ? "جارٍ التحميل…" : "Loading…");
             products.textContent = "";
             products.removeAttribute("aria-busy");
+            nextPage = 0;
+            more.classList.add("d-none");
+            catalogStatus.textContent = "";
             try {
                 const html = await getPartial("/WebCategory/SubCategoryCardPartial?categoryId=" + encodeURIComponent(categoryId), request.signal);
                 if (request.signal.aborted) return;

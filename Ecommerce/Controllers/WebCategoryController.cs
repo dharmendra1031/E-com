@@ -44,123 +44,43 @@ namespace EcommerceWebApplication.Controllers
                     //CName = x.CName,
                     CName = isArabic ? x.CNameArb : x.CName,
                     CategoryImageBase64 = x.CategoryImage != null
-                        ? "data:image/png;base64," + Convert.ToBase64String(x.CategoryImage)
+                        ? "/StoreImage/Category/" + x.CategoryId
                         : "/images/default-category.png"
                 })
                 .ToList();
 
             return PartialView("_CategoryPartial", categories);
         }
-        //public IActionResult ProductPartial(int? categoryId, int? subCategoryId)
-        //{
-        //    var products = _context.Products
-        //        .Include(p => p.ProductImages)
-        //        .Where(p => p.IsActive
-        //            && (!categoryId.HasValue || p.CategoryId == categoryId)
-        //            && (!subCategoryId.HasValue || p.SubCategoryId == subCategoryId))
-        //        .Select(p => new ProductListViewModel
-        //        {
-        //            ProductId = p.ProductId,
-        //            Name = p.Name,
-        //            Price = p.Price,
-        //            Stock =
-        //                (_context.ProductStocks.Where(s => s.ProductId == p.ProductId)
-        //                    .Sum(s => (int?)s.StockQty) ?? 0)
-        //              - (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
-        //                    .Sum(o => (int?)o.Quantity) ?? 0),
-
-        //            ProductImageBase64 = p.ProductImages
-        //                .OrderBy(x => x.ImageId)
-        //                .Select(x =>
-        //                    "data:" + x.ContentType + ";base64," +
-        //                    Convert.ToBase64String(x.ImageData))
-        //                .FirstOrDefault()
-        //        })
-        //        .ToList();
-
-        //    return PartialView("_ProductsPartial", products);
-        //}
-        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest")
+        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1)
         {
-            var culture = System.Globalization.CultureInfo.CurrentCulture;
-            bool isArabic = culture.TextInfo.IsRightToLeft;
-            var query = _context.Products
-     .Include(p => p.ProductImages)
-     .Where(p => p.IsActive)
-     .AsQueryable();
-
-            // 🔹 Conditional filtering
-            if (categoryId.HasValue && subCategoryId.HasValue)
+            const int pageSize = 24;
+            if (page < 1 || page > int.MaxValue / pageSize) return BadRequest();
+            bool isArabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var query = _context.Products.AsNoTracking().Where(p => p.IsActive);
+            if (categoryId.HasValue) query = query.Where(p => p.CategoryId == categoryId);
+            if (subCategoryId.HasValue) query = query.Where(p => p.SubCategoryId == subCategoryId);
+            var ordered = sortBy switch
             {
-                // dono selected
-                query = query.Where(p => p.CategoryId == categoryId && p.SubCategoryId == subCategoryId);
-            }
-            else if (categoryId.HasValue)
-            {
-                // sirf category
-                query = query.Where(p => p.CategoryId == categoryId);
-            }
-            else if (subCategoryId.HasValue)
-            {
-                // sirf subcategory
-                query = query.Where(p => p.SubCategoryId == subCategoryId);
-            }
-            //        var query = _context.Products
-            //.Include(p => p.ProductImages)
-            //.Where(p => p.IsActive)
-            //.AsQueryable();
-
-            //        if (subCategoryId.HasValue)
-            //        {
-            //            // 🔹 SubCategory priority le
-            //            query = query.Where(p => p.SubCategoryId == subCategoryId);
-            //        }
-            //        else if (categoryId.HasValue)
-            //        {
-            //            // 🔹 Sirf Category ho to category se filter
-            //            query = query.Where(p => p.CategoryId == categoryId);
-            //        }
-
-            // ✅ SORTING (taken from GetProducts)
-            query = sortBy switch
-            {
-                "low-high" => query.OrderBy(p => p.Price),
-                "high-low" => query.OrderByDescending(p => p.Price),
-                "newest" => query.OrderByDescending(p => p.CreatedAt),
-                _ => query.OrderByDescending(p => p.CreatedAt)
+                "low-high" => query.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
+                "high-low" => query.OrderByDescending(p => p.Price).ThenBy(p => p.ProductId),
+                _ => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.ProductId)
             };
-
-            
-            var products = query.Select(p => new ProductListViewModel
-            {
-                Rating = _context.ProductReviews
-                .Where(r => r.ProductId == p.ProductId)
-                .Select(r => r.Rating)
-                .FirstOrDefault(),
-                ProductId = p.ProductId,
-                //Name = p.Name,
-                Name = isArabic ? p.NameArb : p.Name,
-                Price = p.Price,
-                Stock =
-                    (_context.ProductStocks.Where(s => s.ProductId == p.ProductId)
-                        .Sum(s => (int?)s.StockQty) ?? 0)
-                  - (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
-                        .Sum(o => (int?)o.Quantity) ?? 0),
-
-                ProductImageBase64 = p.ProductImages
-                    .OrderBy(x => x.ImageId)
-                    .Select(x =>
-                        "data:" + x.ContentType + ";base64," +
-                        Convert.ToBase64String(x.ImageData))
-                    .FirstOrDefault(),
-               
-
-            }).ToList();
-            
-
-            return PartialView("_ProductsPartial", products);
+            var products = ordered.Skip((page - 1) * pageSize).Take(pageSize + 1)
+                .Select(p => new ProductListViewModel
+                {
+                    ProductId = p.ProductId,
+                    Name = isArabic ? p.NameArb : p.Name,
+                    Price = p.Price,
+                    Rating = _context.ProductReviews.Where(r => r.ProductId == p.ProductId)
+                        .Select(r => (int?)r.Rating).FirstOrDefault() ?? 0,
+                    Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
+                        - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
+                    ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
+                        .Select(img => (int?)img.ImageId).FirstOrDefault()
+                }).ToList();
+            ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
+            return PartialView("_ProductsPartial", products.Take(pageSize).ToList());
         }
-
 
         public IActionResult SubCategoryCardPartial(int? categoryId)
         {
@@ -184,7 +104,7 @@ namespace EcommerceWebApplication.Controllers
                     SCName = isArabic ? x.SCNameArb : x.SCName,
                     //SCName = x.SCName,
                     SubCategoryImageBase64 = x.SubCategoryImage != null
-                        ? "data:image/png;base64," + Convert.ToBase64String(x.SubCategoryImage)
+                        ? "/StoreImage/SubCategory/" + x.SubCategoryId
                         : "/images/default-category.png"
                 })
                 .ToList();

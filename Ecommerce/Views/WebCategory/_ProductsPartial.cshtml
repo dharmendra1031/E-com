@@ -2,7 +2,7 @@
 @model List<EcommerceWebApplication.Models.ViewModels.ProductListViewModel>
 @{ var isArabic = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
 
-<div class="cart-grid-container">
+<div class="cart-grid-container" data-next-page="@ViewBag.NextPage">
     <div class="store-product-grid">
         @if (Model != null && Model.Any())
         {
@@ -15,9 +15,9 @@
                            class="product-link-area">
                             <!-- Image at the top -->
                             <div class="cart-image-container">
-                                @if (!string.IsNullOrEmpty(item.ProductImageBase64))
+                                @if (item.ProductImageId.HasValue || !string.IsNullOrEmpty(item.ProductImageBase64))
                                 {
-                                    <img src="@item.ProductImageBase64" alt="@item.Name" loading="lazy" decoding="async" />
+                                    <img src="@(item.ProductImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = item.ProductImageId }) : item.ProductImageBase64)" alt="@item.Name" loading="lazy" decoding="async" />
                                 }
                                 else
                                 {

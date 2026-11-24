@@ -21,7 +21,7 @@ namespace EcommerceWebApplication.Controllers
                                 join p in _context.Products
                                     on wd.ProductId equals p.ProductId
                                 where wd.FromDate <= DateTime.Now
-                          && wd.ToDate >= DateTime.Now
+                          && wd.ToDate >= DateTime.Now && p.IsActive
                                 select new WeekendDealProductVM
                                 {
                                     DealId = wd.WdId,
@@ -42,7 +42,8 @@ namespace EcommerceWebApplication.Controllers
                                     OfferPrice = p.Price - ((p.Price * wd.DiscPer) / 100),
 
                                     ProductImagesBase64 = p.ProductImages
-                                        .Select(img => $"data:image/png;base64,{Convert.ToBase64String(img.ImageData)}")
+                                        .OrderBy(img => img.ImageId).Take(1)
+                                        .Select(img => "/StoreImage/Product/" + img.ImageId)
                                         .ToList()
                                 })
                                 .OrderByDescending(x => x.DealId)
