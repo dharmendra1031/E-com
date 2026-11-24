@@ -60,6 +60,24 @@ with sync_playwright() as pw:
                         if name=="catalog":
                             page.locator("#ProductContainer").wait_for(state="visible")
                             page.wait_for_function("document.querySelector('#ProductContainer').textContent.trim().length > 0 && !document.querySelector('#ProductContainer').hasAttribute('aria-busy')", timeout=10000)
+                    if not args.reference and name=="catalog":
+                        # A top-navigation category change must update the existing catalog document.
+                        page.locator("#topCategoryList a[href*='categoryId=']").first.wait_for(state="attached", timeout=10000)
+                        current_id = page.evaluate("new URL(location.href).searchParams.get('categoryId')")
+                        candidates = page.locator("#topCategoryList a[href*='categoryId=']")
+                        link = next((item for item in candidates.all() if item.get_attribute("href").split("categoryId=")[-1] != current_id), None)
+                        if link is not None:
+                            current_url = page.url
+                            page.evaluate("window.__catalogNavigationProbe = true")
+                            link.click()
+                            page.wait_for_function("document.querySelector('#ProductContainer').textContent.trim().length > 0 && !document.querySelector('#ProductContainer').hasAttribute('aria-busy') && !!document.querySelector('#SubCategoryContainer #breadcrumbTitle')", timeout=15000)
+                            if not page.evaluate("window.__catalogNavigationProbe === true"):
+                                row["issues"].append("header category caused full page reload")
+                            if page.url != current_url:
+                                page.go_back()
+                                page.wait_for_function("document.querySelector('#ProductContainer').textContent.trim().length > 0 && !document.querySelector('#ProductContainer').hasAttribute('aria-busy') && !!document.querySelector('#SubCategoryContainer #breadcrumbTitle')", timeout=15000)
+                                if page.url != current_url or not page.evaluate("window.__catalogNavigationProbe === true"):
+                                    row["issues"].append("category back navigation failed")
                     page.evaluate("document.fonts.ready")
                     metrics = page.evaluate("""() => {
                         const root=document.documentElement;

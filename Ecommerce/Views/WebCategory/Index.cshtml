@@ -71,12 +71,20 @@
             link.setAttribute("aria-current", "true");
         }
 
-        function updateUrl() {
+        function updateUrl(mode = "push") {
+            if (mode === "none") return;
             const url = new URL(location.href);
             url.searchParams.set("categoryId", categoryId);
             if (subcategoryId) url.searchParams.set("subCategoryId", subcategoryId);
             else url.searchParams.delete("subCategoryId");
-            history.replaceState(null, "", url);
+            if (url.href === location.href) return;
+            if (mode === "replace") history.replaceState(null, "", url);
+            else history.pushState(null, "", url);
+        }
+
+        function findCategory(id) {
+            return Array.from(categories.querySelectorAll(".category-link"))
+                .find(item => item.dataset.categoryid === id);
         }
 
         function updateHeading() {
@@ -105,7 +113,7 @@
             }
         }
 
-        async function selectCategory(link, initialSubcategory = "") {
+        async function selectCategory(link, initialSubcategory = "", historyMode = "push") {
             categoryRequest?.abort();
             productRequest?.abort();
             const request = new AbortController();
@@ -126,7 +134,7 @@
                     setActive(subcategories, sub);
                 }
                 updateHeading();
-                updateUrl();
+                updateUrl(historyMode);
                 await loadProducts();
             } catch (error) {
                 if (error.name !== "AbortError") status(subcategories, arabic ? "تعذر التحميل." : "Unable to load categories.");
@@ -155,11 +163,37 @@
             if (event.target.id === "sortProducts" && categoryId) loadProducts();
         });
 
+        // Header links retain normal navigation outside the catalog or when opened in a new tab.
+        document.getElementById("siteHeader")?.addEventListener("click", event => {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const anchor = event.target.closest("#topCategoryList a[href], #categoryDropdown a[href]");
+            if (!anchor || (anchor.target && anchor.target !== "_self")) return;
+            const url = new URL(anchor.href, location.href);
+            if (url.origin !== location.origin || url.pathname.toLowerCase().replace(/\/$/, "") !== "/webcategory/index") return;
+            const parentId = url.searchParams.get("categoryId") || anchor.closest("li.category-item")?.dataset.id;
+            const childId = url.searchParams.get("subCategoryId") || "";
+            const link = findCategory(parentId);
+            if (!link) return;
+
+            event.preventDefault();
+            const toggle = document.querySelector("#categoryDropdown")?.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+            if (anchor.closest("#categoryDropdown") && toggle) {
+                bootstrap.Dropdown.getInstance(toggle)?.hide();
+            }
+            selectCategory(link, childId);
+        });
+
+        window.addEventListener("popstate", () => {
+            const params = new URLSearchParams(location.search);
+            const link = findCategory(params.get("categoryId"));
+            if (link) selectCategory(link, params.get("subCategoryId") || "", "none");
+        });
+
         getPartial("/WebCategory/CategoryPartial").then(html => {
             categories.innerHTML = html;
             const links = Array.from(categories.querySelectorAll(".category-link"));
-            const link = links.find(item => item.dataset.categoryid === selectedCategory) || links[0];
-            if (link) selectCategory(link, selectedSubcategory);
+            const link = findCategory(selectedCategory) || links[0];
+            if (link) selectCategory(link, selectedSubcategory, "replace");
             else status(products, arabic ? "لا توجد فئات" : "No categories found");
         }).catch(() => status(categories, arabic ? "تعذر التحميل." : "Unable to load categories."));
     })();
