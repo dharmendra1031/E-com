@@ -1,323 +1,197 @@
-﻿@using System.Globalization
+@using System.Globalization
 @model EcommerceWebApplication.Models.ViewModels.SingleProductVM
-
 @{
-    var isArabic = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    ViewData["Title"] = isArabic ? "تفاصيل المنتج" : "Product details";
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = Model.Name;
     Layout = "~/Views/Shared/_WebLayout.cshtml";
+    var maxQty = Math.Max(0, (int)Model.Stock.GetValueOrDefault());
+    var image = Model.Images.FirstOrDefault()?.Base64;
 }
-<style>
-    .offer-badge {
-        background: linear-gradient(45deg, #ff3c00, #ff8c00);
-        color: #fff;
-        font-weight: 700;
-        letter-spacing: 1px;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-    }
-    .product-gallery { display: grid; grid-template-columns: minmax(0, 76px) minmax(0, 1fr); gap: 12px; align-items: start; }
-    .product-thumbnails { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-    .product-thumbnails img { width: 100%; aspect-ratio: 1; object-fit: contain; cursor: pointer; }
-    .product-main-image { min-width: 0; text-align: center; }
-    .product-main-image img { width: 100%; aspect-ratio: 1; object-fit: contain; }
-    .product-detail-name { overflow-wrap: anywhere; font-size: clamp(1.25rem, 2.5vw, 2rem); }
-    .product-detail .spec-name { flex: 0 0 35%; min-width: 0; overflow-wrap: anywhere; }
-    .product-detail .spec-name ~ .flex-grow-1 { min-width: 0; overflow-wrap: anywhere; }
-    .product-detail .add-cart { min-height: 44px; }
-    @@media (max-width: 575.98px) {
-        .product-gallery { grid-template-columns: minmax(0, 1fr); }
-        .product-main-image { grid-row: 1; }
-        .product-thumbnails { flex-direction: row; overflow-x: auto; }
-        .product-thumbnails img { flex: 0 0 64px; width: 64px; }
-        .product-detail .add-cart { flex: 1 1 100%; }
-    }
-</style>
-<div class="container py-3 py-md-5 product-detail">
-    <div class="row g-3 g-lg-5">
-
-        <!-- LEFT IMAGE SECTION -->
-        <div class="col-md-6 product-gallery">
-
-            <!-- Thumbnails -->
-            <div class="product-thumbnails">
-                @foreach (var img in Model.Images)
+<div class="container py-3 py-md-4 product-detail">
+    <nav class="store-breadcrumb mb-3" aria-label="@(ar ? "مسار التنقل" : "Breadcrumb")">
+        <a href="~/WebHome/Index">@(ar ? "الرئيسية" : "Home")</a><span>/</span>
+        <a href="@Url.Action("Index", "WebCategory", new { categoryId = Model.CategoryId })">@Model.CategoryName</a><span>/</span>
+        <a href="@Url.Action("Index", "WebCategory", new { categoryId = Model.CategoryId, subCategoryId = Model.SubCategoryId })">@Model.SubCategoryName</a>
+    </nav>
+    <div class="store-detail-panel">
+        <div class="row g-3 g-lg-4">
+            <div class="col-md-6">
+                <div class="store-detail-gallery">
+                    <div class="store-detail-main">
+                        @if (image != null)
+                        {
+                            <button type="button" class="store-image-zoom" data-bs-toggle="modal" data-bs-target="#productImageModal" aria-label="@(ar ? "تكبير الصورة" : "Enlarge product image")">
+                                <img id="mainImg" src="@image" alt="@Model.Name" fetchpriority="high" />
+                                <span class="store-zoom-label"><i class="fa fa-search-plus" aria-hidden="true"></i> @(ar ? "تكبير" : "Enlarge")</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="text-secondary">@(ar ? "لا توجد صورة" : "No image available")</span>
+                        }
+                    </div>
+                    @if (Model.Images.Count > 1)
+                    {
+                        <div class="store-detail-thumbnails">
+                            @for (int i = 0; i < Model.Images.Count; i++)
+                            {
+                                <button type="button" class="store-thumbnail" data-image="@Model.Images[i].Base64" aria-pressed="@(i == 0 ? "true" : "false")" aria-label="@(ar ? "الصورة" : "Image") @(i+1)">
+                                    <img src="@Model.Images[i].Base64" alt="" loading="lazy" decoding="async" />
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6 store-detail-info">
+                @if (Model.Brand != null)
                 {
-                    <img src="@img.Base64"
-                         onclick="changeImage(this)"
-                         class="img-thumbnail rounded-2"
-                         alt="@Model.Name" loading="lazy" />
+                    <a href="@Url.Action("Index", "BrandWiseProducts", new { brandId = Model.Brand.BrandId })" class="store-detail-brand">
+                        @if (!string.IsNullOrEmpty(Model.Brand.BrandLogoBase64))
+                        {
+                            <img src="@Model.Brand.BrandLogoBase64" alt="" loading="lazy" />
+                        }
+                        @Model.Brand.BrandName
+                    </a>
                 }
-            </div>
-
-            <!-- MAIN IMAGE -->
-            <div class="product-main-image">
-                <img id="mainImg"
-                     src="@(Model.Images.FirstOrDefault()?.Base64 ?? "/images/default-product.png")"
-                     class="img-fluid rounded-3 border"
-                     alt="@Model.Name" />
-            </div>
-
-        </div>
-
-        <!-- RIGHT PRODUCT DETAILS -->
-        <div class="col-md-6">
-
-            <!-- Rating -->
-            <div class="mb-2 text-warning">
-                @for (int i = 0; i < Math.Round(Model.AverageRating); i++)
+                <h1 class="store-detail-name">@Model.Name</h1>
+                <div class="small text-secondary">
+                    @if (!string.IsNullOrEmpty(Model.SKUId)) { <span dir="ltr">SKU: @Model.SKUId</span> }
+                    @if (!string.IsNullOrEmpty(Model.Ds_ProdID)) { <span class="ms-2">@(ar ? "رمز المنتج:" : "Product ID:") @Model.Ds_ProdID</span> }
+                </div>
+                <a href="#productReviews" class="text-decoration-none small">
+                    @if (Model.TotalReviews > 0)
+                    {
+                        <span class="store-rating" dir="ltr">★ @Model.AverageRating.ToString("F1", CultureInfo.InvariantCulture) / 5</span>
+                        <span class="text-secondary">(@Model.TotalReviews @(ar ? "تقييمات" : "reviews"))</span>
+                    }
+                    else { <span class="text-secondary">@(ar ? "لا توجد تقييمات" : "No reviews yet")</span> }
+                </a>
+                <div class="fw-semibold @(maxQty > 0 ? "text-success" : "text-danger")">@(maxQty > 0 ? (ar ? "متوفر" : "In stock") : (ar ? "غير متوفر" : "Out of stock"))</div>
+                <div class="store-detail-price">
+                    @if (Model.IsWeekendDeal && Model.OfferPrice.HasValue)
+                    {
+                        <s class="text-secondary fs-6" dir="ltr">KD @Model.Price.GetValueOrDefault().ToString("F3", CultureInfo.InvariantCulture)</s>
+                        <span class="badge bg-danger">@Model.DiscPer% @(ar ? "خصم" : "OFF")</span>
+                        <strong dir="ltr">KD @Model.OfferPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</strong>
+                    }
+                    else { <strong dir="ltr">KD @Model.Price.GetValueOrDefault().ToString("F3", CultureInfo.InvariantCulture)</strong> }
+                </div>
+                <div class="store-detail-purchase">
+                    <div class="store-detail-quantity" aria-label="@(ar ? "الكمية" : "Quantity")">
+                        <button type="button" class="btn btn-outline-secondary" id="qtyMinus" aria-label="@(ar ? "تقليل الكمية" : "Decrease quantity")" disabled>−</button>
+                        <span id="qty" aria-live="polite">@(maxQty > 0 ? 1 : 0)</span>
+                        <button type="button" class="btn btn-outline-secondary" id="qtyPlus" aria-label="@(ar ? "زيادة الكمية" : "Increase quantity")" disabled="@(maxQty <= 1)">+</button>
+                    </div>
+                    <button type="button" class="btn btn-primary add-to-cart-btn store-detail-add" data-productid="@Model.ProductId" data-quantity="1" id="detailAdd" disabled="@(maxQty == 0)">
+                        <i class="fa fa-shopping-cart" aria-hidden="true"></i> @(maxQty > 0 ? (ar ? "أضف للسلة" : "Add to cart") : (ar ? "غير متوفر" : "Unavailable"))
+                    </button>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Warranty) || !string.IsNullOrWhiteSpace(Model.ProductsModel) || Model.Weight > 0)
                 {
-                    <span>★</span>
+                    <dl class="store-detail-facts mb-0">
+                        @if (!string.IsNullOrWhiteSpace(Model.Warranty)) { <dt>@(ar ? "الضمان" : "Warranty")</dt><dd>@Model.Warranty</dd> }
+                        @if (!string.IsNullOrWhiteSpace(Model.ProductsModel)) { <dt>@(ar ? "الموديل" : "Model")</dt><dd>@Model.ProductsModel</dd> }
+                        @if (Model.Weight > 0) { <dt>@(ar ? "الوزن" : "Weight")</dt><dd>@Model.Weight @(ar ? "غرام" : "g")</dd> }
+                    </dl>
                 }
-                <span class="text-muted fw-normal ms-2">
-                    @Model.TotalReviews @(isArabic ? "تقييمات" : "reviews")
-                </span>
-            </div>
-
-            <!-- Product Name -->
-            <h2 class="fw-bold mb-2 product-detail-name">@Model.Name</h2>
-
-
-            <!-- SKU & Product Code -->
-            @if (!string.IsNullOrEmpty(Model.SKUId) || !string.IsNullOrEmpty(Model.Ds_ProdID))
-            {
-                <p class="text-muted">
-                    @if (!string.IsNullOrEmpty(Model.SKUId))
-                    {
-                        <span>SKU: @Model.SKUId</span>
-                    }
-                    @if (!string.IsNullOrEmpty(Model.Ds_ProdID))
-                    {
-                        <span class="ms-2">@(isArabic ? "رمز المنتج:" : "Product ID:") @Model.Ds_ProdID</span>
-                    }
-                </p>
-            }
-
-            <!-- Stock -->
-            <p class="fw-semibold @(Model.Stock > 0 ? "text-success" : "text-danger")">
-                @(isArabic ? "التوفر:" : "Availability:") @(Model.Stock > 0 ? (isArabic ? "متوفر" : "In stock") : (isArabic ? "غير متوفر" : "Out of stock"))
-            </p>
-
-            <!-- Weight -->
-            @if (Model.Weight > 0)
-            {
-                <p class="text-muted">@(isArabic ? "الوزن:" : "Weight:") @Model.Weight @(isArabic ? "غرام" : "g")</p>
-            }
-
-            <!-- Warranty -->
-            @if (!string.IsNullOrEmpty(Model.Warranty))
-            {
-                <div class="border rounded p-2 mb-3 d-flex align-items-center gap-2">
-                    <strong>🛡</strong> @Model.Warranty
-                </div>
-            }
-
-            <!-- Brand -->
-            @if (Model.Brand != null)
-            {
-                <div class="mb-2 d-flex align-items-center gap-2">
-                    @if (!string.IsNullOrEmpty(Model.Brand.BrandLogoBase64))
-                    {
-                        <img src="@Model.Brand.BrandLogoBase64"
-                             alt="@Model.Brand.BrandName"
-                             style="width:70px;height:70px;object-fit:contain;" />
-                    }
-                    <strong>@Model.Brand.BrandName</strong>
-                   @*  <span class="ms-2 text-muted">(@Model.Brand.BrandName)</span> *@
-                </div>
-            }
-
-            <!-- Model -->
-            @if (!string.IsNullOrEmpty(Model.ProductsModel))
-            {
-                <div class="mb-3">
-                    <strong>@(isArabic ? "الموديل:" : "Model:")</strong> @Model.ProductsModel
-                </div>
-            }
-
-            <!-- Description -->
-            @if (!string.IsNullOrEmpty(Model.Description))
-            {
-                <p class="text-muted">@Model.Description</p>
-            }
-
-
-            <!-- Price -->
-            @if (Model.IsWeekendDeal && Model.OfferPrice.HasValue)
-            {
-                <!-- OFFER HIGHLIGHT -->
-                <div class="mb-1">
-                    <span class="badge offer-badge">
-                        <i class="bi bi-lightning-fill me-1"></i> OFFER
-                    </span>
-                </div>
-
-                <span class="text-muted text-decoration-line-through me-2">
-                    @Model.Price.Value.ToString("F3", CultureInfo.InvariantCulture) KD
-                </span>
-
-                <span class="fs-3 fw-bold text-danger">
-                    @Model.OfferPrice.Value.ToString("F3", CultureInfo.InvariantCulture) KD
-                </span>
-
-                <span class="badge bg-danger ms-2">
-                    @Model.DiscPer% OFF
-                </span>
-            }
-            else
-            {
-                <span class="fs-3 fw-bold">
-                    @Model.Price.Value.ToString("F3", CultureInfo.InvariantCulture) KD
-                </span>
-            }
-
-
-
-            <!-- Quantity & Add to Cart -->
-            
-            <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
-                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
-                    <button type="button" class="btn btn-outline-secondary px-3" onclick="decrementQty()">-</button>
-                    <span id="qty" class="px-3">1</span>
-                    <button type="button" class="btn btn-outline-secondary px-3" onclick="incrementQty()">+</button>
-                </div>
-
-                <button class="btn btn-dark rounded-pill px-4 py-2 add-cart"
-                        data-productid="@Model.ProductId" disabled="@(!Model.IsInStock)">
-                    @(isArabic ? "أضف للسلة" : "Add to cart")
-                </button>
             </div>
         </div>
     </div>
-
-    <!-- Reviews Section -->
-    @if (Model.Reviews.Any())
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
     {
-        <div class="mt-5">
-            <h5 class="fw-bold">
-                @(isArabic ? "تقييمات العملاء" : "Customer reviews") (@Model.TotalReviews)
-            </h5>
-
-            <ul class="list-group mt-3">
-                @foreach (var review in Model.Reviews)
-                {
-                    <li class="list-group-item">
-                        <strong>@(isArabic ? "التقييم:" : "Rating:")</strong> @review.Rating / 5
-                        <p class="mb-0">@review.Comment</p>
-                    </li>
-                }
-            </ul>
-        </div>
+        <section class="store-detail-panel mt-3"><h2 class="h5 fw-bold">@(ar ? "الوصف" : "Description")</h2><div class="store-description">@Model.Description</div></section>
     }
-
-    <!-- Specifications Section -->
-    @if (Model.Specifications != null && Model.Specifications.Any())
+    @if (Model.Specifications.Any())
     {
-        <div class="mt-5">
-            <h4 class="mb-4">@(isArabic ? "المواصفات" : "Specifications")</h4>
-
-            <div class="border rounded">
+        <section class="store-detail-panel mt-3">
+            <h2 class="h5 fw-bold">@(ar ? "المواصفات" : "Specifications")</h2>
+            <dl class="store-specifications mb-0">
                 @foreach (var spec in Model.Specifications)
                 {
-                    <div class="d-flex align-items-stretch px-3 py-2
-                                                    @(Model.Specifications.IndexOf(spec) % 2 == 0 ? "bg-light" : "")">
-
-                        <!-- Spec Name -->
-                        <div class="fw-semibold spec-name">
-                            @(isArabic && !string.IsNullOrWhiteSpace(spec.SpeciNameAr) ? spec.SpeciNameAr : spec.SpeciNameEn)
-                        </div>
-
-                        <!-- Vertical Line -->
-                        <div class="mx-3 border-start border-dark"></div>
-
-                        <!-- Spec Value -->
-                        <div class="flex-grow-1">
-                            @(isArabic && !string.IsNullOrWhiteSpace(spec.SpecivalueAr) ? spec.SpecivalueAr : spec.SpecivalueEn)
-                        </div>
-
-                    </div>
+                    <dt>@(ar && !string.IsNullOrWhiteSpace(spec.SpeciNameAr) ? spec.SpeciNameAr : spec.SpeciNameEn)</dt>
+                    <dd>@(ar && !string.IsNullOrWhiteSpace(spec.SpecivalueAr) ? spec.SpecivalueAr : spec.SpecivalueEn)</dd>
                 }
+            </dl>
+        </section>
+    }
+    <section id="productReviews" class="store-detail-panel mt-3">
+        <h2 class="h5 fw-bold">@(ar ? "تقييمات العملاء" : "Customer reviews") (@Model.TotalReviews)</h2>
+        <div id="reviewList" aria-live="polite">
+            @foreach (var review in Model.Reviews)
+            {
+                <article class="store-review"><strong dir="ltr">★ @review.Rating / 5</strong><p class="mb-0">@review.Comment</p></article>
+            }
+            @if (!Model.Reviews.Any()) { <p class="text-secondary mb-0">@(ar ? "لا توجد تقييمات بعد" : "No reviews yet")</p> }
+        </div>
+        @if (Model.TotalReviews > Model.Reviews.Count)
+        {
+            <button type="button" id="moreReviews" class="btn btn-outline-primary mt-3">@(ar ? "عرض المزيد" : "Load more reviews")</button>
+            <p class="text-danger small mb-0" id="reviewError" role="status"></p>
+        }
+    </section>
+</div>
+@if (image != null)
+{
+    <div class="modal fade" id="productImageModal" tabindex="-1" aria-label="@(ar ? "صورة المنتج" : "Product image")">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h6">@Model.Name</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@(ar ? "إغلاق" : "Close")"></button></div>
+                <div class="modal-body text-center"><img id="zoomImg" class="store-zoom-image" alt="@Model.Name" /></div>
             </div>
         </div>
-    }
-
-
-
-</div>
-
-<style>
-    .specifications-list {
-        border-radius: 0.3rem;
-        border: 1px solid #ddd;
-    }
-
-        .specifications-list > div {
-            border-bottom: 1px solid #ddd;
-        }
-
-            .specifications-list > div:last-child {
-                border-bottom: none;
-            }
-</style>
-
+    </div>
+}
 <script>
-    function changeImage(el) {
-        document.getElementById("mainImg").src = el.src;
+(() => {
+    const main = document.getElementById("mainImg");
+    const modal = document.getElementById("productImageModal");
+    document.querySelectorAll(".store-thumbnail").forEach(button => button.addEventListener("click", () => {
+        main.src = button.dataset.image;
+        document.querySelectorAll(".store-thumbnail").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    }));
+    modal?.addEventListener("show.bs.modal", () => document.getElementById("zoomImg").src = main.src);
+    const maximum = @maxQty;
+    const add = document.getElementById("detailAdd");
+    const minus = document.getElementById("qtyMinus");
+    const plus = document.getElementById("qtyPlus");
+    const qty = document.getElementById("qty");
+    let quantity = maximum > 0 ? 1 : 0;
+    function setQuantity(value) {
+        quantity = Math.min(maximum, Math.max(1, value));
+        qty.textContent = quantity;
+        add.dataset.quantity = quantity;
+        minus.disabled = quantity <= 1;
+        plus.disabled = quantity >= maximum;
     }
-
-    @* function incrementQty() {
-        let qtyEl = document.getElementById("qty");
-        let qty = parseInt(qtyEl.innerText);
-        qtyEl.innerText = qty + 1;
-    }
-
-    function decrementQty() {
-        let qtyEl = document.getElementById("qty");
-        let qty = parseInt(qtyEl.innerText);
-        if (qty > 1) qtyEl.innerText = qty - 1;
-    } *@
-</script>
-<script>
-    function incrementQty() {
-        let qtyEl = document.getElementById("qty");
-        qtyEl.innerText = parseInt(qtyEl.innerText) + 1;
-    }
-
-    function decrementQty() {
-        let qtyEl = document.getElementById("qty");
-        let qty = parseInt(qtyEl.innerText);
-        if (qty > 1) qtyEl.innerText = qty - 1;
-    }
-
-    // 🔥 ADD TO CART
-    $(document).on('click', '.add-cart', function () {
-
-        let productId = $(this).data('productid');
-        let qty = parseInt($('#qty').text());
-
-        $.post('/WebCart/AddOrUpdateCart', {
-            productId: productId,
-            qty: qty
-           }, function (response) {
-
-        // ❌ Stock exceed
-        if (response && response.success === false && response.notStock) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Out of stock',
-                text: response.message,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#f0ad4e'
-            });
-            return;
-        }
-
-        // ✅ success case (optional)
-        if (response && response.success) {
-            if (typeof loadCartCount === "function") {
-                loadCartCount();
+    minus.addEventListener("click", () => setQuantity(quantity - 1));
+    plus.addEventListener("click", () => setQuantity(quantity + 1));
+    const more = document.getElementById("moreReviews");
+    let page = 2;
+    more?.addEventListener("click", async () => {
+        more.disabled = true;
+        const error = document.getElementById("reviewError");
+        error.textContent = "";
+        try {
+            const response = await fetch("/WebSingleProduct/Reviews/@Model.ProductId?page=" + page);
+            if (!response.ok) throw new Error();
+            const result = await response.json();
+            for (const review of result.items) {
+                const item = document.createElement("article");
+                item.className = "store-review";
+                const rating = document.createElement("strong");
+                rating.dir = "ltr";
+                rating.textContent = "★ " + review.rating + " / 5";
+                const text = document.createElement("p");
+                text.className = "mb-0";
+                text.textContent = review.comment || "";
+                item.append(rating,text);
+                document.getElementById("reviewList").append(item);
             }
-        }
+            page++;
+            more.hidden = !result.hasMore;
+        } catch { error.textContent = document.documentElement.lang === "ar" ? "تعذر التحميل. حاول مرة أخرى." : "Unable to load reviews. Try again."; }
+        finally { more.disabled = false; }
     });
-    });
+})();
 </script>

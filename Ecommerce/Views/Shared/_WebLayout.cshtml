@@ -973,7 +973,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (button.prop("disabled")) return;
         const arabic = document.documentElement.lang === "ar";
         button.prop("disabled", true);
-        $.post('/WebCart/AddOrUpdateCart', { productId: button.data("productid"), qty: 1 })
+        $.post('/WebCart/AddOrUpdateCart', { productId: button.data("productid"), qty: Number(button.attr("data-quantity") || 1) })
             .done(function (res) {
                 if (res.success) {
                     loadCartCount();
