@@ -658,13 +658,6 @@
                 : (ar ? "هل تريد إلغاء حظر هذا العميل؟" : "Unblock this customer?");
             return AdminFeedback.confirmPost("/ManageCustomer/ToggleUserStatus?id=" + encodeURIComponent(userId),
                 {method:"POST"}, question, () => location.reload());
-        })
-                    .catch(err => {
-                        console.error(err);
-                        Swal.fire("Error", "Something went wrong", "error");
-                    });
-                }
-            });
         }
 
         $(document).ready(function () {
