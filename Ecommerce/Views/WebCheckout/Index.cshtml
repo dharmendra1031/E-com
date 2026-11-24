@@ -527,7 +527,7 @@
                         items.push({
                             productId: @item.ProductId,
                             quantity: @item.Quantity,
-                            price: @item.Price.ToString(CultureInfo.InvariantCulture)
+                            price: @(item.Price.GetValueOrDefault().ToString(CultureInfo.InvariantCulture))
                         });
                     </text>
         }
