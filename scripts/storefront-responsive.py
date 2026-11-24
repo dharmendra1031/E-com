@@ -45,6 +45,11 @@ with sync_playwright() as pw:
             context = browser.new_context(viewport={"width":width,"height":height},
                 device_scale_factor=1, has_touch=width<=1024)
             page = context.new_page()
+            catalog_failures = []
+            def record_catalog_response(response):
+                if "/WebCategory/" in response.url and response.status >= 400:
+                    catalog_failures.append(f"HTTP {response.status} {response.url}")
+            page.on("response", record_catalog_response)
             base = (("https://ar.wibi.com.kw" if language=="ar" else "https://wibi.com.kw")
                     if args.reference else args.base_url.rstrip("/"))
             routes = [("home","/"),("catalog","/collections/networking-products")] if args.reference else ROUTES
@@ -52,6 +57,7 @@ with sync_playwright() as pw:
                 page.goto(base+"/Home/SetLanguage?"+urlencode({"culture":language,"returnUrl":"/WebHome/Index"}))
             for name, route in routes:
                 row = {"browser":args.browser,"language":language,"width":width,"height":height,"page":name,"issues":[]}
+                catalog_failures.clear()
                 try:
                     response = page.goto(base+route, wait_until="domcontentloaded", timeout=30000)
                     if not response or response.status>=400:
@@ -80,6 +86,10 @@ with sync_playwright() as pw:
                                     row["issues"].append("category back navigation failed")
                     if not args.reference and name=="catalog":
                         page.locator(".cart-grid-container").wait_for(state="visible", timeout=15000)
+                        page.locator("#filterBrand").wait_for(state="attached")
+                        page.wait_for_function("!document.querySelector('#filterBrand').disabled")
+                        if not page.locator("#retryBrands").evaluate("(el) => el.classList.contains('d-none')"):
+                            row["issues"].append("brand loading failed")
                         cards = page.locator("#ProductContainer .cart-item-col")
                         if cards.count() > 24:
                             row["issues"].append("initial product page exceeds 24")
@@ -96,6 +106,7 @@ with sync_playwright() as pw:
                         page.locator("#inStock").check()
                         page.locator("#catalogFilters button[type=submit]").click()
                         page.wait_for_function("!document.querySelector('#ProductContainer').hasAttribute('aria-busy')")
+                        page.locator("#ProductContainer .cart-grid-container").wait_for(state="visible", timeout=15000)
                         if cards.count() > 24 or page.locator("#ProductContainer .out-of-stock").count():
                             row["issues"].append("stock filter did not reset/filter the catalog")
                     if not args.reference and name=="product":
@@ -151,6 +162,7 @@ with sync_playwright() as pw:
                     page.screenshot(path=str(args.output/f"{args.browser}-{language}-{width}x{height}-{name}.png"), full_page=False, animations="disabled")
                 except Exception as error:
                     row["issues"].append(str(error))
+                row["issues"].extend(catalog_failures)
                 report.append(row)
                 print(("FAIL" if row["issues"] else "PASS"),language,width,height,name, row["issues"])
             context.close()
