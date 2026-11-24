@@ -12,6 +12,8 @@
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public int Rating { get; set; }
+        public double? AverageRating { get; set; }
+        public int? ReviewCount { get; set; }
         // ✅ Primary image as Base64 for display
         public string ProductImageBase64 { get; set; }
         public int? ProductImageId { get; set; }

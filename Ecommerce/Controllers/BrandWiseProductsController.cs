@@ -44,10 +44,8 @@ namespace EcommerceWebApplication.Controllers
                         .Where(p => p.IsActive && p.BrandId == b.BrandId)
                         .Select(p => new ProductListViewModel
                         {
-                            Rating = _context.ProductReviews
-                                  .Where(r => r.ProductId == p.ProductId)
-                                  .Select(r => r.Rating)
-                                  .FirstOrDefault(),
+                            AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
+                            ReviewCount = p.ProductReviews.Count(),
                             ProductId = p.ProductId,
                             //Name = p.Name,
                             Name = isArabic ? p.NameArb : p.Name,

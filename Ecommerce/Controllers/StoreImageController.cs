@@ -20,6 +20,10 @@ namespace EcommerceWebApplication.Controllers
             .Where(c => c.CategoryId == id && c.IsActive).Select(c => c.CategoryImage).FirstOrDefaultAsync());
 
         [HttpGet]
+        public async Task<IActionResult> CategoryIcon(int id) => Image(await _context.Categories.AsNoTracking()
+            .Where(c => c.CategoryId == id && c.IsActive).Select(c => c.CategoryIcon).FirstOrDefaultAsync());
+
+        [HttpGet]
         public async Task<IActionResult> SubCategory(int id) => Image(await _context.SubCategories.AsNoTracking()
             .Where(c => c.SubCategoryId == id && c.IsActive && c.ParentCategory.IsActive).Select(c => c.SubCategoryImage).FirstOrDefaultAsync());
 

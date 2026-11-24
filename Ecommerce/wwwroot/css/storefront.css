@@ -170,3 +170,14 @@
 .store-review { border-block-end:1px solid #e2e8f0; padding-block:12px; }
 #productReviews { scroll-margin-top:var(--header-height, 160px); }
 @media(max-width:575.98px) { .store-detail-add { flex-basis:100%; } .store-specifications { grid-template-columns:minmax(0, 42%) minmax(0,1fr); } }
+
+.store-filter-panel { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-block-end:16px; }
+.store-filter-heading { display:flex; align-items:center; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-block-end:12px; }
+.store-filter-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.store-filter-fields label { display:flex; flex-direction:column; gap:4px; font-size:.85rem; font-weight:600; min-width:0; }
+.store-filter-fields :is(input,select) { width:100%; min-width:0; min-height:44px; font-weight:400; }
+.store-filter-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-block-start:12px; }
+.store-filter-actions label { margin-inline-end:auto; min-height:44px; font-size:.875rem; }
+.store-filter-actions button,#loadMoreProducts { min-height:44px; }
+@media(max-width:767.98px) { .store-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:359.98px) { .store-filter-actions button { flex:1 1 auto; } }

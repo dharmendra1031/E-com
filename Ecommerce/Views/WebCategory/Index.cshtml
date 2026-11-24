@@ -32,6 +32,31 @@
             <!-- SUB CATEGORIES -->
             <div id="SubCategoryContainer"></div>
 
+            <form id="catalogFilters" class="store-filter-panel" novalidate>
+                <div class="store-filter-heading"><strong>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية المنتجات" : "Filter products")</strong><span id="resultCount" class="small text-secondary" role="status"></span></div>
+                <div class="store-filter-fields">
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العلامة التجارية" : "Brand")
+                        <select id="filterBrand" class="form-select"><option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "All brands")</option></select>
+                    </label>
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أدنى سعر (د.ك)" : "Min price (KD)")
+                        <input id="minPrice" type="number" min="0" step="0.001" inputmode="decimal" class="form-control" />
+                    </label>
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "أعلى سعر (د.ك)" : "Max price (KD)")
+                        <input id="maxPrice" type="number" min="0" step="0.001" inputmode="decimal" class="form-control" />
+                    </label>
+                    <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "التقييم" : "Rating")
+                        <select id="minRating" class="form-select">
+                            <option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "Any rating")</option>
+                            <option value="4">4+ ★</option><option value="3">3+ ★</option><option value="2">2+ ★</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="store-filter-actions">
+                    <label class="d-flex align-items-center gap-2"><input type="checkbox" id="inStock" class="form-check-input m-0" /> @(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "متوفر فقط" : "In stock only")</label>
+                    <button type="submit" class="btn btn-primary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تطبيق" : "Apply filters")</button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعادة تعيين" : "Reset")</button>
+                </div>
+            </form>
             <!-- PRODUCTS GRID -->
             <div id="ProductContainer" aria-live="polite">
                 <!-- Products grid yahan -->
@@ -58,6 +83,58 @@
         let nextPage = 0;
         const more = document.getElementById("loadMoreProducts");
         const catalogStatus = document.getElementById("catalogStatus");
+        const filterForm = document.getElementById("catalogFilters");
+        const brand = document.getElementById("filterBrand");
+        const minPrice = document.getElementById("minPrice");
+        const maxPrice = document.getElementById("maxPrice");
+        const rating = document.getElementById("minRating");
+        const stock = document.getElementById("inStock");
+        const resultCount = document.getElementById("resultCount");
+        let filters = {};
+        let brandRequest;
+        function resetFilterValues() {
+            filterForm.reset();
+            filters = {};
+            resultCount.textContent = "";
+        }
+        async function loadBrands() {
+            brandRequest?.abort();
+            const request = new AbortController();
+            brandRequest = request;
+            brand.replaceChildren(new Option(arabic ? "الكل" : "All brands", ""));
+            brand.disabled = true;
+            try {
+                const params = new URLSearchParams({ categoryId });
+                if (subcategoryId) params.set("subCategoryId", subcategoryId);
+                const response = await fetch("/WebCategory/FilterBrands?" + params, { signal: request.signal });
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                if (request.signal.aborted) return;
+                for (const item of data) if (item.id && item.name) brand.add(new Option(item.name, item.id));
+            } catch(error) {
+                if (error.name !== "AbortError") catalogStatus.textContent = arabic ? "تعذر تحميل العلامات التجارية." : "Unable to load brands.";
+            } finally { if (brandRequest === request) brand.disabled = false; }
+        }
+        filterForm.addEventListener("submit", event => {
+            event.preventDefault();
+            if (!categoryId || !subcategories.querySelector("#sortProducts")) return;
+            if (!minPrice.checkValidity() || !maxPrice.checkValidity() ||
+                (minPrice.value !== "" && maxPrice.value !== "" && Number(minPrice.value) > Number(maxPrice.value))) {
+                catalogStatus.textContent = arabic ? "تحقق من نطاق السعر." : "Enter a valid price range.";
+                return;
+            }
+            filters = {};
+            if (brand.value) filters.brandId = brand.value;
+            if (minPrice.value !== "") filters.minPrice = minPrice.value;
+            if (maxPrice.value !== "") filters.maxPrice = maxPrice.value;
+            if (rating.value) filters.minRating = rating.value;
+            if (stock.checked) filters.inStock = "true";
+            loadProducts();
+        });
+        document.getElementById("resetFilters").addEventListener("click", () => {
+            resetFilterValues();
+            if (categoryId && subcategories.querySelector("#sortProducts")) loadProducts();
+        });
 
         async function getPartial(url, signal) {
             const response = await fetch(url, { signal });
@@ -111,11 +188,12 @@
             if (!append) {
                 nextPage = 0;
                 more.classList.add("d-none");
+                resultCount.textContent = "";
                 status(products, arabic ? "جارٍ تحميل المنتجات…" : "Loading products…");
             }
             more.disabled = true;
             catalogStatus.textContent = "";
-            const params = new URLSearchParams({ categoryId, page, sortBy: document.getElementById("sortProducts")?.value || "newest" });
+            const params = new URLSearchParams({ categoryId, page, sortBy: document.getElementById("sortProducts")?.value || "newest", ...filters });
             if (subcategoryId) params.set("subCategoryId", subcategoryId);
             products.setAttribute("aria-busy", "true");
             try {
@@ -131,6 +209,9 @@
                     grid.append(...incoming.querySelectorAll(".cart-item-col"));
                 } else products.replaceChildren(template.content);
                 nextPage = Number(incoming.dataset.nextPage) || 0;
+                const total = Number(incoming.dataset.totalProducts) || 0;
+                const shown = products.querySelectorAll(".cart-item-col").length;
+                resultCount.textContent = arabic ? shown + " من " + total : shown + " of " + total + " products";
                 more.classList.toggle("d-none", !nextPage);
             } catch (error) {
                 if (error.name !== "AbortError") {
@@ -153,6 +234,8 @@
             categoryRequest = request;
             categoryId = link.dataset.categoryid;
             subcategoryId = "";
+            brandRequest?.abort();
+            resetFilterValues();
             setActive(categories, link);
             status(subcategories, arabic ? "جارٍ التحميل…" : "Loading…");
             products.textContent = "";
@@ -171,6 +254,7 @@
                 }
                 updateHeading();
                 updateUrl(historyMode);
+                loadBrands();
                 await loadProducts();
             } catch (error) {
                 if (error.name !== "AbortError") status(subcategories, arabic ? "تعذر التحميل." : "Unable to load categories.");
@@ -189,7 +273,9 @@
             if (!link) return;
             event.preventDefault();
             subcategoryId = link.dataset.subid;
+            resetFilterValues();
             setActive(subcategories, link);
+            loadBrands();
             updateHeading();
             updateUrl();
             loadProducts();

@@ -2,7 +2,7 @@
 @model List<EcommerceWebApplication.Models.ViewModels.ProductListViewModel>
 @{ var isArabic = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
 
-<div class="cart-grid-container" data-next-page="@ViewBag.NextPage">
+<div class="cart-grid-container" data-next-page="@ViewBag.NextPage" data-total-products="@ViewBag.TotalProducts">
     <div class="store-product-grid">
         @if (Model != null && Model.Any())
         {
@@ -42,7 +42,7 @@
                                     <div class="rating-stars">
                                 @{
                                             // Calculate rating (you can replace with actual rating from your model)
-                                            var rating = item.Rating; // Default rating
+                                            var rating = item.AverageRating ?? item.Rating;
                                             var fullStars = (int)rating;
                                             var hasHalfStar = rating - fullStars >= 0.5;
 
@@ -63,7 +63,7 @@
                                             }
                                         }
                                     </div>
-                                    <span class="rating-count">(@rating.ToString("F1")/5.0)</span>
+                                    <span class="rating-count">(@rating.ToString("F1", CultureInfo.InvariantCulture)/5.0) @(item.ReviewCount.HasValue ? $"({item.ReviewCount})" : "")</span>
                                 </div>
                             </div>
                         </a>

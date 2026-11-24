@@ -51,7 +51,7 @@ namespace EcommerceWebApplication.Controllers
 
             return PartialView("_CategoryPartial", categories);
         }
-        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1)
+        public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null)
         {
             const int pageSize = 24;
             if (page < 1 || page > int.MaxValue / pageSize) return BadRequest();
@@ -59,6 +59,16 @@ namespace EcommerceWebApplication.Controllers
             var query = _context.Products.AsNoTracking().Where(p => p.IsActive);
             if (categoryId.HasValue) query = query.Where(p => p.CategoryId == categoryId);
             if (subCategoryId.HasValue) query = query.Where(p => p.SubCategoryId == subCategoryId);
+            if (!ModelState.IsValid || minPrice < 0 || maxPrice < 0 ||
+                (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice) ||
+                (minRating.HasValue && (minRating < 1 || minRating > 5))) return BadRequest();
+            if (brandId.HasValue) query = query.Where(p => p.BrandId == brandId);
+            if (minPrice.HasValue) query = query.Where(p => p.Price >= minPrice.Value);
+            if (maxPrice.HasValue) query = query.Where(p => p.Price <= maxPrice.Value);
+            if (minRating.HasValue) query = query.Where(p => (p.ProductReviews.Average(r => (double?)r.Rating) ?? 0) >= minRating.Value);
+            if (inStock) query = query.Where(p =>
+                (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
+                > (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0));
             var ordered = sortBy switch
             {
                 "low-high" => query.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
@@ -71,15 +81,28 @@ namespace EcommerceWebApplication.Controllers
                     ProductId = p.ProductId,
                     Name = isArabic ? p.NameArb : p.Name,
                     Price = p.Price,
-                    Rating = _context.ProductReviews.Where(r => r.ProductId == p.ProductId)
-                        .Select(r => (int?)r.Rating).FirstOrDefault() ?? 0,
+                    AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
+                    ReviewCount = p.ProductReviews.Count(),
                     Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
                         - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
                     ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
                         .Select(img => (int?)img.ImageId).FirstOrDefault()
                 }).ToList();
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
+            ViewBag.TotalProducts = query.Count();
             return PartialView("_ProductsPartial", products.Take(pageSize).ToList());
+        }
+
+        [HttpGet]
+        public IActionResult FilterBrands(int categoryId, int? subCategoryId)
+        {
+            bool ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var brands = _context.Products.AsNoTracking()
+                .Where(p => p.IsActive && p.CategoryId == categoryId && p.BrandId != null &&
+                    (!subCategoryId.HasValue || p.SubCategoryId == subCategoryId))
+                .Select(p => new { id = p.BrandId, name = ar ? p.Brand.BrandNameAr : p.Brand.BrandNameAEn })
+                .Distinct().OrderBy(b => b.name).ToList();
+            return Ok(brands);
         }
 
         public IActionResult SubCategoryCardPartial(int? categoryId)
@@ -130,8 +153,7 @@ namespace EcommerceWebApplication.Controllers
                             subCategoryId = s.SubCategoryId,
                             scName = isArabic ? s.SCNameArb : s.SCName,
                             ImageBase64 = s.SubCategoryImage != null
-                ? "data:image/png;base64," +
-                  Convert.ToBase64String(s.SubCategoryImage)
+                ? "/StoreImage/SubCategory/" + s.SubCategoryId
                 : null
                         }).ToList()
                 }).ToList();
@@ -150,8 +172,7 @@ namespace EcommerceWebApplication.Controllers
                     subCategoryId = s.SubCategoryId,
                       scName = isArabic ? s.SCNameArb : s.SCName,
                     ImageBase64 = s.SubCategoryImage != null
-                ? "data:image/png;base64," +
-                  Convert.ToBase64String(s.SubCategoryImage)
+                ? "/StoreImage/SubCategory/" + s.SubCategoryId
                 : null
                 }).ToList();
 
@@ -169,8 +190,7 @@ namespace EcommerceWebApplication.Controllers
                     CategoryId = x.CategoryId,
                     CName = isArabic ? x.CNameArb : x.CName,
                       ImageBase64 = x.CategoryIcon != null
-                ? "data:image/png;base64," + 
-                  Convert.ToBase64String(x.CategoryIcon)
+                ? "/StoreImage/CategoryIcon/" + x.CategoryId
                 : null
                 })
                 .ToList();
