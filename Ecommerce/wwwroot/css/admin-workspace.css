@@ -87,3 +87,38 @@
  .admin-workspace .header-icon .drop-down { max-width:calc(100vw - 20px); }
 }
 @media(max-width:359px) { .admin-workspace .admin-kpi-grid { grid-template-columns:1fr; } .admin-workspace .logo span { font-size:17px; } }
+
+/* Product editor and paged operations registers. */
+.admin-workspace .admin-product-editor .card-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.admin-workspace .admin-product-editor .card-header hr { display:none; }
+.admin-workspace .admin-product-editor .card-header-right-icon { position:static; }
+.admin-workspace .admin-product-editor form > .row { row-gap:12px; }
+.admin-workspace .admin-product-editor form label { display:block; font-weight:600; margin-bottom:5px; }
+.admin-workspace .admin-product-editor textarea { min-height:100px; resize:vertical; }
+.admin-workspace .admin-product-editor .specRow { row-gap:8px; align-items:center; }
+.admin-workspace .admin-product-editor .admin-spec-add { margin-inline-start:8px; }
+.admin-workspace .admin-form-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; border-top:1px solid var(--admin-border); padding-top:16px; margin-top:24px; }
+.admin-workspace .admin-form-actions .btn { min-width:100px; min-height:40px; }
+.admin-workspace .admin-register-body { padding:0; height:auto; }
+.admin-workspace .admin-register-filters { display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px; margin:0; }
+.admin-workspace .admin-register-filters > .form-group { margin:0!important; flex:1 1 145px; min-width:0; }
+.admin-workspace .admin-register-filters .form-group label { display:block; margin-bottom:4px; font-weight:600; }
+.admin-workspace .admin-register-filters .form-control { max-width:100%; }
+.admin-workspace .admin-register-filters > .row { width:100%; margin:0; row-gap:12px; }
+.admin-workspace .admin-order-stock-table .table { min-width:900px; }
+.admin-workspace .admin-order-stock-table td:last-child { white-space:nowrap; }
+.admin-workspace .admin-order-stock-table td:nth-child(3) { min-width:180px; max-width:320px; overflow-wrap:anywhere; }
+.admin-workspace .admin-status { display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:5px; font-size:12px; font-weight:600; line-height:1.4; min-width:58px; white-space:normal; }
+.admin-workspace .admin-status.btn-success { background:#e7f5ec; color:#176b36; }
+.admin-workspace .admin-status.btn-danger { background:#fcebec; color:#a51e27; }
+.admin-workspace .admin-status.btn-warning { background:#fff4d8; color:#765000; }
+.admin-workspace .admin-status.btn-info,.admin-workspace .admin-status.btn-primary { background:#eaf3fb; color:#075a96; }
+.admin-workspace .admin-status.btn-default,.admin-workspace .admin-status.btn-secondary { background:#eef1f5; color:#334155; }
+.admin-workspace .admin-compact-dialog { width:auto; max-width:450px; margin:40px auto; }
+.admin-workspace .admin-register-body .pagination { display:flex; flex-wrap:wrap; justify-content:center; gap:3px; margin-top:16px; }
+@media(max-width:767px) {
+ .admin-workspace .admin-product-editor .admin-spec-head { display:none; }
+ .admin-workspace .admin-product-editor .specRow { padding:10px 0; border-bottom:1px solid var(--admin-border); }
+ .admin-workspace .admin-compact-dialog { max-width:calc(100% - 24px); margin:24px auto; }
+ .admin-workspace .admin-register-filters > .form-group { flex-basis:calc(50% - 12px); }
+}

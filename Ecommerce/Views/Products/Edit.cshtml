@@ -8,7 +8,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="main-content">
+<div class="main-content admin-product-editor">
     <div class="row">
         <div class="col-lg-12">
             <div class="card alert">
@@ -33,14 +33,14 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>@_localizer["Product Name (AR)"] <span style="color:red">*</span></label>
-                                    <input asp-for="NameArb" class="form-control" placeholder="أدخل اسم المنتج" />
+                                    <input asp-for="NameArb" dir="rtl" class="form-control" placeholder="أدخل اسم المنتج" />
                                     <span asp-validation-for="NameArb" class="text-danger"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>@_localizer["Product Name (EN)"] <span style="color:red">*</span></label>
-                                    <input asp-for="Name" class="form-control" placeholder="Enter Name" />
+                                    <input asp-for="Name" dir="ltr" class="form-control" placeholder="Enter Name" />
                                     <span asp-validation-for="Name" class="text-danger"></span>
                                 </div>
                             </div>
@@ -168,7 +168,7 @@
                                 <!-- brand -->
                                 <div class="col-md-2">
                                     <label>@_localizer["brand"]</label>
-                                    <select asp-for="brandid" class="form-control" id="CategoryDropdown">
+                                    <select asp-for="brandid" class="form-control" id="BrandDropdown">
                                         <option value="">-- Select brand --</option>
                                         @foreach (var cat in ViewBag.brand1)
                                         {
@@ -203,7 +203,7 @@
                             <div class="col-md-5">
                                 <div class="form-group">
                                     <label>@_localizer["Description[AR]"] </label>
-                                    <textarea asp-for="DescriptionArb" class="form-control" rows="3"></textarea>
+                                    <textarea asp-for="DescriptionArb" dir="rtl" class="form-control" rows="3"></textarea>
                                 </div>
                             </div>
 
@@ -211,7 +211,7 @@
                             <div class="col-md-5">
                                 <div class="form-group">
                                     <label>@_localizer["Description[EN]"]</label>
-                                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                                    <textarea asp-for="Description" dir="ltr" class="form-control" rows="3"></textarea>
                                 </div>
                             </div>
 
@@ -286,21 +286,21 @@
                         <!-- Upload New Images -->
                         <div class="form-group">
                             <label>@_localizer["Upload New Images (Optional)"]</label>
-                            <input type="file" name="NewImages" class="form-control" multiple />
+                            <input type="file" name="NewImages" class="form-control" accept="image/*" multiple />
                             <small class="form-text text-muted">@_localizer["Multiple Images"]</small>
                         </div>
                         <h5 class="mt-4 mb-2">
                             Specification
-                            <button type="button" id="addSpecRow" class="btn btn-sm btn-success" style="margin-left: 10px;">
+                            <button type="button" id="addSpecRow" class="btn btn-sm btn-outline-primary admin-spec-add" aria-label="Add specification">
                                 <i class="fa fa-plus"></i>
                             </button>
                         </h5>
 
                         <!-- Heading Row -->
-                        <div class="row mb-1">
-                            <div class="col-md-3"><label><b>Spec Name (Ar)</b></label></div>
-                            <div class="col-md-3"><label><b>Spec Value (Ar)</b></label></div>
-                            <div class="col-md-3"><label><b>Spec Name (En)</b></label></div>
+                        <div class="row mb-1 admin-spec-head">
+                            <div class="col-md-2"><label><b>Spec Name (Ar)</b></label></div>
+                            <div class="col-md-4"><label><b>Spec Value (Ar)</b></label></div>
+                            <div class="col-md-2"><label><b>Spec Name (En)</b></label></div>
                             <div class="col-md-3"><label><b>Spec Value (En)</b></label></div>
                             <div class="col-md-1"></div>
                         </div>
@@ -324,7 +324,7 @@
                                             <input type="text" name="Specifications[@i].SpecivalueEn" value="@Model.Specifications[i].SpecivalueEn" class="form-control" placeholder="English Value" />
                                         </div>
                                         <div class="col-md-1 d-flex align-items-center">
-                                            <button type="button" class="btn btn-danger removeSpecRow"><i class="ti-trash"></i></button>
+                                            <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
                                         </div>
                                     </div>
                                 }
@@ -346,14 +346,13 @@
                                         <input type="text" name="Specifications[0].SpecivalueEn" class="form-control" placeholder="English Value" />
                                     </div>
                                     <div class="col-md-1 d-flex align-items-center">
-                                        <button type="button" class="btn btn-danger removeSpecRow"><i class="ti-trash"></i></button>
+                                        <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
                                     </div>
                                 </div>
                             }
                         </div>
                         <!-- Submit -->
-                        <button type="submit" class="btn btn-primary">@_localizer["Update"]</button>
-                        <a asp-action="ProductList" class="btn btn-secondary">@_localizer["Cancel"]</a>
+                        <div class="admin-form-actions"><a asp-action="ProductList" class="btn btn-default">@_localizer["Cancel"]</a><button type="submit" class="btn btn-primary">@_localizer["Update"]</button></div>
                     </form>
                 </div>
             </div>
@@ -402,7 +401,7 @@
         });
     </script>
     <script>
-        let specIndex = @Model.Specifications?.Count ?? 1;
+        let specIndex = $("#specContainer .specRow").length;
 
         // Add new spec row
         $("#addSpecRow").click(function () {
@@ -421,7 +420,7 @@
                     <input type="text" name="Specifications[${specIndex}].SpecivalueEn" class="form-control" placeholder="English Value" />
                 </div>
                 <div class="col-md-1 d-flex align-items-center">
-                    <button type="button" class="btn btn-danger removeSpecRow"><i class="ti-trash"></i></button>
+                    <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
                 </div>
             </div>`;
             $("#specContainer").append(newRow);
@@ -431,7 +430,12 @@
         // Remove spec row
         $(document).on('click', '.removeSpecRow', function () {
             $(this).closest('.specRow').remove();
-            // Optional: reindex names if needed
+            $("#specContainer .specRow").each(function (index) {
+                $(this).find("input[name^='Specifications[']").each(function () {
+                    this.name = this.name.replace(/Specifications\[\d+\]/, "Specifications[" + index + "]");
+                });
+            });
+            specIndex = $("#specContainer .specRow").length;
         });
     </script>
     <script>

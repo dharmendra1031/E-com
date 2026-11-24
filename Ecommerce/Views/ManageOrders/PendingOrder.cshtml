@@ -17,7 +17,7 @@
         <div class="col-lg-12">
 
             <div class="card alert" id="NavigationKey">
-                <form id="filterForm" class="form-inline mb-3" style="margin-bottom: 11px;">
+                <form id="filterForm" class="admin-register-filters">
                     <div class="form-group" style="margin-right: 15px;">
                         <label for="status" style="margin-right: 5px;">@_localizer["Order Status"]:</label>
                         <select name="status" id="status" class="form-control">
@@ -67,12 +67,12 @@
                         <div class="card alert">
 
 
-                            <div class="card-body" style="overflow-y:auto; height:70vh">
+                            <div class="card-body admin-register-body">
                                 @{
                                     int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
                                 }
-                                <table class="table table-hover">
-                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                <div class="admin-table-scroll admin-order-stock-table"><table class="table table-hover">
+                                    <thead class="table-light">
                                         <tr>
                                             <th class="text-center"> @_localizer["SN"]</th>
                                             <th class="text-center"> @_localizer["ID"]</th>
@@ -102,7 +102,7 @@
                                                     }
 
                                                     <div style="display:flex; justify-content:center; align-items:center;">
-                                                        <span class="btn btn-xs @btnClass1" style="width:70px; text-align:center;">
+                                                        <span class="admin-status @btnClass1">
                                                             @item.Paytype
                                                         </span>
                                                     </div>
@@ -115,10 +115,10 @@
                                                         bool isDisabled = item.PaymentStatusId == 3;
                                                     }
                                                     <div style="display:flex; justify-content:center; align-items:center; gap:10px;">
-                                                        <span class="btn btn-xs @btnClass" style="width:60px; text-align:center;">
+                                                        <span class="admin-status @btnClass">
                                                             @item.PaymentStatus
                                                         </span>
-                                                        <button class="btn btn-primary btn-success btn-xs edit-payment-status"
+                                                        <button type="button" class="btn btn-outline-primary btn-xs edit-payment-status" aria-label="@_localizer["Payment Status"]"
                                                                 data-id="@item.OrderId"
                                                                 @(isDisabled ? "disabled" : "")>
                                                             <i class="fa fa-edit"></i>
@@ -140,10 +140,10 @@
                                                         }
                                                     }
                                                     <div style="display:flex; justify-content:center; align-items:center; gap:10px;">
-                                                        <span class="btn btn-xs @statusClass" style="width:80px; text-align:center;">
+                                                        <span class="admin-status @statusClass">
                                                             @item.OrderStatus
                                                         </span>
-                                                        <button class="btn btn-primary btn-success btn-xs change-status-btn"
+                                                        <button type="button" class="btn btn-outline-primary btn-xs change-status-btn" aria-label="@_localizer["Order Status"]"
                                                                 data-orderid="@item.OrderId"
                                                                 @(item.PaymentStatusId == 3 ? "disabled" : "")>
                                                             <i class="fa fa-edit"></i>
@@ -178,7 +178,7 @@
                                             serial++;
                                         }
                                     </tbody>
-                                </table>
+                                </table></div>
 
 
                                 <!-- ✅ Pagination (Same as UserList) -->
@@ -408,7 +408,7 @@
 
 <!-- Passowrd model -->
 <div class="modal fade" id="passwordModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" style="width: 400px; margin-top: 80px;">
+    <div class="modal-dialog admin-compact-dialog">
         <form id="passwordForm" class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">
@@ -494,7 +494,7 @@
 
 <!-- Payment Password Modal -->
 <div class="modal fade" id="paymentPasswordModal" tabindex="-1" aria-labelledby="paymentPasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog" style="width: 400px; margin-top: 80px;">
+    <div class="modal-dialog admin-compact-dialog">
         <form id="paymentPasswordForm">
             <div class="modal-content">
                 <div class="modal-header">

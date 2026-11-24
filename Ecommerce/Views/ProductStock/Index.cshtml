@@ -12,9 +12,9 @@
     <div class="row">
         <div class="col-lg-12">
             <div class="card alert">
-                <form id="filterForm" class="form-inline mb-3" style="margin-bottom: 11px;">
+                <form id="filterForm" class="admin-register-filters">
                     <div class="row">
-                        <div class="col-md-10" id="NavigationKey">
+                        <div class="col-md-10 admin-filter-fields" id="NavigationKey">
                             <div class="form-group me-3" style="position:relative;">
                                 <label for="name" class="me-1" style="margin-right: 5px;">@_localizer["Name"]:</label>
                                 <input type="text" id="name" name="searchName" class="form-control" autocomplete="off" value="@ViewBag.searchName" style="width: 200px; display: inline-block;" />
@@ -53,12 +53,12 @@
                         <div class="card alert">
 
 
-                            <div class="card-body" style="overflow-y:auto; height:70vh">
+                            <div class="card-body admin-register-body">
                                 @{
                                     int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
                                 }
-                                <table class="table table-hover">
-                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: white; color: #000; direction: ltr;">
+                                <div class="admin-table-scroll admin-order-stock-table"><table class="table table-hover">
+                                    <thead class="table-light">
                                         <tr>
                                             <th class="text-center"> @_localizer["SN"]</th>
                                             <th class="text-center"> @_localizer["Product ID"]</th>
@@ -112,7 +112,7 @@
 
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary"
-                                                            onclick="openAddStockModal('@item.ProductId', '@item.ProductName', '@item.RemainingQty')">
+                                                            type="button" data-productid="@item.ProductId" data-productname="@item.ProductName" data-remaining="@item.RemainingQty" onclick="openAddStockModal(this.dataset.productid, this.dataset.productname, this.dataset.remaining)">
                                                         @_localizer["Add"]
                                                     </button>
                                                 </td>
@@ -120,7 +120,7 @@
                                             serial++;
                                         }
                                     </tbody>
-                                </table>
+                                </table></div>
 
 
                                 <!-- ✅ Pagination (Same as UserList) -->
@@ -269,7 +269,7 @@
 
 <!-- Add Stock Modal -->
 <div class="modal fade" id="addStockModal" tabindex="-1">
-    <div class="modal-dialog" style="width: 450px; margin-top: 50px;">
+    <div class="modal-dialog admin-compact-dialog">
         <div class="modal-content">
           
             <div class="modal-header" style="background-color: #337ab7; color: white; padding: 10px;">
