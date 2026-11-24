@@ -284,6 +284,11 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 var key = request.email ?? request.mobile;
+                HttpContext.Session.Remove("PasswordResetVerifiedEmail");
+                HttpContext.Session.Remove("PasswordResetVerifiedUntil");
+                HttpContext.Session.Remove("PasswordResetPendingEmail");
+                if (request.fp == "fp" && !string.IsNullOrWhiteSpace(request.email))
+                    HttpContext.Session.SetString("PasswordResetPendingEmail", request.email);
 
                 var existing = _context.UserOtps.FirstOrDefault(x => x.Email == key);
 
@@ -358,6 +363,13 @@ namespace EcommerceWebApplication.Controllers
                 otpRecord.IsVerified = true;
                 otpRecord.Expiry = DateTime.Now;
                 await _context.SaveChangesAsync();
+
+                if (string.Equals(HttpContext.Session.GetString("PasswordResetPendingEmail"), req.email, StringComparison.OrdinalIgnoreCase))
+                {
+                    HttpContext.Session.Remove("PasswordResetPendingEmail");
+                    HttpContext.Session.SetString("PasswordResetVerifiedEmail", req.email);
+                    HttpContext.Session.SetString("PasswordResetVerifiedUntil", DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds().ToString());
+                }
 
                 return Ok(new { success = true, message = successMsg });
             }
@@ -578,9 +590,21 @@ namespace EcommerceWebApplication.Controllers
         [HttpPost]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
         {
+            if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.NewPassword))
+                return BadRequest(new { success = false, message = "Invalid reset request." });
+
+            var verifiedEmail = HttpContext.Session.GetString("PasswordResetVerifiedEmail");
+            if (!string.Equals(verifiedEmail, model.Email, StringComparison.OrdinalIgnoreCase) ||
+                !long.TryParse(HttpContext.Session.GetString("PasswordResetVerifiedUntil"), out var verifiedUntil) ||
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds() > verifiedUntil)
+                return BadRequest(new { success = false, message = "Verify your OTP first." });
+
+            HttpContext.Session.Remove("PasswordResetVerifiedEmail");
+            HttpContext.Session.Remove("PasswordResetVerifiedUntil");
+
             var user = await _context.Customers
                 .Include(x => x.Role)
-                .FirstOrDefaultAsync(x => x.Email == model.Email);
+                .FirstOrDefaultAsync(x => x.Email == model.Email && x.IsActive && x.IsDeleted == 0 && x.CustType == "Customer");
 
             if (user == null)
                 return Json(new { success = false, message = "User not found" });
