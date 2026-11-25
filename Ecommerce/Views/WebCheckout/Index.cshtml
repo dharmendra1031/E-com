@@ -248,7 +248,7 @@
                 </div>
 
                 <button class="btn btn-primary w-100 py-2 fw-semibold" id="payNowBtn">
-                    @_localizer["Pay Online"]
+                    @(CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إرسال الطلب (الدفع معلق)" : "Place order (payment pending)")
                 </button>
             </div>
         </div>
@@ -342,12 +342,15 @@
         </div>
     </div>
 </div>
+@Html.AntiForgeryToken()
 <script>
+    const checkoutToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
     const checkoutArabic = document.documentElement.lang === "ar";
     const checkoutError = checkoutArabic ? "حدث خطأ. حاول مرة أخرى." : "Something went wrong. Please try again.";
     const subtotal = @(Model.CartTotal.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
     const vatRate = @(Model.VatPercentage.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
     const delivery = @(Model.DeliveryCharge.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
+    let appliedCoupon = null;
     let couponPending = false;
     let orderPending = false;
     function syncPaymentButton() {
@@ -356,7 +359,7 @@
     function calculateFinalTotal() {
         const discount = Number($('#discountAmount').text()) || 0;
         const afterDiscount = Math.max(subtotal - discount, 0);
-        const vatAmount = afterDiscount * vatRate / 100;
+        const vatAmount = Math.round((afterDiscount * vatRate / 100 + Number.EPSILON) * 1000) / 1000;
         $('#vatAmount').text('KD ' + vatAmount.toFixed(3));
         $('#grandTotal').text('KD ' + (afterDiscount + vatAmount + delivery).toFixed(3));
     }
@@ -372,8 +375,10 @@
         syncPaymentButton();
         try {
             const res = await $.ajax({url:'/WebCheckout/ApplyCoupon',type:'POST',contentType:'application/json',
-                data:JSON.stringify({code,orderAmount:subtotal})});
+                headers:{RequestVerificationToken:checkoutToken}, data:JSON.stringify({code,orderAmount:subtotal})});
             if (res.success) {
+                if (Math.abs(Number(res.subtotal) - subtotal) > 0.0005) { Swal.fire({icon:'warning',text:checkoutArabic ? 'تغيرت السلة. أعد تحميل الصفحة.' : 'Cart changed. Refresh checkout.'}); return; }
+                appliedCoupon = res.couponCode;
                 $('#discountAmount').text(Number(res.discountApplied).toFixed(3));
                 $('#finalAmount').text(Number(res.finalAmount).toFixed(3) + ' KD');
                 $('#discountRow').removeClass('d-none');
@@ -383,6 +388,13 @@
             }
         } catch { Swal.fire({icon:'error',text:checkoutError}); }
         finally { couponPending = false; $(this).prop('disabled', false); syncPaymentButton(); }
+    });
+    $('#couponCode').on('input', function () {
+        appliedCoupon = null;
+        $('#discountAmount').text('0.000');
+        $('#finalAmount').text(subtotal.toFixed(3) + ' KD');
+        $('#discountRow').addClass('d-none');
+        calculateFinalTotal();
     });
     calculateFinalTotal();
     syncPaymentButton();
@@ -461,7 +473,7 @@
         const formData = {};
         for (const field of modal.querySelectorAll("input[name], select[name]")) formData[field.name] = field.value;
         try {
-            const response = await fetch('/WebCheckout/AddAddress', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(formData)});
+            const response = await fetch('/WebCheckout/AddAddress', {method:'POST',headers: {"Content-Type":"application/json","RequestVerificationToken":checkoutToken},body:JSON.stringify(formData)});
             const result = await response.json();
             if (!response.ok || !result.success || !result.addressId) throw new Error(result.message || checkoutError);
             savedAddresses.add(new Option(result.title || formData.Title || (checkoutArabic ? "عنوان جديد" : "New address"), result.addressId));
@@ -535,6 +547,9 @@
         // 🔹 COMMON DATA (DTO MATCH)
         let orderData = {
             paymentMethod: "Online",
+            couponCode: appliedCoupon,
+            discountAmount: Number($('#discountAmount').text()) || 0,
+            totalAmount: Number($('#grandTotal').text().replace('KD', '').trim()),
             items: items
         };
 
@@ -582,12 +597,13 @@
             url: '/WebCheckout/PlaceOrder',
             type: 'POST',
             contentType: 'application/json',
+            headers: { RequestVerificationToken: checkoutToken },
             data: JSON.stringify(orderData),
               success: function (res) {
         Swal.fire({
             icon: 'success',
             title: checkoutArabic ? 'تم تسجيل الطلب' : 'Order received',
-            text: (checkoutArabic ? 'رقم الطلب: ' : 'Order number: ') + res.orderId,
+            text: (checkoutArabic ? 'رقم الطلب: ' : 'Order number: ') + res.orderId + (checkoutArabic ? ' — الدفع معلق' : ' — payment pending'),
             confirmButtonText: 'OK',
              width: '500px',
               Height: '500px'
