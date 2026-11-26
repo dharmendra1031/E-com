@@ -4,6 +4,8 @@ IF DB_NAME() <> N'MarketplaceMigrationTest' THROW 51320, 'Disposable marketplace
 GO
 ALTER TABLE dbo.Users ADD RoleId int NULL, IsActive bit NOT NULL DEFAULT (1);
 CREATE TABLE dbo.Orders (OrderId int NOT NULL PRIMARY KEY);
+ALTER TABLE dbo.Products ADD IsActive bit NOT NULL DEFAULT (1);
+GO
 INSERT dbo.Orders VALUES (1);
 UPDATE dbo.Users SET RoleId = (SELECT RoleId FROM dbo.[Role] WHERE RoleName = N'VendorOwner') WHERE UserId = 1;
 INSERT dbo.Users (UserId, RoleId) SELECT 2, RoleId FROM dbo.[Role] WHERE RoleName = N'VendorStaff';
