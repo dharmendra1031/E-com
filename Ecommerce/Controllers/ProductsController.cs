@@ -351,7 +351,7 @@ namespace EcommerceWebApplication.Controllers
                     await _context.SaveChangesAsync();
 
                     // Add new/edited specifications
-                    foreach (var spec in model.Specifications)
+                    foreach (var spec in model.Specifications.Where(HasSpecification))
                     {
                         spec.ProductId = product.ProductId;
                         spec.CreatedAt = DateTime.Now;
@@ -425,6 +425,9 @@ namespace EcommerceWebApplication.Controllers
                         if (!allowedExtensions.Contains(ext))
                         {
                             TempData["Error"] = "Only JPG, JPEG, PNG, BMP and WEBP files are allowed.";
+                            await transaction.RollbackAsync();
+                            _context.ChangeTracker.Clear();
+                            RestoreEditDisplay(model);
                             return View(model);
                         }
 
@@ -496,7 +499,9 @@ namespace EcommerceWebApplication.Controllers
             {
                 Console.WriteLine($"❌ Error updating product: {ex}");
                 TempData["Error"] = "Something went wrong while updating the product.";
-
+                await transaction.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                RestoreEditDisplay(model);
                 return View(model);
             }
         }
@@ -627,15 +632,33 @@ namespace EcommerceWebApplication.Controllers
         public IActionResult Create()
         {
             // Get only Active Categories
-            ViewBag.Categories = _context.Categories
-                                         .Where(c => c.IsActive)
-                                         .Select(c => new { c.CategoryId, c.CName })
-                                         .ToList();
-            ViewBag.brand1 = _context.Brand
-                                         .Select(c => new { c.BrandId, c.BrandNameAEn })
-                                         .ToList();
+            LoadEditorOptions(0);
+            return View(new ProductViewModel { Units = 1 });
+        }
 
-            return View();
+        private static bool HasSpecification(SpecificationModel row) =>
+            !string.IsNullOrWhiteSpace(row.SpeciNameAr) || !string.IsNullOrWhiteSpace(row.SpecivalueAr) ||
+            !string.IsNullOrWhiteSpace(row.SpeciNameEn) || !string.IsNullOrWhiteSpace(row.SpecivalueEn);
+
+        private void LoadEditorOptions(int categoryId)
+        {
+            ViewBag.Categories = _context.Categories.Where(c => c.IsActive).ToList();
+            ViewBag.SubCategories = _context.SubCategories.Where(s => s.ParentCategoryId == categoryId).ToList();
+            ViewBag.brand1 = _context.Brand.ToList();
+        }
+
+        private void RestoreEditDisplay(EditProductViewModel model)
+        {
+            LoadEditorOptions(model.CategoryId);
+            model.ExistingImages = _context.ProductImages.AsNoTracking().Where(i => i.ProductId == model.ProductId)
+                .ToList().Select(i => new ProductImageViewModel { ImageId = i.ImageId,
+                    Base64Image = "data:" + i.ContentType + ";base64," + Convert.ToBase64String(i.ImageData) }).ToList();
+            model.Ds_Barcode = _context.Products.AsNoTracking().Where(p => p.ProductId == model.ProductId)
+                .Select(p => p.Ds_Barcode).SingleOrDefault();
+            ModelState.Remove(nameof(model.Ds_Barcode));
+            model.Stock = (_context.ProductStocks.Where(s => s.ProductId == model.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
+                - (_context.OrderItems.Where(o => o.ProductId == model.ProductId).Sum(o => (int?)o.Quantity) ?? 0);
+            ModelState.Remove(nameof(model.Stock));
         }
 
         // ✅ AJAX for SubCategories
@@ -664,8 +687,7 @@ namespace EcommerceWebApplication.Controllers
                     if (barcodeExists)
                     {
                         ModelState.AddModelError("Ds_Barcode", "This barcode is already used. Please enter a unique barcode.");
-                        ViewBag.Categories = _context.Categories.Where(c => c.IsActive).ToList();
-                        ViewBag.Brand1 = _context.Brand.ToList();
+                        LoadEditorOptions(model.CategoryId);
                         return View(model);
                     }
                 }
@@ -681,8 +703,7 @@ namespace EcommerceWebApplication.Controllers
                         if (!allowedExtensions.Contains(ext))
                         {
                             TempData["Error"] = "Only JPG, JPEG, PNG, BMP and WEBP files are allowed.";
-                            ViewBag.Categories = _context.Categories.Where(c => c.IsActive).ToList();
-                            ViewBag.Brand1 = _context.Brand.ToList();
+                            LoadEditorOptions(model.CategoryId);
                             return View(model);
                         }
                     }
@@ -829,7 +850,7 @@ namespace EcommerceWebApplication.Controllers
                 if (model.Specifications != null && model.Specifications.Count > 0)
                 {
                    
-                    foreach (var item in model.Specifications)
+                    foreach (var item in model.Specifications.Where(HasSpecification))
                     {
                         item.ProductId = product.ProductId;
                         item.CreatedAt = DateTime.Now;

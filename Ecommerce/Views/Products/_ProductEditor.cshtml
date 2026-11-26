@@ -1,0 +1,89 @@
+@using EcommerceWebApplication.Models.ViewModels
+@using System.Globalization
+@model ProductEditorFields
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> L
+@{
+    var edit = Model as EditProductViewModel;
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    var action = edit == null ? "Create" : "Edit";
+}
+<div class="main-content admin-product-editor">
+    <div class="card alert">
+        <div class="admin-section-heading">
+            <h2>@(edit == null ? T("Add product","إضافة منتج") : T("Edit product","تعديل المنتج"))</h2>
+            <a asp-action="ProductList" class="btn btn-default">@T("Back to products","العودة إلى المنتجات")</a>
+        </div>
+        <form asp-action="@action" id="NavigationKey" data-subcategories-url="@Url.Action("GetSubCategories","Products")" data-delete-image-url="@Url.Action("DeleteProductImage","Products")" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            @if(edit != null){<input type="hidden" name="ProductId" value="@edit.ProductId" />}
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <section class="admin-editor-section">
+                <h3>@T("Basic information","المعلومات الأساسية")</h3>
+                <div class="row">
+                    <div class="col-md-6 form-group"><label asp-for="Name">@L["Product Name (EN)"] *</label><input asp-for="Name" dir="ltr" class="form-control" required /><span asp-validation-for="Name" class="text-danger"></span></div>
+                    <div class="col-md-6 form-group"><label asp-for="NameArb">@L["Product Name (AR)"] *</label><input asp-for="NameArb" dir="rtl" class="form-control" required /><span asp-validation-for="NameArb" class="text-danger"></span></div>
+                    <div class="col-md-4 form-group"><label for="CategoryDropdown">@L["Category"] *</label><select asp-for="CategoryId" id="CategoryDropdown" class="form-control" required><option value="">@T("Select category","اختر الفئة")</option>@foreach(var cat in ViewBag.Categories){<option value="@cat.CategoryId">@cat.CName</option>}</select><span asp-validation-for="CategoryId" class="text-danger"></span></div>
+                    <div class="col-md-4 form-group"><label for="SubCategoryDropdown">@L["Sub-Category"] *</label><select asp-for="SubCategoryId" id="SubCategoryDropdown" class="form-control" required><option value="">@T("Select subcategory","اختر الفئة الفرعية")</option>@if(ViewBag.SubCategories != null){foreach(var sub in ViewBag.SubCategories){<option value="@sub.SubCategoryId">@sub.SCName</option>}}</select><span asp-validation-for="SubCategoryId" class="text-danger"></span></div>
+                    <div class="col-md-4 form-group"><label for="BrandDropdown">@L["brand"]</label><select asp-for="brandid" id="BrandDropdown" class="form-control"><option value="">@T("Select brand","اختر العلامة التجارية")</option>@foreach(var brand in ViewBag.brand1){<option value="@brand.BrandId">@brand.BrandNameAEn</option>}</select></div>
+                    <div class="col-md-3 form-group"><label asp-for="Ds_Barcode">@L["Barcode"]</label><input asp-for="Ds_Barcode" class="form-control" maxlength="20" readonly="@(edit != null)" /><span asp-validation-for="Ds_Barcode" class="text-danger"></span></div>
+                    <div class="col-md-3 form-group"><label asp-for="Ds_ProdID">@L["Item Code"]</label><input asp-for="Ds_ProdID" class="form-control" maxlength="20" /><span asp-validation-for="Ds_ProdID" class="text-danger"></span></div>
+                    <div class="col-md-3 form-group"><label asp-for="SKUId">@L["SKU ID"]</label><input asp-for="SKUId" class="form-control" /></div>
+                    <div class="col-md-3 form-group"><label asp-for="ProductsModel">@L["Model"]</label><input asp-for="ProductsModel" class="form-control" /></div>
+                </div>
+            </section>
+            <section class="admin-editor-section">
+                <h3>@T("Pricing and inventory","الأسعار والمخزون")</h3>
+                <div class="row">
+                    <div class="col-md-3 form-group"><label for="CoastPrice">@L["Cost Price"] (KD) *</label>
+                        @if(edit == null){<input asp-for="CoastPrice" id="CoastPrice" class="form-control" maxlength="8" onkeypress="return ValidAmount(event, this);" /><span asp-validation-for="CoastPrice" class="text-danger"></span>}
+                        else {@Html.TextBox("CoastPriceStr",edit.CoastPriceStr,new {id="CoastPrice",@class="form-control",maxlength=8,onkeypress="return ValidAmount(event, this);"})}
+                    </div>
+                    <div class="col-md-3 form-group"><label for="Price">@L["Sale Price"] (KD) *</label>
+                        @if(edit == null){<input asp-for="Price" id="Price" class="form-control" maxlength="8" onkeypress="return ValidAmount(event, this);" /><span asp-validation-for="Price" class="text-danger"></span>}
+                        else {@Html.TextBox("PriceStr",edit.PriceStr,new {id="Price",@class="form-control",maxlength=8,onkeypress="return ValidAmount(event, this);"})}
+                    </div>
+                    <div class="col-md-3 form-group"><label asp-for="Stock">@(edit == null ? T("Opening stock","الرصيد الافتتاحي") : T("Available stock","المخزون المتاح")) *</label><input asp-for="Stock" type="text" class="form-control" maxlength="10" readonly="@(edit != null)" onkeypress="return numeric(event)" /><span asp-validation-for="Stock" class="text-danger"></span></div>
+                    <div class="col-md-3 form-group"><label asp-for="Weight">@T("Weight (grams)","الوزن (غرام)")</label><input asp-for="Weight" class="form-control" maxlength="20" onkeypress="return ValidAmount(event, this);" /></div>
+                    <div class="col-md-3 form-group"><label asp-for="Units">@L["Units"]</label><input asp-for="Units" class="form-control" maxlength="8" onkeypress="return numeric(event)" /></div>
+                    <div class="col-md-3 form-group"><label asp-for="Warranty">@T("Warranty (months)","الضمان (أشهر)")</label><input asp-for="Warranty" class="form-control" /></div>
+                    @if(edit != null){<div class="col-md-3 form-group"><label for="IsActive">@L["Status"]</label><select id="IsActive" name="IsActive" class="form-control"><option value="true" selected="@edit.IsActive">@L["Active"]</option><option value="false" selected="@(!edit.IsActive)">@L["Inactive"]</option></select></div>}
+                </div>
+            </section>
+            <section class="admin-editor-section">
+                <h3>@T("Images","الصور")</h3>
+                @if(edit != null){
+                    <div class="admin-image-gallery">
+                        @foreach(var img in edit.ExistingImages ?? new List<ProductImageViewModel>()){
+                            <div data-product-image="@img.ImageId" class="admin-image-tile"><img src="@img.Base64Image" alt="" loading="lazy" /><button type="button" data-delete-image="@img.ImageId" class="btn btn-danger admin-image-remove" aria-label="@T("Delete image","حذف الصورة")">×</button></div>
+                        }
+                        @if(edit.ExistingImages == null || edit.ExistingImages.Count == 0){<span class="text-muted">@T("No images uploaded","لا توجد صور")</span>}
+                    </div>
+                }
+                <label for="ProductImages">@(edit == null ? T("Product images","صور المنتج") : T("Upload additional images (optional)","تحميل صور إضافية (اختياري)"))</label>
+                <input type="file" name="@(edit == null ? "ProductImages" : "NewImages")" id="ProductImages" class="form-control" accept="image/*" multiple />
+                @Html.ValidationMessage("ProductImages",null,new {@class="text-danger"})
+                <div id="imagePreview" class="admin-image-gallery"></div>
+            </section>
+            <section class="admin-editor-section">
+                <h3>@T("Description","الوصف")</h3>
+                <div class="row"><div class="col-md-6 form-group"><label asp-for="Description">@L["Description[EN]"]</label><textarea asp-for="Description" dir="ltr" class="form-control" rows="3"></textarea></div><div class="col-md-6 form-group"><label asp-for="DescriptionArb">@L["Description[AR]"]</label><textarea asp-for="DescriptionArb" dir="rtl" class="form-control" rows="3"></textarea></div></div>
+            </section>
+            <section class="admin-editor-section">
+                <div class="admin-section-heading"><h3>@T("Specifications","المواصفات")</h3><button type="button" id="addSpecRow" class="btn btn-default">@T("Add specification","إضافة مواصفة")</button></div>
+                <div id="specContainer">
+                    @for(int i=0;i<(Model.Specifications?.Count ?? 0);i++){
+                        <div class="row specRow mb-2">
+                            <div class="col-md-2"><input asp-for="Specifications[i].SpeciNameAr" dir="rtl" class="form-control" placeholder="@T("Arabic name","الاسم بالعربية")" aria-label="@T("Arabic name","الاسم بالعربية")" /></div>
+                            <div class="col-md-4"><input asp-for="Specifications[i].SpecivalueAr" dir="rtl" class="form-control" placeholder="@T("Arabic value","القيمة بالعربية")" aria-label="@T("Arabic value","القيمة بالعربية")" /></div>
+                            <div class="col-md-2"><input asp-for="Specifications[i].SpeciNameEn" dir="ltr" class="form-control" placeholder="@T("English name","الاسم بالإنجليزية")" aria-label="@T("English name","الاسم بالإنجليزية")" /></div>
+                            <div class="col-md-3"><input asp-for="Specifications[i].SpecivalueEn" dir="ltr" class="form-control" placeholder="@T("English value","القيمة بالإنجليزية")" aria-label="@T("English value","القيمة بالإنجليزية")" /></div>
+                            <div class="col-md-1"><button type="button" class="btn btn-danger removeSpecRow" aria-label="@T("Remove specification","حذف مواصفة")">×</button></div>
+                        </div>
+                    }
+                </div>
+            </section>
+            <div class="admin-form-actions"><a asp-action="ProductList" class="btn btn-default">@L["Cancel"]</a><button type="submit" class="btn btn-primary">@(edit == null ? T("Save product","حفظ المنتج") : T("Update product","تحديث المنتج"))</button></div>
+        </form>
+    </div>
+</div>
