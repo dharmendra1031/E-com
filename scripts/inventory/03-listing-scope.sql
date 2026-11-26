@@ -1,4 +1,11 @@
 -- Upgrade ONLY the unused staged inventory foundation. Never discard posted balances or movements.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 IF OBJECT_ID(N'dbo.VendorListings', N'U') IS NULL

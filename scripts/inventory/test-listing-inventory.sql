@@ -1,5 +1,13 @@
 -- Run after marketplace fixture in the same disposable database.
 :ON ERROR EXIT
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 IF DB_NAME() <> N'MarketplaceMigrationTest' THROW 51320, 'Disposable marketplace DB required.', 1;
 GO
 ALTER TABLE dbo.Users ADD RoleId int NULL, IsActive bit NOT NULL DEFAULT (1);

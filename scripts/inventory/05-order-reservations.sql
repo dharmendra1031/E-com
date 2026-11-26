@@ -1,3 +1,11 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 -- Internal order service only. No public endpoints. Caller must authenticate and validate order/payment.
 CREATE OR ALTER PROCEDURE dbo.ReserveOrderInventory
     @OrderId int,
@@ -5,6 +13,11 @@ CREATE OR ALTER PROCEDURE dbo.ReserveOrderInventory
     @ExpiresAtUtc datetime2(3)
 AS
 BEGIN
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
     IF @OrderId IS NULL OR @OrderId <= 0 OR @ExpiresAtUtc IS NULL OR @Lines IS NULL
@@ -83,6 +96,11 @@ CREATE OR ALTER PROCEDURE dbo.FinalizeOrderInventory
     @Reason varchar(32)
 AS
 BEGIN
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
     IF @OrderId IS NULL OR @OrderId <= 0 OR @Outcome IS NULL OR @Reason IS NULL

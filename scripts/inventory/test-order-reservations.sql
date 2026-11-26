@@ -1,5 +1,13 @@
 -- Run after test-listing-inventory.sql in the same disposable database.
 :ON ERROR EXIT
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 IF DB_NAME() <> N'MarketplaceMigrationTest' THROW 51420, 'Disposable database required.', 1;
 GO
 :r inventory/05-order-reservations.sql

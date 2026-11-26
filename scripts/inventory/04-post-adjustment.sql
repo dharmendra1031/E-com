@@ -1,3 +1,11 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 -- Single transaction for manual movements. Never called by the legacy stock writers.
 CREATE OR ALTER PROCEDURE dbo.PostInventoryAdjustment
     @VendorId int,
@@ -8,6 +16,11 @@ CREATE OR ALTER PROCEDURE dbo.PostInventoryAdjustment
     @Reason nvarchar(200)
 AS
 BEGIN
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
     SET @Reason = LTRIM(RTRIM(@Reason));
