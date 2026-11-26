@@ -6,9 +6,11 @@ public class VendorOrderRow
     public decimal MerchandiseSubtotal { get; set; }
     public DateTime CreatedAt { get; set; }
     public int ItemCount { get; set; }
+    public string FulfillmentStatus { get; set; } = "";
 }
 public class VendorOrderLine
 {
+    public string FulfillmentStatus { get; set; } = "";
     public string ProductName { get; set; } = "";
     public string? ProductNameArb { get; set; }
     public string SellerSku { get; set; } = "";

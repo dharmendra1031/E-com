@@ -258,7 +258,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             !await StoreMembership(id, userId).AnyAsync(ct)) return NotFound();
         page = Math.Clamp(page, 1, 100000);
         var rows = await db.Database.SqlQuery<VendorOrderRow>($"""
-            SELECT v.VendorOrderId,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,
+            SELECT v.VendorOrderId,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,v.FulfillmentStatus,
                    (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
             FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
             JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
@@ -276,7 +276,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             !await StoreMembership(id,userId).AnyAsync(ct)) return NotFound();
         var rows=await db.Database.SqlQuery<VendorOrderLine>($"""
             SELECT i.ProductNameSnapshot AS ProductName,i.ProductNameArbSnapshot AS ProductNameArb,
-                   i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price
+                   i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price,v.FulfillmentStatus
             FROM dbo.OrderItems i JOIN dbo.VendorOrders v ON v.VendorOrderId=i.VendorOrderId AND v.OrderId=i.OrderId
             JOIN dbo.Orders o ON o.OrderId=v.OrderId
             JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
@@ -284,7 +284,33 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             """).ToListAsync(ct);
         if(rows.Count==0) return NotFound();
         ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
+        ViewBag.CanAdvance = configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) &&
+            await StoreMembership(id,userId,true).AnyAsync(ct);
         return View(rows);
+    }
+
+    [HttpPost("store/{id:int}/orders/{vendorOrderId:int}/fulfillment")]
+    public async Task<IActionResult> AdvanceFulfillment(int id,int vendorOrderId,string expectedStatus,string newStatus,CancellationToken ct)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
+            !configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) ||
+            !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await StoreMembership(id,actor,true).AnyAsync(ct)) return NotFound();
+        if (!ModelState.IsValid || !((expectedStatus=="AwaitingPacking" && newStatus=="Packed") ||
+            (expectedStatus=="Packed" && newStatus=="HandedOver"))) return BadRequest();
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.AdvanceVendorFulfillment @VendorId={id},@VendorOrderId={vendorOrderId},
+                    @ActorId={actor},@ExpectedStatus={expectedStatus},@NewStatus={newStatus}
+                """,ct);
+            TempData["FulfillmentMessage"]="Order status saved. / تم حفظ حالة الطلب.";
+        }
+        catch (SqlException ex) when (ex.Number is >=52000 and <=52003)
+        {
+            TempData["FulfillmentMessage"]="Order status not changed. Refresh and review. / لم تتغير حالة الطلب.";
+        }
+        return RedirectToAction(nameof(OrderDetails),new { id,vendorOrderId });
     }
 
     [HttpPost("logout")]

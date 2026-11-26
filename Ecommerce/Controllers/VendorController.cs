@@ -36,6 +36,21 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
+    public async Task<IActionResult> PaymentReview(int page=1,CancellationToken ct=default)
+    {
+        if (!configuration.GetValue("Marketplace:PaymentReviewEnabled",false)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await db.Database.SqlQuery<MarketplacePaymentReviewRow>($"""
+            SELECT o.OrderId,o.CustomerId,o.TotalAmount,o.PaymentStatus,o.CreatedAt,p.InvoiceId,
+                COALESCE(p.State,'Not started') AS AttemptState
+            FROM dbo.Orders o LEFT JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
+            WHERE o.MarketplaceRequestId IS NOT NULL AND o.PaymentStatus=2
+            """).OrderByDescending(o=>o.OrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Index(string? search, int page = 1, CancellationToken ct = default)
     {
         const int pageSize = 25;

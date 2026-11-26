@@ -6,3 +6,19 @@
 @foreach(var row in Model){<tr><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.SellerSku</td><td>@row.Quantity</td><td dir="ltr">KD @row.Price.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td></tr>}
 </tbody></table></div>
 <p>@(ar?"مجموع البضائع وليس صافي التسوية":"Merchandise subtotal, not settlement earnings"): <bdi>KD @Model.Sum(x=>x.Quantity*x.Price).ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</bdi></p>
+
+@{
+    var status = Model.First().FulfillmentStatus;
+    var next = status == "AwaitingPacking" ? "Packed" : status == "Packed" ? "HandedOver" : null;
+}
+<p>@(ar?"حالة التجهيز":"Fulfillment status"): @(status switch { "AwaitingPacking"=>ar?"بانتظار التجهيز":"Awaiting packing","Packed"=>ar?"تم التجهيز":"Packed","HandedOver"=>ar?"تم التسليم للناقل":"Handed over","Delivered"=>ar?"تم التوصيل":"Delivered",_=>status })</p>
+@if (TempData["FulfillmentMessage"] is string message) { <p role="status">@message</p> }
+@if (ViewBag.CanAdvance == true && next != null)
+{
+    <form asp-action="AdvanceFulfillment" asp-route-id="@ViewBag.VendorId" asp-route-vendorOrderId="@ViewBag.VendorOrderId" method="post">
+        <input type="hidden" name="expectedStatus" value="@status" />
+        <input type="hidden" name="newStatus" value="@next" />
+        <button class="btn btn-primary" type="submit">@(next=="Packed"?(ar?"تأكيد التجهيز":"Confirm packing"):(ar?"تأكيد التسليم للناقل":"Confirm carrier handover"))</button>
+    </form>
+}
+<p class="text-muted">@(ar?"التسليم للناقل ليس تأكيد التوصيل للعميل.":"Carrier handover is not proof of customer delivery.")</p>
