@@ -9,6 +9,7 @@ namespace EcommerceWebApplication.Models
         public int OrderId { get; set; }
 
         public int CustomerId { get; set; }
+        public Guid? MarketplaceRequestId { get; set; }
 
         [Column(TypeName = "decimal(18,3)")]
         public decimal TotalAmount { get; set; }

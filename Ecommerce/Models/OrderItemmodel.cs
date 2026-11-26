@@ -9,6 +9,11 @@ namespace EcommerceWebApplication.Models
         public int OrderItemId { get; set; }
         public int ?  OrderId { get; set; }
         public int ? ProductId { get; set; }
+        public int? VendorOrderId { get; set; }
+        public int? VendorListingId { get; set; }
+        public string? SellerSkuSnapshot { get; set; }
+        public string? ProductNameSnapshot { get; set; }
+        public string? ProductNameArbSnapshot { get; set; }
         public int ? Quantity { get; set; }
         [Column(TypeName = "decimal(18,3)")]
         [DisplayFormat(DataFormatString = "{0:F3}", ApplyFormatInEditMode = true)]

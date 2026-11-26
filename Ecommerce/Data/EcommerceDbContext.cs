@@ -82,6 +82,9 @@ namespace EcommerceWebApplication.Data
         {
             // Legacy cart paths must not read or mutate marketplace lines.
             modelBuilder.Entity<CartItem>().HasQueryFilter(c => c.VendorListingId == null);
+            // Prevent existing EF-based order/stock paths from consuming staged seller orders.
+            modelBuilder.Entity<OrderModel>().HasQueryFilter(o => o.MarketplaceRequestId == null);
+            modelBuilder.Entity<OrderItemmodel>().HasQueryFilter(o => o.VendorOrderId == null);
             modelBuilder.Entity<VendorListing>(entity =>
             {
                 entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
