@@ -80,6 +80,8 @@ namespace EcommerceWebApplication.Data
         public DbSet<OrderProductViewModel> OrderProductViewModel { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Legacy cart paths must not read or mutate marketplace lines.
+            modelBuilder.Entity<CartItem>().HasQueryFilter(c => c.VendorListingId == null);
             modelBuilder.Entity<VendorListing>(entity =>
             {
                 entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);

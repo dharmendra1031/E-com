@@ -52,7 +52,7 @@ namespace EcommerceWebApplication.Controllers
                                 
                                 .ToList();
 
-            ViewBag.SellerSummaries = MarketplaceOffers.ForProducts(_context, weekendDeals.Select(d => d.ProductId), _configuration);
+            ViewBag.SellerSummaries = MarketplaceOffers.ForProducts(_context, weekendDeals.Where(d => d.ProductId.HasValue).Select(d => d.ProductId!.Value), _configuration);
             return View(weekendDeals);
         }
 

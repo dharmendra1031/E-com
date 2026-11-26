@@ -16,6 +16,8 @@ namespace EcommerceWebApplication.Models
         [Required]
         public int ProductId { get; set; }
 
+        public int? VendorListingId { get; set; }
+
         [MaxLength(255)]
         public string ProductName { get; set; }
 

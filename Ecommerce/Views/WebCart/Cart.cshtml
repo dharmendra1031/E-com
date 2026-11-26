@@ -9,6 +9,10 @@
         <h1 class="h3 fw-bold mb-0">@_localizer["Your cart"]</h1>
         <a href="~/WebCategory/Index" class="fw-semibold text-decoration-none">@_localizer["Continue shopping"]</a>
     </div>
+    @if (ViewBag.SellerCart is List<EcommerceWebApplication.Models.ViewModels.SellerCartLine> sellerCart)
+    {
+        <partial name="_SellerCart" model="sellerCart" />
+    }
     <div class="row g-3 g-lg-4 align-items-start">
         <section class="col-lg-8">
             <div class="store-cart-panel p-3">

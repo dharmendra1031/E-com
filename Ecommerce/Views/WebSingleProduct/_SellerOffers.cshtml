@@ -1,9 +1,13 @@
 @using System.Globalization
 @model EcommerceWebApplication.Models.ViewModels.SingleProductVM
-@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
+@inject Microsoft.Extensions.Configuration.IConfiguration SellerCartConfiguration
+@{
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    var cartEnabled = SellerCartConfiguration["Marketplace:SellerCartEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+}
 <section id="sellerOffers" class="store-detail-panel mt-3">
     <h2 class="h5 fw-bold">@(ar ? "عروض البائعين — معاينة" : "Seller offers — preview")</h2>
-    <p class="small text-secondary">@(ar ? "للمقارنة فقط. الشراء من البائعين غير متاح بعد، وزر السلة أعلاه يخص المتجر الحالي." : "Comparison only. Seller purchases are not enabled yet; the cart button above belongs to the current store.")</p>
+    <p class="small text-secondary">@(ar ? "الدفع للبائعين غير متاح بعد، وزر السلة أعلاه يخص المتجر الحالي." : "Seller checkout is not enabled yet; the cart button above belongs to the current store.")</p>
     @if (Model.LowestSellerPrice.HasValue)
     {
         <p>@(ar ? "أقل سعر للبائعين" : "Lowest available seller price") <strong dir="ltr">KD @Model.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</strong></p>
@@ -26,6 +30,14 @@
                         <td dir="ltr">KD @offer.Price.ToString("F3", CultureInfo.InvariantCulture)</td>
                         <td>@offer.AvailableQuantity</td>
                         <td>
+                            @if (cartEnabled && User.IsInRole("Customer"))
+                            {
+                                <form asp-controller="WebCart" asp-action="SetSellerQuantity" method="post" class="d-flex gap-2">
+                                    <input type="hidden" name="listingId" value="@offer.ListingId" />
+                                    <input type="number" name="quantity" value="1" min="1" max="@Math.Min(offer.AvailableQuantity,1000000)" class="form-control" aria-label="@(ar ? "الكمية" : "Quantity")" required />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">@(ar ? "حفظ في سلة البائع" : "Set cart quantity")</button>
+                                </form>
+                            }
                             @if (selected) { <strong>@(ar ? "محدد" : "Selected")</strong> }
                             else { <a class="btn btn-sm btn-outline-primary" asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@Model.SellerPage" asp-route-listingId="@offer.ListingId" asp-fragment="sellerOffers">@(ar ? "اختيار" : "Select")</a> }
                         </td>

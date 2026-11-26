@@ -32,7 +32,7 @@
                             <div class="mt-auto">
                                 <s class="small text-secondary" dir="ltr">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</s>
                                 <div class="store-home-price" dir="ltr">KD @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture)</div>
-                                @if (summaries != null && summaries.TryGetValue(deal.ProductId, out var offer))
+                                @if (summaries != null && deal.ProductId.HasValue && summaries.TryGetValue(deal.ProductId.Value, out var offer))
                                 {
                                     <small class="text-secondary">@(ar ? "معاينة البائعين من" : "Seller preview from") <bdi>KD @offer.LowestPrice.ToString("F3", CultureInfo.InvariantCulture)</bdi> (@offer.SellerCount)</small>
                                 }
