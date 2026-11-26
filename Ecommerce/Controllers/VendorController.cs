@@ -36,6 +36,52 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
+    public async Task<IActionResult> Commission(int id,CancellationToken ct)
+    {
+        if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
+        var form=await db.Database.SqlQuery<VendorCommissionForm>($"""
+            SELECT v.VendorId,v.Name AS VendorName,COALESCE(p.PolicyId,0) AS ExpectedPolicyId,p.RatePercent
+            FROM dbo.Vendors v OUTER APPLY(SELECT TOP(1) PolicyId,RatePercent FROM dbo.VendorCommissionPolicies
+                WHERE VendorId=v.VendorId ORDER BY PolicyId DESC) p WHERE v.VendorId={id}
+            """).SingleOrDefaultAsync(ct);
+        return form==null?NotFound():View(form);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Commission(VendorCommissionForm form,CancellationToken ct)
+    {
+        if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
+        if (!ModelState.IsValid || form.RatePercent is not decimal rate || decimal.Round(rate,4)!=rate ||
+            form.VendorId<=0 || form.ExpectedPolicyId<0 || !int.TryParse(User.FindFirstValue("UserId"),out var actor)) return BadRequest();
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.SetVendorCommission @VendorId={form.VendorId},@ActorId={actor},
+                    @ExpectedPolicyId={form.ExpectedPolicyId},@RatePercent={rate}
+                """,ct);
+            TempData["FinanceMessage"]="Commission policy saved. / تم حفظ العمولة.";
+        }
+        catch(SqlException ex) when(ex.Number is >=52400 and <=52403)
+        {
+            TempData["FinanceMessage"]="Policy not changed. Reload and review. / لم تتغير العمولة.";
+        }
+        return RedirectToAction(nameof(Commission),new {id=form.VendorId});
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> FinanceReview(int page=1,CancellationToken ct=default)
+    {
+        if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
+            SELECT VendorOrderId,OrderId,VendorId,VendorName,MerchandiseSubtotal,CommissionRatePercent,
+                CommissionAmount,MerchandiseAfterCommission,FulfillmentStatus,ReviewState FROM dbo.MarketplaceFinanceReview
+            """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
+
+    [HttpGet]
     public async Task<IActionResult> ReturnReview(int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();

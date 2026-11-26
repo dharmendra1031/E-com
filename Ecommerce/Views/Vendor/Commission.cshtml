@@ -1,0 +1,13 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorCommissionForm
+@{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;ViewData["Title"]=T("Vendor commission","عمولة البائع");}
+<h2>@ViewData["Title"] — @Model.VendorName</h2>
+<p>@T("Test policy: percentage of merchandise subtotal, excluding delivery and VAT. Changes apply only to new orders.","سياسة اختبار: نسبة من قيمة البضائع دون التوصيل والضريبة. التغيير للطلبات الجديدة فقط.")</p>
+@if(TempData["FinanceMessage"] is string message){<p role="status">@message</p>}
+<form asp-action="Commission" method="post" class="card alert">
+<input type="hidden" asp-for="VendorId" /><input type="hidden" asp-for="ExpectedPolicyId" />
+<label asp-for="RatePercent">@T("Commission percentage","نسبة العمولة")</label>
+<input asp-for="RatePercent" type="number" min="0" max="100" step="0.0001" required class="form-control" />
+<span asp-validation-for="RatePercent" class="text-danger"></span>
+<button type="submit" class="btn btn-primary">@T("Save policy","حفظ السياسة")</button>
+<a asp-action="Index" class="btn btn-default">@T("Back","رجوع")</a>
+</form>

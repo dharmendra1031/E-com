@@ -128,10 +128,12 @@ namespace EcommerceWebApplication.Controllers
                     EXEC dbo.AttachMarketplaceOrder @OrderId={order.OrderId}, @CustomerId={customerId},
                         @ExpectedLines={linesJson}, @ExpiresAtUtc={expires}
                     """, ct);
+                if (_configuration.GetValue("Marketplace:FinancePreviewEnabled",false))
+                    await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.SnapshotVendorCommission @OrderId={order.OrderId}",ct);
                 await transaction.CommitAsync(ct);
                 return RedirectToAction(nameof(SellerReceipt), new { requestId = quote.RequestId });
             }
-            catch (SqlException ex) when (ex.Number is 1205 or 2601 or 2627 or >= 51400 and <= 51499 or >= 51700 and <= 51799)
+            catch (SqlException ex) when (ex.Number is 1205 or 2601 or 2627 or >= 51400 and <= 51499 or >= 51700 and <= 51799 or >= 52404 and <= 52406)
             {
                 return Conflict("Order not confirmed. Check the receipt using the same checkout request before retrying.");
             }

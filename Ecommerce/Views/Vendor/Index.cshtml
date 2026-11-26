@@ -14,6 +14,7 @@
             <a asp-action="Edit" class="btn btn-primary">@T("Add vendor", "إضافة بائع")</a>
             @if(PaymentReviewConfiguration["Marketplace:PaymentReviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="PaymentReview" class="btn btn-default">@T("Payment review","مراجعة الدفع")</a>}
             @if(PaymentReviewConfiguration["Marketplace:ReturnWorkflowEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="ReturnReview" class="btn btn-default">@T("Returns","الإرجاع")</a>}
+            @if(PaymentReviewConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="FinanceReview" class="btn btn-default">@T("Finance review","المراجعة المالية")</a>}
         </form>
         <div class="admin-table-scroll">
             <table class="table table-hover">
@@ -30,6 +31,7 @@
                         <td>
                             <a asp-action="Edit" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-primary">@T("Edit", "تعديل")</a>
                             <a asp-action="Listings" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-default">@T("Listings", "العروض")</a>
+                            @if(PaymentReviewConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="Commission" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-default">@T("Commission","العمولة")</a>}
                             <a asp-action="Members" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-default">@T("Users", "المستخدمون")</a>
                             <form asp-action="ChangeStatus" method="post" class="form-inline">
                                 <input type="hidden" name="id" value="@vendor.VendorId" />
