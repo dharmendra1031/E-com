@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Data;
 
 namespace EcommerceWebApplication.Controllers;
 
@@ -92,6 +93,93 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
             ? "تم حفظ البائع." : "Vendor saved.";
         return RedirectToAction(nameof(Index));
     }
+
+    // Only staff accounts with a dedicated vendor role are eligible.
+    private IQueryable<User> EligibleUsers() => db.Users.Where(u => u.IsActive &&
+        u.Role != null && u.Role.IsActive &&
+        (u.Role.RoleName == VendorRoles.Owner || u.Role.RoleName == VendorRoles.Manager ||
+         u.Role.RoleName == VendorRoles.Staff));
+
+    [HttpGet]
+    public async Task<IActionResult> Members(int id, string? search, int page = 1, CancellationToken ct = default)
+    {
+        var vendor = await db.Vendors.AsNoTracking().SingleOrDefaultAsync(v => v.VendorId == id, ct);
+        if (vendor == null) return NotFound();
+        const int size = 25;
+        page = Math.Clamp(page, 1, 100000);
+        var rows = await db.VendorUsers.AsNoTracking().Where(m => m.VendorId == id)
+            .OrderBy(m => m.UserId).Skip((page - 1) * size).Take(size + 1)
+            .Select(m => new VendorMembersViewModel.MemberRow
+            {
+                UserId = m.UserId, Name = m.User.FullName, Email = m.User.Email,
+                Role = m.User.Role == null ? null : m.User.Role.RoleName, IsActive = m.IsActive,
+                IsEligible = m.User.IsActive && m.User.Role != null && m.User.Role.IsActive &&
+                    (m.User.Role.RoleName == VendorRoles.Owner || m.User.Role.RoleName == VendorRoles.Manager ||
+                     m.User.Role.RoleName == VendorRoles.Staff)
+            }).ToListAsync(ct);
+        var model = new VendorMembersViewModel
+        {
+            VendorId = id, VendorName = vendor.Name, Search = search, Page = page,
+            HasNext = rows.Count > size, Members = rows.Take(size).ToList()
+        };
+        search = search?.Trim();
+        if (!string.IsNullOrEmpty(search) && search.Length >= 2 && search.Length <= 150)
+        {
+            model.Candidates = await EligibleUsers().AsNoTracking()
+                .Where(u => (u.FullName != null && u.FullName.Contains(search)) ||
+                    (u.FullNameArb != null && u.FullNameArb.Contains(search)) ||
+                    (u.Email != null && u.Email.Contains(search)))
+                .Where(u => !db.VendorUsers.Any(m => m.VendorId == id && m.UserId == u.UserId))
+                .OrderBy(u => u.UserId).Take(size)
+                .Select(u => new VendorMembersViewModel.MemberRow
+                {
+                    UserId = u.UserId, Name = u.FullName, Email = u.Email, Role = u.Role!.RoleName,
+                    IsEligible = true
+                }).ToListAsync(ct);
+        }
+        return View(model);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AssignMember(int id, int userId, CancellationToken ct)
+    {
+        // Serialize membership creation with eligibility checks. Runtime vendor access must recheck them.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        if (!await db.Vendors.AnyAsync(v => v.VendorId == id && v.Status != "Suspended", ct))
+            return BadRequest("Vendor does not exist or is suspended.");
+        if (!await EligibleUsers().AnyAsync(u => u.UserId == userId, ct))
+            return BadRequest("Only active vendor-role users can be assigned.");
+        if (await db.VendorUsers.AnyAsync(m => m.VendorId == id && m.UserId == userId, ct))
+            return Conflict("Membership already exists.");
+        db.VendorUsers.Add(new VendorUser { VendorId = id, UserId = userId });
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            return Conflict("Membership already exists.");
+        }
+        TempData["Success"] = MemberMessage("Vendor user assigned.", "تم تعيين مستخدم البائع.");
+        return RedirectToAction(nameof(Members), new { id });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ChangeMemberStatus(int id, int userId, bool expectedActive, bool active, CancellationToken ct)
+    {
+        if (expectedActive == active) return BadRequest();
+        var query = db.VendorUsers.Where(m => m.VendorId == id && m.UserId == userId && m.IsActive == expectedActive);
+        if (active)
+            query = query.Where(m => m.Vendor.Status != "Suspended" && EligibleUsers().Any(u => u.UserId == m.UserId));
+        var updated = await query.ExecuteUpdateAsync(s => s.SetProperty(m => m.IsActive, active), ct);
+        if (updated != 1) return Conflict("Membership changed or user is not eligible.");
+        TempData["Success"] = MemberMessage("Membership updated.", "تم تحديث العضوية.");
+        return RedirectToAction(nameof(Members), new { id });
+    }
+
+    private static string MemberMessage(string en, string ar) =>
+        System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" ? ar : en;
 
     [HttpPost]
     public async Task<IActionResult> ChangeStatus(int id, string expectedStatus, string status, CancellationToken ct)

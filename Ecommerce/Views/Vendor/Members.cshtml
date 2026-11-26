@@ -1,0 +1,83 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorMembersViewModel
+@{
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en, string arabic) => ar ? arabic : en;
+    string RoleText(string? role) => role switch
+    {
+        "VendorOwner" => T("Vendor owner", "مالك البائع"),
+        "VendorManager" => T("Vendor manager", "مدير البائع"),
+        "VendorStaff" => T("Vendor staff", "موظف البائع"),
+        _ => role ?? "-"
+    };
+}
+<div class="admin-master-register">
+    <div class="card alert">
+        <h3>@Model.VendorName — @T("Vendor users", "مستخدمو البائع")</h3>
+        <p>@T("Membership management only. Vendor sign-in is not enabled.", "إدارة العضوية فقط. تسجيل دخول البائع غير مفعل.")</p>
+        <a asp-action="Index" class="btn btn-default">@T("Back to vendors", "العودة إلى البائعين")</a>
+        <form asp-action="Members" asp-route-id="@Model.VendorId" method="get" class="admin-register-filters">
+            <label for="search">@T("Find eligible staff by name or email", "ابحث عن الموظف بالاسم أو البريد الإلكتروني")</label>
+            <input id="search" name="search" value="@Model.Search" minlength="2" maxlength="150" class="form-control" required />
+            <button type="submit" class="btn btn-primary">@T("Search", "بحث")</button>
+        </form>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <h4>@T("Eligible accounts (up to 25)", "الحسابات المؤهلة (حتى 25)")</h4>
+            <div class="admin-table-scroll">
+                <table class="table table-hover">
+                    <thead><tr><th>@T("Name", "الاسم")</th><th>@T("Email", "البريد الإلكتروني")</th><th>@T("Role", "الدور")</th><th>@T("Action", "الإجراء")</th></tr></thead>
+                    <tbody>
+                    @if (Model.Candidates.Count == 0)
+                    {
+                        <tr><td colspan="4">@T("No eligible unassigned accounts found.", "لم يتم العثور على حسابات مؤهلة غير معينة.")</td></tr>
+                    }
+                    @foreach (var user in Model.Candidates)
+                    {
+                        <tr><td>@user.Name</td><td>@user.Email</td><td>@RoleText(user.Role)</td><td>
+                            <form asp-action="AssignMember" asp-route-id="@Model.VendorId" method="post">
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <button type="submit" class="btn btn-sm btn-primary">@T("Assign", "تعيين")</button>
+                            </form>
+                        </td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <h4>@T("Assigned users", "المستخدمون المعينون")</h4>
+        <div class="admin-table-scroll">
+            <table class="table table-hover">
+                <thead><tr><th>@T("Name", "الاسم")</th><th>@T("Email", "البريد الإلكتروني")</th><th>@T("Role", "الدور")</th><th>@T("Membership", "العضوية")</th><th>@T("Action", "الإجراء")</th></tr></thead>
+                <tbody>
+                @if (Model.Members.Count == 0)
+                {
+                    <tr><td colspan="5" class="admin-empty-state">@T("No assigned users.", "لا يوجد مستخدمون معينون.")</td></tr>
+                }
+                @foreach (var user in Model.Members)
+                {
+                    <tr><td>@user.Name</td><td>@user.Email</td><td>@RoleText(user.Role)</td>
+                        <td>@(user.IsActive ? T("Active", "نشط") : T("Inactive", "غير نشط"))
+                            @if (!user.IsEligible) { <span> — @T("Account not eligible", "الحساب غير مؤهل")</span> }
+                        </td>
+                        <td>
+                        @if (user.IsActive || user.IsEligible)
+                        {
+                            <form asp-action="ChangeMemberStatus" asp-route-id="@Model.VendorId" method="post">
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <input type="hidden" name="expectedActive" value="@(user.IsActive ? "true" : "false")" />
+                                <button type="submit" name="active" value="@(user.IsActive ? "false" : "true")" class="btn btn-sm btn-default">@(user.IsActive ? T("Deactivate", "إلغاء التنشيط") : T("Reactivate", "إعادة التنشيط"))</button>
+                            </form>
+                        }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <nav aria-label="@T("Member pages", "صفحات الأعضاء")">
+            @if (Model.Page > 1) { <a asp-action="Members" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page - 1)" class="btn btn-default">@T("Previous", "السابق")</a> }
+            <span>@Model.Page</span>
+            @if (Model.HasNext) { <a asp-action="Members" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page + 1)" class="btn btn-default">@T("Next", "التالي")</a> }
+        </nav>
+    </div>
+</div>

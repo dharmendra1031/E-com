@@ -22,6 +22,7 @@ namespace EcommerceWebApplication.Data
         public DbSet<RolePermission> RolePermission { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
+        public DbSet<VendorUser> VendorUsers { get; set; }
         public DbSet<Customers> Customers { get; set; }
 
         //public DbSet<Driver> Drivers { get; set; }
@@ -78,6 +79,12 @@ namespace EcommerceWebApplication.Data
         public DbSet<OrderProductViewModel> OrderProductViewModel { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<VendorUser>(entity =>
+            {
+                entity.HasKey(x => new { x.VendorId, x.UserId });
+                entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            });
             modelBuilder.Entity<OrderItemDetailsModel>().HasNoKey();
             modelBuilder.Entity<CustomerReportRow>().HasNoKey().ToView(null); // no table mapping
             modelBuilder.Entity<ItemFileReportRow>().HasNoKey().ToView(null); // no table mapping

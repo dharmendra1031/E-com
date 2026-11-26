@@ -8,6 +8,7 @@ IF OBJECT_ID(N'dbo.Products', N'U') IS NOT NULL OR OBJECT_ID(N'dbo.Users', N'U')
     THROW 51110, 'Use a new disposable database.', 1;
 CREATE TABLE dbo.Products (ProductId int NOT NULL PRIMARY KEY);
 CREATE TABLE dbo.Users (UserId int NOT NULL PRIMARY KEY);
+CREATE TABLE dbo.[Role] (RoleId int IDENTITY PRIMARY KEY, RoleName nvarchar(100) NOT NULL, RoleNameArb nvarchar(100) NOT NULL, IsActive bit NOT NULL, CreatedAt datetime2 NOT NULL, UpdatedAt datetime2 NOT NULL);
 INSERT dbo.Products VALUES (1), (2);
 INSERT dbo.Users VALUES (1);
 GO
@@ -15,6 +16,12 @@ GO
 GO
 :r 01-create-schema.sql
 GO
+:r 02-seed-vendor-roles.sql
+GO
+:r 02-seed-vendor-roles.sql
+GO
+IF (SELECT COUNT(*) FROM dbo.[Role]) <> 3
+    THROW 51122, 'Role seed did not create exactly three roles.', 1;
 IF EXISTS (SELECT 1 FROM dbo.Vendors) OR EXISTS (SELECT 1 FROM dbo.VendorListings) OR EXISTS (SELECT 1 FROM dbo.VendorUsers)
     THROW 51111, 'Migration unexpectedly seeded data.', 1;
 
@@ -23,6 +30,17 @@ SET XACT_ABORT OFF;
 DECLARE @A int = (SELECT VendorId FROM dbo.Vendors WHERE VendorCode = N'A');
 DECLARE @B int = (SELECT VendorId FROM dbo.Vendors WHERE VendorCode = N'B');
 INSERT dbo.VendorUsers (VendorId, UserId) VALUES (@A, 1);
+INSERT dbo.VendorUsers (VendorId, UserId) VALUES (@B, 1);
+BEGIN TRY
+    INSERT dbo.VendorUsers (VendorId, UserId) VALUES (@A, 1);
+    THROW 51123, 'Duplicate membership accepted.', 1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER() NOT IN (2601, 2627) THROW;
+END CATCH;
+UPDATE dbo.VendorUsers SET IsActive = 0 WHERE VendorId = @A AND UserId = 1;
+IF NOT EXISTS (SELECT 1 FROM dbo.VendorUsers WHERE VendorId = @B AND UserId = 1 AND IsActive = 1)
+    THROW 51124, 'Revoking membership affected another vendor.', 1;
 INSERT dbo.VendorListings (VendorId, ProductId, SellerSku, Price)
 VALUES (@A, 1, N'SKU1', 100.000), (@B, 1, N'SKU1', 95.000);
 IF (SELECT COUNT(*) FROM dbo.VendorListings WHERE ProductId = 1 AND Status = 'Pending') <> 2
