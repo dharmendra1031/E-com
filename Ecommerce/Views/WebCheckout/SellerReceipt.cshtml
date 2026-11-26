@@ -1,4 +1,5 @@
 @using System.Globalization
+@inject Microsoft.Extensions.Configuration.IConfiguration ReturnConfiguration
 @model EcommerceWebApplication.Models.ViewModels.SellerOrderReceipt
 @{
     Layout="~/Views/Shared/_WebLayout.cshtml";
@@ -62,6 +63,10 @@
                 }
             </div>
         }
+    }
+    @if(Model.PaymentStatus==1 && Model.AttemptState=="Paid" && ReturnConfiguration["Marketplace:ReturnWorkflowEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true)
+    {
+        <a class="btn btn-outline-secondary" asp-action="SellerReturns" asp-route-requestId="@Model.RequestId">@T("Return requests","طلبات الإرجاع")</a>
     }
     <a class="btn btn-outline-primary" asp-action="SellerOrders">@T("My seller orders","طلباتي من البائعين")</a>
     <a class="btn btn-outline-secondary" asp-controller="WebCart" asp-action="Cart">@T("Return to cart","العودة إلى السلة")</a>

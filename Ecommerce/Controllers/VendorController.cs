@@ -36,6 +36,39 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
+    public async Task<IActionResult> ReturnReview(int page=1,CancellationToken ct=default)
+    {
+        if (!configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await db.Database.SqlQuery<MarketplaceReturnRow>($"""
+            SELECT ReturnId,OrderId,CustomerId,ProductName,ProductNameArb,Quantity,Reason,Status,RequestedAtUtc
+            FROM dbo.MarketplaceReturnReview
+            """).OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ReviewReturn(int returnId,string expectedStatus,string newStatus,CancellationToken ct)
+    {
+        if (!configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
+        if (!ModelState.IsValid || !int.TryParse(User.FindFirstValue("UserId"),out var actor)) return BadRequest();
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.ReviewMarketplaceReturn @ReturnId={returnId},@ActorId={actor},
+                    @ExpectedStatus={expectedStatus},@NewStatus={newStatus}
+                """,ct);
+            TempData["ReturnMessage"]="Return status saved. / تم حفظ حالة الإرجاع.";
+        }
+        catch(SqlException ex) when(ex.Number is >=52300 and <=52306 or >=51900 and <=51904)
+        {
+            TempData["ReturnMessage"]="Return status unchanged. Review request. / لم تتغير الحالة.";
+        }
+        return RedirectToAction(nameof(ReturnReview));
+    }
+
+    [HttpGet]
     public async Task<IActionResult> PaymentReview(int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:PaymentReviewEnabled",false)) return NotFound();

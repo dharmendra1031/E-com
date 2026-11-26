@@ -1,0 +1,31 @@
+@model List<EcommerceWebApplication.Models.ViewModels.MarketplaceReturnItem>
+@{Layout="~/Views/Shared/_WebLayout.cshtml";var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;ViewData["Title"]=T("Return requests","طلبات الإرجاع");var requests=ViewBag.Requests as List<EcommerceWebApplication.Models.ViewModels.MarketplaceReturnRow>;}
+<div class="container py-3"><div class="store-cart-panel p-3">
+<h1 class="h4">@ViewData["Title"]</h1>
+<p>@T("Test return requests only. Approval does not issue a refund.","طلبات اختبار فقط. الموافقة لا تعني استرداد المبلغ.")</p>
+@if(TempData["ReturnMessage"] is string message){<p role="status">@message</p>}
+@foreach(var item in Model)
+{
+    <div class="border rounded p-2 mb-2">
+        <strong>@(ar&&!string.IsNullOrWhiteSpace(item.ProductNameArb)?item.ProductNameArb:item.ProductName)</strong>
+        <p>@T("Remaining return quantity","الكمية المتبقية للإرجاع"): @item.RemainingQuantity</p>
+        @if(item.RemainingQuantity>0)
+        {
+            <form asp-action="RequestSellerReturn" method="post">
+                <input type="hidden" name="orderRequestId" value="@ViewBag.OrderRequestId" />
+                <input type="hidden" name="orderItemId" value="@item.OrderItemId" />
+                <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                <label>@T("Quantity","الكمية")<input class="form-control" name="quantity" type="number" min="1" max="@item.RemainingQuantity" value="1" required /></label>
+                <label>@T("Reason","السبب")<input class="form-control" name="reason" maxlength="200" required /></label>
+                <button class="btn btn-primary" type="submit">@T("Request return","طلب إرجاع")</button>
+            </form>
+        }
+    </div>
+}
+@if(requests!=null)
+{
+    <h2 class="h5">@T("Request history","سجل الطلبات")</h2>
+    @foreach(var row in requests){<p>#@row.ReturnId — @(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName) · @row.Quantity · @(row.Status switch {"Pending"=>T("Pending","قيد المراجعة"),"Approved"=>T("Approved","معتمد"),"Rejected"=>T("Rejected","مرفوض"),"Received"=>T("Received, refund not issued","تم الاستلام دون استرداد"),_=>row.Status})</p>}
+}
+<a asp-action="SellerReceipt" asp-route-requestId="@ViewBag.OrderRequestId" class="btn btn-outline-secondary">@T("Back to order","العودة إلى الطلب")</a>
+</div></div>

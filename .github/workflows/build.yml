@@ -65,4 +65,5 @@ jobs:
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-return-receipts.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-vendor-fulfillment.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-customer-orders.sql
+          docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-return-workflow.sql
           exit "$inventory_result"

@@ -196,6 +196,51 @@ namespace EcommerceWebApplication.Controllers
             return RedirectToAction(nameof(SellerReceipt),new {requestId});
         }
 
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> SellerReturns(Guid requestId,CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled || !_configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            if (!await CustomerSellerOrders(customerId).AnyAsync(o=>o.RequestId==requestId,ct)) return NotFound();
+            ViewBag.OrderRequestId=requestId;
+            ViewBag.Requests=await _context.Database.SqlQuery<MarketplaceReturnRow>($"""
+                SELECT ReturnId,OrderId,CustomerId,ProductName,ProductNameArb,Quantity,Reason,Status,RequestedAtUtc
+                FROM dbo.MarketplaceReturnReview WHERE CustomerId={customerId} AND OrderRequestId={requestId}
+                """).OrderByDescending(r=>r.ReturnId).ToListAsync(ct);
+            var items=await _context.Database.SqlQuery<MarketplaceReturnItem>($"""
+                SELECT OrderItemId,ProductName,ProductNameArb,PurchasedQuantity,RemainingQuantity
+                FROM dbo.MarketplaceReturnItems WHERE CustomerId={customerId} AND OrderRequestId={requestId}
+                """).OrderBy(r=>r.OrderItemId).ToListAsync(ct);
+            return View(items);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RequestSellerReturn(Guid orderRequestId,int orderItemId,Guid requestId,int quantity,string reason,CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled || !_configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            if (!ModelState.IsValid || requestId==Guid.Empty || quantity<=0 || string.IsNullOrWhiteSpace(reason) || reason.Length>200) return BadRequest();
+            if (!await _context.Database.SqlQuery<int>($"""
+                SELECT OrderItemId AS Value FROM dbo.MarketplaceReturnItems WHERE CustomerId={customerId}
+                AND OrderRequestId={orderRequestId} AND OrderItemId={orderItemId}
+                """).AnyAsync(ct)) return NotFound();
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                    EXEC dbo.RequestMarketplaceReturn @CustomerId={customerId},@OrderItemId={orderItemId},
+                         @RequestId={requestId},@Quantity={quantity},@Reason={reason.Trim()}
+                    """,ct);
+                TempData["ReturnMessage"]="Return request saved. / تم حفظ طلب الإرجاع.";
+            }
+            catch(SqlException ex) when(ex.Number is >=52300 and <=52303)
+            {
+                TempData["ReturnMessage"]="Return request rejected. Review remaining quantity. / راجع الكمية المتبقية.";
+            }
+            return RedirectToAction(nameof(SellerReturns),new {requestId=orderRequestId});
+        }
+
         private bool SellerSandboxPaymentEnabled => SellerCheckoutEnabled &&
             _configuration.GetValue("Marketplace:SellerSandboxPaymentEnabled", false) &&
             string.Equals(_configuration["ApiUrl"]?.TrimEnd('/'), "https://apitest.myfatoorah.com", StringComparison.OrdinalIgnoreCase);
