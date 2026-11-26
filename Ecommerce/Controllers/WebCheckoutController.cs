@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using MF.Models;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.SqlClient;
 using System.Text.Json;
@@ -148,10 +149,84 @@ namespace EcommerceWebApplication.Controllers
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
             var receipt = await _context.Orders.IgnoreQueryFilters().AsNoTracking()
                 .Where(o => o.CustomerId == customerId && o.MarketplaceRequestId == requestId)
-                .Select(o => new SellerOrderReceipt { OrderId = o.OrderId, Total = o.TotalAmount, PaymentStatus = o.PaymentStatus })
+                .Select(o => new SellerOrderReceipt { OrderId = o.OrderId, Total = o.TotalAmount, PaymentStatus = o.PaymentStatus, RequestId = requestId })
                 .SingleOrDefaultAsync(ct);
+            ViewBag.SandboxPaymentEnabled = SellerSandboxPaymentEnabled;
             return receipt == null ? NotFound() : View(receipt);
         }
+        private bool SellerSandboxPaymentEnabled => SellerCheckoutEnabled &&
+            _configuration.GetValue("Marketplace:SellerSandboxPaymentEnabled", false) &&
+            string.Equals(_configuration["ApiUrl"]?.TrimEnd('/'), "https://apitest.myfatoorah.com", StringComparison.OrdinalIgnoreCase);
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StartSellerSandboxPayment(Guid requestId, [FromServices] IPaymentService gateway, CancellationToken ct)
+        {
+            if (!SellerSandboxPaymentEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            var order = await _context.Orders.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(o =>
+                o.CustomerId == customerId && o.MarketplaceRequestId == requestId && o.PaymentStatus == 2, ct);
+            if (order == null) return NotFound();
+            // Explicit test return URL, never derive it from an untrusted Host header.
+            if (!Uri.TryCreate(_configuration["Marketplace:SandboxReturnUrl"], UriKind.Absolute, out var callback) ||
+                callback.Scheme != "https" || callback.IsLoopback || !string.IsNullOrEmpty(callback.UserInfo) ||
+                !string.IsNullOrEmpty(callback.Query) || !string.IsNullOrEmpty(callback.Fragment)) return Conflict("Configure the sandbox return URL.");
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.BeginMarketplacePayment @OrderId={order.OrderId}, @CustomerId={customerId}", ct);
+                var returnUrl = callback.AbsoluteUri + "?requestId=" + requestId.ToString("D");
+                var response = await gateway.SendPayment(new SendPaymentRequest
+                {
+                    CustomerName = "Marketplace Sandbox", NotificationOption = "LNK",
+                    InvoiceValue = order.TotalAmount, DisplayCurrencyIso = "KWD",
+                    CustomerReference = requestId.ToString("N"), CallBackUrl = returnUrl, ErrorUrl = returnUrl,
+                    Language = "en"
+                });
+                if (response?.IsSuccess != true || response.Data == null || response.Data.InvoiceId <= 0 ||
+                    response.Data.CustomerReference != requestId.ToString("N") ||
+                    !Uri.TryCreate(response.Data.InvoiceURL, UriKind.Absolute, out var paymentUrl) ||
+                    paymentUrl.Scheme != "https" || !string.IsNullOrEmpty(paymentUrl.UserInfo) ||
+                    !string.Equals(paymentUrl.Host,"demo.myfatoorah.com",StringComparison.OrdinalIgnoreCase))
+                    return Conflict("Sandbox invoice requires reconciliation. Do not initiate another payment.");
+                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.LinkMarketplaceInvoice @OrderId={order.OrderId}, @InvoiceId={response.Data.InvoiceId}, @MerchantReference={requestId}", ct);
+                return Redirect(paymentUrl.AbsoluteUri);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // An uncertain send must not create a second external invoice.
+                return Conflict("Payment attempt requires reconciliation. Do not initiate another payment.");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifySellerSandboxPayment(Guid requestId, [FromServices] IPaymentService gateway, CancellationToken ct)
+        {
+            if (!SellerSandboxPaymentEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            var order = await _context.Orders.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(o =>
+                o.CustomerId == customerId && o.MarketplaceRequestId == requestId, ct);
+            if (order == null) return NotFound();
+            var invoices = await _context.Database.SqlQuery<long>($"""
+                SELECT InvoiceId AS Value FROM dbo.MarketplacePaymentAttempts
+                WHERE OrderId={order.OrderId} AND MerchantReference={requestId} AND InvoiceId IS NOT NULL AND State IN ('Linked','Paid')
+                """).ToListAsync(ct);
+            if (invoices.Count != 1) return Conflict("No linked invoice. Reconciliation required.");
+            var invoice = invoices[0];
+            var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest { KeyType="InvoiceId",Key=invoice.ToString(CultureInfo.InvariantCulture) });
+            var paymentId = MarketplacePaymentEvidence.VerifiedPaymentId(response, invoice, requestId, order.TotalAmount);
+            if (paymentId == null) return Conflict("Payment not conclusively verified. Stock remains reserved.");
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.ConfirmMarketplacePayment @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}, @PaymentId={paymentId}, @Amount={order.TotalAmount}, @Currency={"KWD"}", ct);
+            }
+            catch (SqlException)
+            {
+                return Conflict("Payment requires reconciliation. Do not pay again.");
+            }
+            return RedirectToAction(nameof(SellerReceipt), new { requestId });
+        }
+
         private int? CustomerId => User.IsInRole("Customer") && int.TryParse(User.FindFirst("UserId")?.Value, out var id) && HttpContext.Session.GetInt32("UserId") == id ? id : null;
 
         private IQueryable<CartItem> CheckoutCart(int? userId, string deviceId) => _context.CartItems.Where(c =>

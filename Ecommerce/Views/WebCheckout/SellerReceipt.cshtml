@@ -9,7 +9,25 @@
     <div class="store-cart-panel p-3">
         <h1 class="h4">@(ar ? "طلب الاختبار" : "Test order") #@Model.OrderId</h1>
         <p dir="ltr">KD @Model.Total.ToString("F3", CultureInfo.InvariantCulture)</p>
-        <p>@(ar ? "لم يتم بدء الدفع عبر هذه الشاشة." : "No payment was initiated by this screen.")</p>
+        @if (Model.PaymentStatus == 1)
+        {
+            <p class="text-success">@(ar ? "تم التحقق من دفع الاختبار" : "Sandbox payment verified")</p>
+        }
+        else
+        {
+            <p>@(ar ? "الدفع قيد التحقق" : "Payment pending or not verified")</p>
+            @if (ViewBag.SandboxPaymentEnabled == true)
+            {
+                <form asp-action="StartSellerSandboxPayment" method="post" class="mb-2">
+                    <input type="hidden" name="requestId" value="@Model.RequestId" />
+                    <button type="submit" class="btn btn-primary">@(ar ? "دفع تجريبي" : "Start sandbox payment")</button>
+                </form>
+                <form asp-action="VerifySellerSandboxPayment" method="post" class="mb-2">
+                    <input type="hidden" name="requestId" value="@Model.RequestId" />
+                    <button type="submit" class="btn btn-outline-primary">@(ar ? "التحقق من الدفع" : "Verify sandbox payment")</button>
+                </form>
+            }
+        }
         <a class="btn btn-outline-primary" asp-controller="WebCart" asp-action="Cart">@(ar ? "العودة إلى السلة" : "Return to cart")</a>
     </div>
 </div>

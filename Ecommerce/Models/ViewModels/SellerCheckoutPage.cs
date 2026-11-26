@@ -12,6 +12,7 @@ public class SellerCheckoutPage
 
 public class SellerOrderReceipt
 {
+    public Guid RequestId { get; set; }
     public int OrderId { get; set; }
     public decimal Total { get; set; }
     public int PaymentStatus { get; set; }

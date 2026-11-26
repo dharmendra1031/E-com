@@ -1,6 +1,11 @@
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET XACT_ABORT ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
 GO
 -- Gateway metadata only; Payments remains the financial record.
 IF OBJECT_ID(N'dbo.MarketplacePaymentAttempts',N'U') IS NULL
@@ -16,12 +21,22 @@ CREATE TABLE dbo.MarketplacePaymentAttempts (
     UpdatedAtUtc datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.MarketplacePaymentAttempts') AND name=N'UX_MarketplacePayment_Invoice')
+    CREATE UNIQUE INDEX UX_MarketplacePayment_Invoice ON dbo.MarketplacePaymentAttempts(InvoiceId) WHERE InvoiceId IS NOT NULL;
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.MarketplacePaymentAttempts') AND name=N'UX_MarketplacePayment_Payment')
+    CREATE UNIQUE INDEX UX_MarketplacePayment_Payment ON dbo.MarketplacePaymentAttempts(PaymentId) WHERE PaymentId IS NOT NULL;
+GO
 CREATE OR ALTER PROCEDURE dbo.BeginMarketplacePayment
     @OrderId int, @CustomerId int
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     BEGIN TRY
         BEGIN TRANSACTION;
         DECLARE @total decimal(18,3), @ref uniqueidentifier;
@@ -127,6 +142,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     BEGIN TRY
         BEGIN TRANSACTION;
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@OrderId AND CustomerId=@CustomerId AND MarketplaceRequestId IS NOT NULL AND PaymentStatus=2)
