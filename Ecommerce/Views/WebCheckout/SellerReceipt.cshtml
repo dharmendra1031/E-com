@@ -1,33 +1,68 @@
 @using System.Globalization
 @model EcommerceWebApplication.Models.ViewModels.SellerOrderReceipt
 @{
-    Layout = "~/Views/Shared/_WebLayout.cshtml";
-    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    ViewData["Title"] = ar ? "طلب الاختبار" : "Test order";
+    Layout="~/Views/Shared/_WebLayout.cshtml";
+    var ar=CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic)=>ar?arabic:en;
+    ViewData["Title"]=T("Test order","طلب الاختبار");
+    var suborders=ViewBag.Suborders as List<EcommerceWebApplication.Models.ViewModels.CustomerSuborderRow>;
 }
-<div class="container py-4">
-    <div class="store-cart-panel p-3">
-        <h1 class="h4">@(ar ? "طلب الاختبار" : "Test order") #@Model.OrderId</h1>
-        <p dir="ltr">KD @Model.Total.ToString("F3", CultureInfo.InvariantCulture)</p>
-        @if (Model.PaymentStatus == 1)
+<div class="container py-4"><div class="store-cart-panel p-3">
+    <h1 class="h4">@ViewData["Title"] #@Model.OrderId</h1>
+    <p dir="ltr">KD @Model.Total.ToString("F3",CultureInfo.InvariantCulture)</p>
+    @if(TempData["SellerOrderMessage"] is string message){<p role="status">@message</p>}
+    @if(Model.PaymentStatus==1 && Model.AttemptState=="Paid" && Model.ReservationState=="Consumed")
+    {
+        <p class="text-success">@T("Sandbox payment verified","تم التحقق من دفع الاختبار")</p>
+    }
+    else if(Model.ReservationState=="Released")
+    {
+        <p>@T("Reservation released. No further payment can be started.","تم تحرير الحجز ولا يمكن بدء دفع جديد.")</p>
+    }
+    else if(Model.AttemptState=="Starting")
+    {
+        <p class="text-warning">@T("Invoice initiation uncertain. Contact support; do not pay again.","بدء الفاتورة غير مؤكد. اتصل بالدعم ولا تدفع مجدداً.")</p>
+    }
+    else
+    {
+        <p>@T("Payment pending or not verified.","الدفع قيد التحقق.")</p>
+        @if(ViewBag.SandboxPaymentEnabled==true && Model.AttemptState=="NotStarted" && Model.ReservationState=="Reserved")
         {
-            <p class="text-success">@(ar ? "تم التحقق من دفع الاختبار" : "Sandbox payment verified")</p>
+            <form asp-action="StartSellerSandboxPayment" method="post" class="mb-2">
+                <input type="hidden" name="requestId" value="@Model.RequestId" />
+                <button class="btn btn-primary" type="submit">@T("Start sandbox payment","دفع تجريبي")</button>
+            </form>
         }
-        else
+        @if(ViewBag.SandboxPaymentEnabled==true && Model.AttemptState=="Linked")
         {
-            <p>@(ar ? "الدفع قيد التحقق" : "Payment pending or not verified")</p>
-            @if (ViewBag.SandboxPaymentEnabled == true)
-            {
-                <form asp-action="StartSellerSandboxPayment" method="post" class="mb-2">
-                    <input type="hidden" name="requestId" value="@Model.RequestId" />
-                    <button type="submit" class="btn btn-primary">@(ar ? "دفع تجريبي" : "Start sandbox payment")</button>
-                </form>
-                <form asp-action="VerifySellerSandboxPayment" method="post" class="mb-2">
-                    <input type="hidden" name="requestId" value="@Model.RequestId" />
-                    <button type="submit" class="btn btn-outline-primary">@(ar ? "التحقق من الدفع" : "Verify sandbox payment")</button>
-                </form>
-            }
+            <form asp-action="VerifySellerSandboxPayment" method="post" class="mb-2">
+                <input type="hidden" name="requestId" value="@Model.RequestId" />
+                <button class="btn btn-outline-primary" type="submit">@T("Verify sandbox payment","التحقق من الدفع")</button>
+            </form>
         }
-        <a class="btn btn-outline-primary" asp-controller="WebCart" asp-action="Cart">@(ar ? "العودة إلى السلة" : "Return to cart")</a>
-    </div>
-</div>
+        @if(Model.PaymentStatus==2 && Model.AttemptState=="NotStarted" && (Model.ReservationState=="Reserved" || Model.ReservationState=="Expired"))
+        {
+            <form asp-action="CancelSellerUnstartedOrder" method="post" class="mb-2">
+                <input type="hidden" name="requestId" value="@Model.RequestId" />
+                <button class="btn btn-outline-danger" type="submit">@T("Cancel unpaid reservation","إلغاء الحجز غير المدفوع")</button>
+            </form>
+        }
+    }
+    @if(suborders!=null)
+    {
+        <h2 class="h5 mt-3">@T("Seller orders","طلبات البائعين")</h2>
+        @foreach(var row in suborders)
+        {
+            <div class="border rounded p-2 mb-2">
+                <strong>@(ar&&!string.IsNullOrWhiteSpace(row.VendorNameArb)?row.VendorNameArb:row.VendorName) #@row.VendorOrderId</strong>
+                <div dir="ltr">KD @row.MerchandiseSubtotal.ToString("F3",CultureInfo.InvariantCulture)</div>
+                @if(Model.PaymentStatus==1 && Model.AttemptState=="Paid")
+                {
+                    <small>@(row.FulfillmentStatus switch {"AwaitingPacking"=>T("Awaiting packing","بانتظار التجهيز"),"Packed"=>T("Packed","تم التجهيز"),"HandedOver"=>T("Carrier handover recorded","تم تسجيل التسليم للناقل"),"Delivered"=>T("Delivered","تم التوصيل"),_=>T("Review required","يلزم المراجعة")})</small>
+                }
+            </div>
+        }
+    }
+    <a class="btn btn-outline-primary" asp-action="SellerOrders">@T("My seller orders","طلباتي من البائعين")</a>
+    <a class="btn btn-outline-secondary" asp-controller="WebCart" asp-action="Cart">@T("Return to cart","العودة إلى السلة")</a>
+</div></div>

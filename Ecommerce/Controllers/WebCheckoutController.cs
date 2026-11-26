@@ -147,13 +147,55 @@ namespace EcommerceWebApplication.Controllers
         {
             if (!SellerCheckoutEnabled) return NotFound();
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
-            var receipt = await _context.Orders.IgnoreQueryFilters().AsNoTracking()
-                .Where(o => o.CustomerId == customerId && o.MarketplaceRequestId == requestId)
-                .Select(o => new SellerOrderReceipt { OrderId = o.OrderId, Total = o.TotalAmount, PaymentStatus = o.PaymentStatus, RequestId = requestId })
-                .SingleOrDefaultAsync(ct);
+            var receipt = await CustomerSellerOrders(customerId).SingleOrDefaultAsync(o => o.RequestId == requestId, ct);
+            if (receipt == null) return NotFound();
             ViewBag.SandboxPaymentEnabled = SellerSandboxPaymentEnabled;
-            return receipt == null ? NotFound() : View(receipt);
+            ViewBag.Suborders = await _context.Database.SqlQuery<CustomerSuborderRow>($"""
+                SELECT v.VendorOrderId,v.VendorName,v.VendorNameArb,v.MerchandiseSubtotal,v.FulfillmentStatus
+                FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
+                WHERE o.CustomerId={customerId} AND o.MarketplaceRequestId={requestId}
+                """).OrderBy(v=>v.VendorOrderId).ToListAsync(ct);
+            return View(receipt);
         }
+        private IQueryable<SellerOrderReceipt> CustomerSellerOrders(int customerId) =>
+            _context.Database.SqlQuery<SellerOrderReceipt>($"""
+                SELECT OrderId,RequestId,Total,PaymentStatus,CreatedAt,AttemptState,ReservationState
+                FROM dbo.MarketplaceCustomerOrders WHERE CustomerId={customerId}
+                """);
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> SellerOrders(int page=1,CancellationToken ct=default)
+        {
+            if (!SellerCheckoutEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            page=Math.Clamp(page,1,100000);
+            var rows=await CustomerSellerOrders(customerId).OrderByDescending(o=>o.OrderId)
+                .Skip((page-1)*25).Take(26).ToListAsync(ct);
+            ViewBag.Page=page; ViewBag.HasNext=rows.Count>25;
+            return View(rows.Take(25).ToList());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelSellerUnstartedOrder(Guid requestId,CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            var order=await CustomerSellerOrders(customerId).SingleOrDefaultAsync(o=>o.RequestId==requestId,ct);
+            if (order==null) return NotFound();
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.CancelUnstartedMarketplaceOrder @OrderId={order.OrderId},@CustomerId={customerId}",ct);
+                TempData["SellerOrderMessage"]="Reservation released. / تم تحرير الحجز.";
+            }
+            catch(SqlException ex) when(ex.Number==51806 || ex.Number is >=51400 and <=51499)
+            {
+                TempData["SellerOrderMessage"]="Cannot release this order; payment review may be required. / يلزم مراجعة الدفع.";
+            }
+            return RedirectToAction(nameof(SellerReceipt),new {requestId});
+        }
+
         private bool SellerSandboxPaymentEnabled => SellerCheckoutEnabled &&
             _configuration.GetValue("Marketplace:SellerSandboxPaymentEnabled", false) &&
             string.Equals(_configuration["ApiUrl"]?.TrimEnd('/'), "https://apitest.myfatoorah.com", StringComparison.OrdinalIgnoreCase);

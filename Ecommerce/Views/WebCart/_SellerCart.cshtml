@@ -44,6 +44,10 @@
     {
         <p class="fw-semibold">@(ar ? "المجموع التقديري للبائعين" : "Estimated seller subtotal") <bdi>KD @Model.Sum(l => l.CurrentPrice!.Value * l.Quantity).ToString("F3", CultureInfo.InvariantCulture)</bdi></p>
     }
+    @if (EcommerceWebApplication.Helper.SellerCartAccess.CheckoutEnabled(CheckoutConfiguration, CheckoutEnvironment))
+    {
+        <a class="btn btn-outline-secondary" asp-controller="WebCheckout" asp-action="SellerOrders">@(ar ? "طلباتي من البائعين" : "My seller orders")</a>
+    }
     @if (EcommerceWebApplication.Helper.SellerCartAccess.CheckoutEnabled(CheckoutConfiguration, CheckoutEnvironment) &&
          Model.Count > 0 && Model.All(l => l.CurrentPrice == l.SavedPrice && l.AvailableQuantity >= l.Quantity))
     {
