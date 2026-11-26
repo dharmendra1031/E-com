@@ -54,7 +54,7 @@ try
     builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
     builder.Services.AddScoped<IEmailService, EmailService>();
     // Register HttpClient for UserController
-    builder.Services.AddHttpClient<UserController>();
+
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddScoped<IMFClient, MFClient>();
     //builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -100,6 +100,17 @@ try
 
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.IsEssential = true;
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            if (context.Principal?.IsInRole("Admin") != true) return;
+            var principal = context.Principal;
+            var email = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var db = context.HttpContext.RequestServices.GetRequiredService<EcommerceDbContext>();
+            if (!int.TryParse(principal.FindFirst("UserId")?.Value, out var id) ||
+                !await db.Users.AnyAsync(u => u.UserId == id && u.Email == email && u.IsActive &&
+                    u.Role != null && u.Role.IsActive && u.Role.RoleName == "Admin", context.HttpContext.RequestAborted))
+                context.RejectPrincipal();
+        };
     });
 
 

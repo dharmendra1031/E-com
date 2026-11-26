@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.InkML;
+﻿using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
@@ -16,10 +16,12 @@ namespace EcommerceWebApplication.Controllers
     public class AccountController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AccountController(EcommerceDbContext context)
+        public AccountController(EcommerceDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // ✅ GET Login Page
@@ -40,26 +42,35 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ POST Login
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            var user = await _context.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == model.Email && u.PasswordHash == model.Password && u.IsActive);
-
-            if (user == null)
+            var candidates = await _context.Users.AsNoTracking().Include(u => u.Role)
+                .Where(u => u.Email == model.Email && u.IsActive).Take(2).ToListAsync();
+            var user = candidates.Count == 1 ? candidates[0] : null;
+            var allowLegacy = _configuration.GetValue("Authentication:AllowLegacyStaffPasswords", false);
+            if (user?.Role is not { IsActive: true, RoleName: "Admin" } ||
+                !StaffPassword.Verify(user.PasswordHash, model.Password, allowLegacy, out var upgrade))
             {
                 ViewBag.Error = "Invalid email or password";
                 return View(model);
             }
-
-            // ✅ Only allow Admin
-            if (user.Role.RoleName != "Admin")
+            if (upgrade)
             {
-                ViewBag.Error = "Access Denied. Only Admin can login.";
-                return View(model);
+                var oldPassword = user.PasswordHash;
+                var newHash = StaffPassword.Hash(model.Password);
+                var updated = await _context.Users.Where(u => u.UserId == user.UserId && u.IsActive &&
+                    u.RoleId == user.RoleId && u.PasswordHash == oldPassword &&
+                    u.Role != null && u.Role.IsActive && u.Role.RoleName == "Admin")
+                    .ExecuteUpdateAsync(u => u.SetProperty(x => x.PasswordHash, newHash));
+                if (updated != 1)
+                {
+                    ViewBag.Error = "Login details changed. Please try again.";
+                    return View(model);
+                }
             }
 
             // ✅ Create claims

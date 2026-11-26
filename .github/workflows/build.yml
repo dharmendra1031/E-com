@@ -22,6 +22,8 @@ jobs:
         run: dotnet restore Ecommerce/EcommerceWebApplication.csproj
       - name: Build web project
         run: dotnet build Ecommerce/EcommerceWebApplication.csproj --configuration Release --no-restore
+      - name: Verify staff password behavior
+        run: dotnet run --project tests/StaffPasswordChecks/StaffPasswordChecks.csproj --configuration Release
       - name: List vulnerable dependencies
         run: dotnet list Ecommerce/EcommerceWebApplication.csproj package --vulnerable --include-transitive
 

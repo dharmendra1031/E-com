@@ -23,8 +23,6 @@ namespace EcommerceWebApplication.Models.ViewModels
 
         public string? Phone { get; set; }
 
-        [Required]
-        public string? PasswordHash { get; set; }
 
         // ✅ Foreign Key → Role
         public int RoleId { get; set; }

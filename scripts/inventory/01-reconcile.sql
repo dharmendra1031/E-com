@@ -34,7 +34,7 @@ FROM #InventoryDiagnostic
 WHERE ProductMasterStock IS NULL OR ProductMasterStock <> LegacyCalculatedQty OR LegacyCalculatedQty < 0 OR ReceiptRowsQty < 0
 ORDER BY CASE WHEN LegacyCalculatedQty < 0 THEN 0 ELSE 1 END, ProductId;
 
-SELECT 'Invalid receipt rows' AS Finding, COUNT_BIG(*) AS RowCount
+SELECT 'Invalid receipt rows' AS Finding, COUNT_BIG(*) AS [RowCount]
 FROM dbo.ProductStock s LEFT JOIN dbo.Products p ON p.ProductId = s.ProductId
 WHERE p.ProductId IS NULL OR s.StockQty IS NULL OR s.StockQty < 0
 UNION ALL

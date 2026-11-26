@@ -1,4 +1,4 @@
-﻿@model EcommerceWebApplication.Models.User
+﻿@model EcommerceWebApplication.Models.ViewModels.StaffUserForm
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
     ViewData["Title"] = "Create User";
@@ -102,8 +102,8 @@
                                 <!-- Password -->
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Password"] <span style="color:red">*</span></label>
-                                        <input asp-for="PasswordHash" type="password" class="form-control" placeholder="Enter password" />
+                                        <label class="fw-bold">@_localizer["Password"]</label>
+                                        <input asp-for="PasswordHash" autocomplete="new-password" minlength="12" maxlength="128" type="password" class="form-control" placeholder="Leave blank to keep current password" />
                                         <span asp-validation-for="PasswordHash" class="text-danger"></span>
                                     </div>
                                 </div>
