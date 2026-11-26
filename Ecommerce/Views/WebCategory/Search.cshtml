@@ -15,6 +15,7 @@
         <a href="~/WebHome/Index">@(ar ? "الرئيسية" : "Home")</a><span>/</span><span aria-current="page">@ViewData["Title"]</span>
     </nav>
     <h1 class="catalog-title mt-3">@ViewData["Title"]</h1>
+    @if (ViewBag.SellerPreview == true) { <p class="small text-secondary">@(ar ? "معاينة البائعين: الترتيب والتوفر حسب عروض البائعين فقط." : "Seller preview: sorting and availability use seller offers only.")</p> }
     @if (!string.IsNullOrWhiteSpace(term))
     {
         <p class="mt-2 mb-0 text-secondary" dir="auto">@(ar ? "البحث عن:" : "Results for:") <strong class="text-dark">@term</strong></p>

@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,10 +9,9 @@ namespace EcommerceWebApplication.Controllers
     {
         private readonly EcommerceDbContext _context;
 
-        public WekenddealwiseproductsController(EcommerceDbContext context)
-        {
-            _context = context;
-        }
+        private readonly IConfiguration _configuration;
+        public WekenddealwiseproductsController(EcommerceDbContext context, IConfiguration configuration)
+        { _context = context; _configuration = configuration; }
         public IActionResult Index()
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
@@ -52,6 +52,7 @@ namespace EcommerceWebApplication.Controllers
                                 
                                 .ToList();
 
+            ViewBag.SellerSummaries = MarketplaceOffers.ForProducts(_context, weekendDeals.Select(d => d.ProductId), _configuration);
             return View(weekendDeals);
         }
 

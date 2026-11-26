@@ -1,7 +1,9 @@
 @using System.Globalization
 @model HomeViewModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
+@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    var summaries = ViewBag.SellerSummaries as Dictionary<int, EcommerceWebApplication.Models.ViewModels.MarketplaceOfferSummary>;
+}
 <div class="mb-3">
     <section class="store-home-section">
         <div class="store-section-heading">
@@ -30,6 +32,10 @@
                             <div class="mt-auto">
                                 <s class="small text-secondary" dir="ltr">KD @deal.ProductPrice.ToString("F3", CultureInfo.InvariantCulture)</s>
                                 <div class="store-home-price" dir="ltr">KD @deal.OfferPrice.ToString("F3", CultureInfo.InvariantCulture)</div>
+                                @if (summaries != null && summaries.TryGetValue(deal.ProductId, out var offer))
+                                {
+                                    <small class="text-secondary">@(ar ? "معاينة البائعين من" : "Seller preview from") <bdi>KD @offer.LowestPrice.ToString("F3", CultureInfo.InvariantCulture)</bdi> (@offer.SellerCount)</small>
+                                }
                             </div>
                         </div>
                     </a>
@@ -101,6 +107,12 @@
                 price.className = "store-home-price mt-auto";
                 price.textContent = "KD " + Number(item.price).toFixed(3);
                 body.append(name,rating,price);
+                if (item.lowestSellerPrice != null) {
+                    const seller = document.createElement("small");
+                    seller.className = "text-secondary";
+                    seller.textContent = (ar ? "معاينة البائعين من " : "Seller preview from ") + "KD " + Number(item.lowestSellerPrice).toFixed(3) + " (" + item.availableSellerCount + ")";
+                    body.append(seller);
+                }
                 card.append(media,body);
                 container.append(card);
             }

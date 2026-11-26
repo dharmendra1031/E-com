@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,9 @@ namespace EcommerceWebApplication.Controllers
     {
         private readonly EcommerceDbContext _context;
 
-        public WebHomeController(EcommerceDbContext context)
-        {
-            _context = context;
-        }
+        private readonly IConfiguration _configuration;
+        public WebHomeController(EcommerceDbContext context, IConfiguration configuration)
+        { _context = context; _configuration = configuration; }
         public IActionResult Index()
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
@@ -110,6 +110,7 @@ namespace EcommerceWebApplication.Controllers
             HomeViewModel vm = new HomeViewModel();
 
             vm.WeekendDeals = weekendDeals;
+            ViewBag.SellerSummaries = MarketplaceOffers.ForProducts(_context, weekendDeals.Select(d => d.ProductId), _configuration);
 
             return View(vm);
         }
@@ -158,9 +159,12 @@ namespace EcommerceWebApplication.Controllers
                     })
                 .ToListAsync();
 
+            var summaries = MarketplaceOffers.ForProducts(_context, topProducts.Select(p => p.ProductId), _configuration);
             return Ok(topProducts.Select(p => new
             {
                 p.ProductId, p.Name, p.Price, p.AverageRating, p.TotalReviews,
+                lowestSellerPrice = summaries.GetValueOrDefault(p.ProductId)?.LowestPrice,
+                availableSellerCount = summaries.GetValueOrDefault(p.ProductId)?.SellerCount ?? 0,
                 imageUrl = p.ImageId.HasValue ? Url.Action("Product", "StoreImage", new { id = p.ImageId }) : null
             }));
         }

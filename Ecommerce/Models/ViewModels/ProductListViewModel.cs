@@ -7,6 +7,8 @@
         public string Name { get; set; }
         public string NameArb { get; set; }
         public decimal Price { get; set; }
+        public decimal? LowestSellerPrice { get; set; }
+        public int AvailableSellerCount { get; set; }
         public int Stock { get; set; }
         public string CategoryName { get; set; }
         public string SubCategoryName { get; set; }

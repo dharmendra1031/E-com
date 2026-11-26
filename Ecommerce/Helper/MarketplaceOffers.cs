@@ -14,4 +14,18 @@ public static class MarketplaceOffers
             SELECT ListingId, ProductId, VendorName, VendorNameArb, Price, AvailableQuantity
             FROM dbo.MarketplaceAvailableOffers
             """);
+    public static IQueryable<MarketplaceOfferSummary> Summaries(EcommerceDbContext db) =>
+        Available(db).GroupBy(o => o.ProductId).Select(g => new MarketplaceOfferSummary
+        {
+            ProductId = g.Key, LowestPrice = g.Min(o => o.Price), SellerCount = g.Count()
+        });
+
+    public static Dictionary<int, MarketplaceOfferSummary> ForProducts(EcommerceDbContext db,
+        IEnumerable<int> productIds, IConfiguration configuration)
+    {
+        if (!Enabled(configuration)) return new();
+        var ids = productIds.Distinct().ToArray();
+        if (ids.Length == 0) return new();
+        return Summaries(db).Where(o => ids.Contains(o.ProductId)).ToDictionary(o => o.ProductId);
+    }
 }

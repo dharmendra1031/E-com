@@ -1,5 +1,6 @@
 ﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 
+@inject Microsoft.Extensions.Configuration.IConfiguration MarketplaceConfiguration
 @{
     ViewData["Title"] = _localizer["SHOP"].Value;
     Layout = "~/Views/Shared/_WebLayout.cshtml";
@@ -20,6 +21,10 @@
                     <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العلامة التجارية" : "Brand")
                         <select id="filterBrand" class="form-select"><option value="">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "الكل" : "All brands")</option></select>
                     </label>
+                    @if (EcommerceWebApplication.Helper.MarketplaceOffers.Enabled(MarketplaceConfiguration))
+                    {
+                        <p class="small text-secondary">@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "تصفية معاينة البائعين حسب أقل سعر متاح" : "Seller preview filters use the lowest available seller price.")</p>
+                    }
                     <div class="store-price-range">
                     <label>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "من (د.ك)" : "Min (KD)")
                         <input id="minPrice" type="number" min="0" step="0.001" inputmode="decimal" class="form-control" />

@@ -3,6 +3,8 @@
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 
 @{
+    var summaries = ViewBag.SellerSummaries as Dictionary<int, EcommerceWebApplication.Models.ViewModels.MarketplaceOfferSummary>;
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     ViewData["Title"] = "Wekenddeal";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
 }
@@ -45,8 +47,11 @@
                                         </del>
                                         <span class="fw-bold text-success d-block">
                                             @item.OfferPrice.ToString("F3", CultureInfo.InvariantCulture) KD
-                                            
                                         </span>
+                                        @if (summaries != null && summaries.TryGetValue(item.ProductId, out var offer))
+                                        {
+                                            <small class="text-secondary">@(ar ? "معاينة البائعين من" : "Seller preview from") <bdi>KD @offer.LowestPrice.ToString("F3", CultureInfo.InvariantCulture)</bdi> (@offer.SellerCount)</small>
+                                        }
                                     </div>
 
 

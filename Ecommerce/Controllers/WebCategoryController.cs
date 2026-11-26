@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -9,9 +10,11 @@ namespace EcommerceWebApplication.Controllers
     {
         private readonly EcommerceDbContext _context;
 
-        public WebCategoryController(EcommerceDbContext context)
+        private readonly IConfiguration _configuration;
+        public WebCategoryController(EcommerceDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
         public IActionResult Index(int? categoryId, int? subCategoryId)
         {
@@ -94,36 +97,64 @@ namespace EcommerceWebApplication.Controllers
                 (minRating.HasValue && (minRating < 1 || minRating > 5))) return BadRequest();
             if (brandedOnly) query = query.Where(p => p.BrandId.HasValue && p.Brand != null);
             if (brandId.HasValue) query = query.Where(p => p.BrandId == brandId);
-            if (minPrice.HasValue) query = query.Where(p => p.Price >= minPrice.Value);
-            if (maxPrice.HasValue) query = query.Where(p => p.Price <= maxPrice.Value);
             if (minRating.HasValue) query = query.Where(p => (p.ProductReviews.Average(r => (double?)r.Rating) ?? 0) >= minRating.Value);
-            if (inStock) query = query.Where(p =>
-                (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
-                > (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0));
+            var preview = MarketplaceOffers.Enabled(_configuration);
+            if (!preview)
+            {
+                if (minPrice.HasValue) query = query.Where(p => p.Price >= minPrice.Value);
+                if (maxPrice.HasValue) query = query.Where(p => p.Price <= maxPrice.Value);
+                if (inStock) query = query.Where(p =>
+                    (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
+                    > (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0));
+            }
+
+            var cards = query.Select(p => new ProductListViewModel
+            {
+                ProductId = p.ProductId, CreatedAt = p.CreatedAt,
+                BrandName = _context.Brand.Where(b => b.BrandId == p.BrandId)
+                    .Select(b => isArabic && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn)
+                    .FirstOrDefault(),
+                Name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
+                Price = p.Price,
+                AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
+                ReviewCount = p.ProductReviews.Count(),
+                Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
+                    - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
+                ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
+                    .Select(img => (int?)img.ImageId).FirstOrDefault()
+            });
+            if (preview)
+            {
+                // Join grouped eligible offers before filtering, sorting and paging.
+                var summaries = MarketplaceOffers.Summaries(_context);
+                cards = from card in cards
+                        join offer in summaries on card.ProductId equals offer.ProductId into matches
+                        from offer in matches.DefaultIfEmpty()
+                        select new ProductListViewModel
+                        {
+                            ProductId = card.ProductId, CreatedAt = card.CreatedAt,
+                            BrandName = card.BrandName, Name = card.Name, Price = card.Price,
+                            AverageRating = card.AverageRating, ReviewCount = card.ReviewCount,
+                            Stock = card.Stock, ProductImageId = card.ProductImageId,
+                            LowestSellerPrice = (decimal?)offer.LowestPrice,
+                            AvailableSellerCount = (int?)offer.SellerCount ?? 0
+                        };
+                if (minPrice.HasValue) cards = cards.Where(p => p.LowestSellerPrice >= minPrice.Value);
+                if (maxPrice.HasValue) cards = cards.Where(p => p.LowestSellerPrice <= maxPrice.Value);
+                if (inStock) cards = cards.Where(p => p.AvailableSellerCount > 0);
+            }
             var ordered = sortBy switch
             {
-                "low-high" => query.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
-                "high-low" => query.OrderByDescending(p => p.Price).ThenBy(p => p.ProductId),
-                _ => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.ProductId)
+                "low-high" when preview => cards.OrderBy(p => p.LowestSellerPrice == null).ThenBy(p => p.LowestSellerPrice).ThenBy(p => p.ProductId),
+                "high-low" when preview => cards.OrderBy(p => p.LowestSellerPrice == null).ThenByDescending(p => p.LowestSellerPrice).ThenBy(p => p.ProductId),
+                "low-high" => cards.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
+                "high-low" => cards.OrderByDescending(p => p.Price).ThenBy(p => p.ProductId),
+                _ => cards.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.ProductId)
             };
-            var products = ordered.Skip((page - 1) * pageSize).Take(pageSize + 1)
-                .Select(p => new ProductListViewModel
-                {
-                    ProductId = p.ProductId,
-                    BrandName = _context.Brand.Where(b => b.BrandId == p.BrandId)
-                        .Select(b => isArabic && !string.IsNullOrEmpty(b.BrandNameAr) ? b.BrandNameAr : b.BrandNameAEn)
-                        .FirstOrDefault(),
-                    Name = isArabic && !string.IsNullOrEmpty(p.NameArb) ? p.NameArb : p.Name,
-                    Price = p.Price,
-                    AverageRating = p.ProductReviews.Average(r => (double?)r.Rating) ?? 0,
-                    ReviewCount = p.ProductReviews.Count(),
-                    Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
-                        - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
-                    ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
-                        .Select(img => (int?)img.ImageId).FirstOrDefault()
-                }).ToList();
+            var products = ordered.Skip((page - 1) * pageSize).Take(pageSize + 1).ToList();
             ViewBag.NextPage = products.Count > pageSize ? page + 1 : (int?)null;
-            ViewBag.TotalProducts = query.Count();
+            ViewBag.TotalProducts = cards.Count();
+            ViewBag.SellerPreview = preview;
             var items = products.Take(pageSize).ToList();
             if (searchPage) return View("Search", items);
             return PartialView("_ProductsPartial", items);
