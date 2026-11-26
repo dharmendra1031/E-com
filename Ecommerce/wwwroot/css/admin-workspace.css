@@ -181,3 +181,7 @@
 .admin-workspace .order-detail-grid dd,.admin-workspace .order-totals dd {margin:0;overflow-wrap:anywhere;}
 .admin-workspace .order-totals {max-width:360px;margin:16px 0 0;margin-inline-start:auto;padding:16px;background:var(--admin-surface);border-radius:6px;}
 .admin-workspace .order-totals dd {text-align:end;direction:ltr;}
+
+.admin-workspace .admin-master-register [hidden] {display:none!important;}
+.admin-workspace .admin-master-register .admin-section-heading h2 {margin:0;font-size:20px;font-weight:700;}
+.admin-workspace .admin-stock-editor {margin-top:12px;max-width:480px;}

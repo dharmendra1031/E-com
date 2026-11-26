@@ -17,7 +17,7 @@ namespace EcommerceWebApplication.Controllers.Admin
             _context = context;
         }
 
-        public IActionResult Index(string name, string status, int page = 1, int pageSize = 10)
+        public IActionResult Index(string name, string status, int page = 1, int pageSize = 10, bool partial = false)
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
@@ -73,7 +73,7 @@ namespace EcommerceWebApplication.Controllers.Admin
                 }
                 else if (status == "Out") 
                 {
-                    products = products.Where(p => p.RemainingQty == 0);
+                    products = products.Where(p => p.RemainingQty <= 0);
                 }
             }
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -95,7 +95,7 @@ namespace EcommerceWebApplication.Controllers.Admin
             ViewBag.SearchName = name;
             ViewBag.FilterStatus = status;
 
-            return View(pagedModel);
+            return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
         [HttpPost]

@@ -1,0 +1,80 @@
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.ProductStockViewModel>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    int serial = (Model.PageNumber-1)*Model.PageSize+1;
+    int pages = Math.Max(1,Model.TotalPages);
+    string PageUrl(int page) => Url.Action("Index","ProductStock",new {page,pageSize=Model.PageSize,name=(string?)ViewBag.SearchName,status=(string?)ViewBag.FilterStatus})!;
+}
+<p class="admin-muted order-result-count">@Model.TotalItems @T("records found","سجل")</p>
+<div class="admin-table-scroll admin-order-stock-table"><table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center"> @_localizer["SN"]</th>
+                        <th class="text-center"> @_localizer["Product ID"]</th>
+                        <th class="text-center"> @_localizer["Product Name"]</th>
+                        <th class="text-center"> @_localizer["Total Stock"]</th>
+                        <th class="text-center"> @_localizer["Total sold stock"]</th>
+                        <th class="text-center"> @_localizer["Remaining Qty"]</th>
+                        <th class="text-center"> @_localizer["Status"]</th>
+                        <th class="text-center"> @_localizer["Action"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+@if(!Model.Items.Any()){<tr><td colspan="8" class="admin-empty-state">@T("No products found","لا توجد منتجات")</td></tr>}
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-center">@serial</td>
+                            <td class="text-center">@item.ProductId</td>
+                            <td class="text-center">@item.ProductName</td>
+                            <td class="text-center">@item.TotalStock</td>
+                            <td class="text-center">@item.Totalsoldstock</td>
+
+                            <td class="text-center">
+                                @if (item.Status == "In")
+                                {
+                                    <span class="badge bg-success">@item.RemainingQty</span>
+                                }
+                                else if (item.Status == "Low")
+                                {
+                                    <span class="badge bg-warning text-dark">@item.RemainingQty</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">@item.RemainingQty</span>
+                                }
+                            </td>
+
+                            <td class="text-center">
+                                @if (item.Status == "In")
+                                {
+                                    <span class="badge bg-success">@T("In stock","متوفر")</span>
+                                }
+                                else if (item.Status == "Low")
+                                {
+                                    <span class="badge bg-warning text-dark">@T("Low stock","مخزون منخفض")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">@T("Out of stock","نفد المخزون")</span>
+                                }
+                            </td>
+
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-primary"
+                                        type="button" data-productid="@item.ProductId" data-productname="@item.ProductName" data-remaining="@item.RemainingQty" data-add-stock>
+                                    @_localizer["Add"]
+                                </button>
+                            </td>
+                        </tr>
+                        serial++;
+                    }
+                </tbody>
+            </table></div>
+<nav class="order-pagination" aria-label="@T("Pages","الصفحات")">
+    @if(Model.PageNumber>1){<a class="btn btn-default" href="@PageUrl(Model.PageNumber-1)" data-register-page>@T("Previous","السابق")</a>}
+    <span>@T("Page","صفحة") @Model.PageNumber / @pages</span>
+    @if(Model.PageNumber<pages){<a class="btn btn-default" href="@PageUrl(Model.PageNumber+1)" data-register-page>@T("Next","التالي")</a>}
+</nav>

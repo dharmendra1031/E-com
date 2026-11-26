@@ -29,7 +29,7 @@ namespace EcommerceWebApplication.Controllers
             return View();
         }
         [HttpGet]
-        public IActionResult List(string? name, int? status, int? categoryId, int page = 1, int pageSize = 10)
+        public IActionResult List(string? name, int? status, int? categoryId, int page = 1, int pageSize = 10, bool partial = false)
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
@@ -37,10 +37,6 @@ namespace EcommerceWebApplication.Controllers
                 .Include(sc => sc.ParentCategory)
                 .AsQueryable();
 
-            bool isFilterApplied =
-                !string.IsNullOrWhiteSpace(name) ||
-                status.HasValue ||
-                categoryId.HasValue;
 
             if (!string.IsNullOrWhiteSpace(name))
                 query = query.Where(sc => sc.SCName.Contains(name) || sc.SCNameArb.Contains(name));
@@ -51,14 +47,16 @@ namespace EcommerceWebApplication.Controllers
             if (categoryId.HasValue)
                 query = query.Where(sc => sc.ParentCategoryId == categoryId);
 
-            if (!isFilterApplied)
-                query = query.OrderByDescending(p => p.SubCategoryId);
-
-            var subCategories = query.Select(sc => new SubCategoryListViewModel
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = query.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = query.AsNoTracking().OrderByDescending(p => p.SubCategoryId)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(sc => new SubCategoryListViewModel
             {
                 SubCategoryId = sc.SubCategoryId,
                 ParentCategoryId = sc.ParentCategoryId,
-                ParentCategoryName =  sc.ParentCategory != null ? sc.ParentCategory.CName : "N/A",
+                ParentCategoryName =  sc.ParentCategory != null ? (isArabic ? sc.ParentCategory.CNameArb : sc.ParentCategory.CName) : "N/A",
                 SCName = isArabic ? sc.SCNameArb : sc.SCName,
                 SCDescription = isArabic ? sc.SCDescriptionArb : sc.SCDescription,
                 SubCategoryImageBase64 = sc.SubCategoryImage != null
@@ -67,14 +65,6 @@ namespace EcommerceWebApplication.Controllers
                 IsActive = sc.IsActive,
                 CreatedAt = sc.CreatedAt
             }).ToList();
-
-            // 🔹 Pagination
-            int totalItems = subCategories.Count;
-            var pagedData = subCategories
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
             var pagedModel = new PagedResult<SubCategoryListViewModel>
             {
                 Items = pagedData,
@@ -91,10 +81,10 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.Categories = new SelectList(
                 _context.Categories.Where(c => c.IsActive),
                 "CategoryId",
-                "CName"
+                isArabic ? "CNameArb" : "CName"
             );
 
-            return View(pagedModel);
+            return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
 
@@ -166,6 +156,7 @@ namespace EcommerceWebApplication.Controllers
 
         //}
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DeleteSubCategory(int id)
         {
             try

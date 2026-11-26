@@ -23,7 +23,7 @@ namespace EcommerceWebApplication.Controllers
         }
       
         [HttpGet]
-        public IActionResult Index(string? name, int? status, int page = 1, int pageSize = 10)
+        public IActionResult Index(string? name, int? status, int page = 1, int pageSize = 10, bool partial = false)
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
@@ -44,16 +44,11 @@ namespace EcommerceWebApplication.Controllers
                 productsQuery = productsQuery.Where(p => p.IsActive == (status == 1));
             }
 
-            // Check if filters applied
-            bool isFilterApplied = !string.IsNullOrEmpty(name) || HttpContext.Request.Query.ContainsKey("status");
-
-            // Default sorting (if no filter)
-            if (!isFilterApplied)
-            {
-                productsQuery = productsQuery.OrderByDescending(p => p.CategoryId);
-            }
-
-            var categories = productsQuery
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = productsQuery.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = productsQuery.AsNoTracking().OrderByDescending(p => p.CategoryId)
+                .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(c => new CategoryListViewModel
                 {
                     CategoryId = c.CategoryId,
@@ -71,13 +66,6 @@ namespace EcommerceWebApplication.Controllers
                         : null
                 })
                 .ToList();
-            // 🔹 Pagination
-            int totalItems = categories.Count;
-            var pagedData = categories
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
             var pagedModel = new PagedResult<CategoryListViewModel>
             {
                 Items = pagedData,
@@ -89,7 +77,7 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.FilterName = name;
             ViewBag.FilterStatus = status;
 
-            return View(pagedModel);
+            return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
 
@@ -206,6 +194,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DeleteCategory(int id)
         {
             try

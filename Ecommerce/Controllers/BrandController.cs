@@ -21,7 +21,7 @@ namespace EcommerceWebApplication.Controllers
             _context = context;
         }
         [HttpGet]
-        public IActionResult Index(string? name, int page = 1, int pageSize = 10)
+        public IActionResult Index(string? name, int page = 1, int pageSize = 10, bool partial = false)
         {
             // Check current culture (Arabic or English)
             var culture = System.Globalization.CultureInfo.CurrentCulture;
@@ -45,8 +45,11 @@ namespace EcommerceWebApplication.Controllers
                 }
             }
 
-            // Convert to ViewModel
-            var deals = brandQuery
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            int totalItems = brandQuery.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)totalItems / pageSize)));
+            var pagedData = brandQuery.AsNoTracking().OrderByDescending(b => b.BrandId)
+                .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(d => new BrandViewModel
                 {
                     BrandId = d.BrandId,
@@ -59,15 +62,6 @@ namespace EcommerceWebApplication.Controllers
                         : null
                 })
                 .ToList();
-
-            // Pagination
-            int totalItems = deals.Count;
-
-            var pagedData = deals
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
             var pagedModel = new PagedResult<BrandViewModel>
             {
                 Items = pagedData,
@@ -79,7 +73,7 @@ namespace EcommerceWebApplication.Controllers
             // Keep filter value
             ViewBag.FilterName = name;
 
-            return View(pagedModel);
+            return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
         public IActionResult CreateBrand(int? id)
@@ -186,6 +180,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
         {
             try

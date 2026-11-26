@@ -1,296 +1,36 @@
-﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
-
-
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    ViewData["Title"] = "Sub-Categories List";
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Subcategories","الفئات الفرعية");
 }
-<div id="main-content" class="admin-master-register">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card alert">
-                <form id="filterForm" class="admin-register-filters">
-                    <div class="row">
-                        <div class="col-md-10 admin-filter-fields" id="NavigationKey">
-
-                            <!-- Main Category -->
-                            <div class="form-group me-3" style="margin-right: 20px; position:relative;">
-                                <label for="categoryId" class="me-1" style="margin-right: 5px;">@_localizer["Main Category"]:</label>
-                                <select id="categoryId" name="categoryId" class="form-control">
-                                    <option value="" onclick="resetFilter();"></option>
-                                    @foreach (var category in (SelectList)ViewBag.Categories)
-                                    {
-                                        <option value="@category.Value" selected="@(ViewBag.FilterCategoryId?.ToString() == category.Value)">
-                                            @category.Text
-                                        </option>
-                                    }
-                                </select>
-                            </div>
-                            <!-- Name -->
-
-                            <div class="form-group" style="margin-right: 15px; position:relative; display:inline-block;">
-                                <label for="name" style="margin-right: 5px;">@_localizer["Name"]:</label>
-                                <input type="text" id="name" name="name" class="form-control"
-                                       style="width: 220px; display: inline-block;"
-                                       autocomplete="off"
-                                       value="@ViewBag.FilterName" />
-                                <ul id="suggestions"
-                                    style="display:none; position:absolute; background:white; list-style:none; padding:0; margin:0;
-               width:100%; max-height:200px; overflow-y:auto; border:1px solid #ccc; z-index:1000;">
-                                    <!-- Suggestions dynamically appended here -->
-                                </ul>
-                            </div>
-                            <!-- Status -->
-                            <div class="form-group me-3" style="margin-right: 20px; position:relative;">
-                                <label for="status" class="me-1" style="margin-right: 5px;">@_localizer["Status"]:</label>
-                                <select id="status" name="status" class="form-control" style="width: 150px; display: inline-block;">
-
-                                    <option value="" selected="@(ViewBag.FilterStatus == null ? "selected" : "")"></option>
-                                    <option value="1" selected="@(ViewBag.FilterStatus?.ToString() == "1")">@_localizer["Active"]</option>
-                                    <option value="0" selected="@(ViewBag.FilterStatus?.ToString() == "0")">@_localizer["Inactive"]</option>
-                                </select>
-                            </div>
-                            <div class="form-group ms-3">
-                                <button type="button" class="btn btn-primary me-2" onclick="submitFilter()">@_localizer["Search"]</button>
-                            </div>
-                        </div>
-                        <!-- Buttons -->
-                        <div class="col-md-2 d-flex justify-content-end">
-                            <div class="form-group">
-                                <a asp-controller="SubCategory" asp-action="CreateSubCategory" class="btn btn-primary">
-                                    <i class="ti-bookmark-alt bg-info"></i> @_localizer["Add Sub-Category"]
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-
-               
-
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card alert">
-                           
-
-                            <div class="card-body admin-register-body">
-                                @{
-                                    int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
-                                }
-                                <div class="admin-table-scroll"><table class="table table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center"> @_localizer["SN"]</th>
-                                            <th class="text-center"> @_localizer["ID"]</th>
-                                            <th class="text-start"> @_localizer["Main Category"]</th>
-                                            <th class="text-start"> @_localizer["Name"]</th>
-                                            <th class="text-center"> @_localizer["Status"]</th>
-                                            <th class="text-center"> @_localizer["Created Date"]</th>
-                                            <th class="text-center"> @_localizer["Image"]</th>
-                                            <th class="text-center"> @_localizer["Action"]</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                @if (!Model.Items.Any())
-                                {
-                                    <tr><td colspan="8" class="admin-empty-state">@_localizer["No records found"]</td></tr>
-                                }
-                                        @foreach (var item in Model.Items)
-                                        {
-                                            <tr>
-                                                <td class="text-center">@serial</td>
-                                                <td class="text-center">@item.SubCategoryId</td>
-                                                <td class="text-start">@item.ParentCategoryName</td>
-                                                <td class="text-start">@item.SCName</td>
-                                                <td class="text-center">
-                                                    @if (item.IsActive)
-                                                    {
-                                                        <span class="badge bg-success">Active</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-danger">Inactive</span>
-                                                    }
-                                                </td>
-                                                <td class="text-center">@(item.CreatedAt?.ToString("dd-MM-yyyy") ?? "")</td>
-                                                <td class="text-center">
-                                                    @if (!string.IsNullOrEmpty(item.SubCategoryImageBase64))
-                                                    {
-                                                        <img src="@item.SubCategoryImageBase64" class="admin-product-thumb" loading="lazy" alt="" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>No Image</span>
-                                                    }
-                                                </td>
-                                                <td class="text-center">
-                                                    <a asp-action="Edit" asp-route-id="@item.SubCategoryId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
-                                                        <i class="ti-pencil"></i> 
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" onclick="deleteSubCategory(@item.SubCategoryId)">
-                                                        <i class="ti-trash"></i> 
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            serial++;
-                                        }
-                                    </tbody>
-                                </table></div>
-
-
-                                <!-- ✅ Pagination (Same as UserList) -->
-                                <div class="text-center">
-                                    <ul class="pagination justify-content-center">
-                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                            <a class="page-link" asp-action="List" asp-route-page="1"
-                                               asp-route-name="@ViewBag.FilterName"
-                                               asp-route-status="@ViewBag.FilterStatus"
-                                               asp-route-categoryId="@ViewBag.FilterCategoryId">
-                                                @_localizer["First"]
-                                            </a>
-                                        </li>
-
-                                        <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                            <a class="page-link" asp-action="List" asp-route-page="@(Model.PageNumber - 1)"
-                                               asp-route-name="@ViewBag.FilterName"
-                                               asp-route-status="@ViewBag.FilterStatus"
-                                               asp-route-categoryId="@ViewBag.FilterCategoryId">
-                                                @_localizer["Previous"]
-                                            </a>
-                                        </li>
-
-                                        @for (int i = Math.Max(1, Model.PageNumber - 2); i <= Math.Min(Model.TotalPages, Model.PageNumber + 2); i++)
-                                        {
-                                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                                                <a class="page-link" asp-action="List" asp-route-page="@i"
-                                                   asp-route-name="@ViewBag.FilterName"
-                                                   asp-route-status="@ViewBag.FilterStatus"
-                                                   asp-route-categoryId="@ViewBag.FilterCategoryId">
-                                                    @i
-                                                </a>
-                                            </li>
-                                        }
-
-                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                            <a class="page-link" asp-action="List" asp-route-page="@(Model.PageNumber + 1)"
-                                               asp-route-name="@ViewBag.FilterName"
-                                               asp-route-status="@ViewBag.FilterStatus"
-                                               asp-route-categoryId="@ViewBag.FilterCategoryId">
-                                                @_localizer["Next"]
-                                            </a>
-                                        </li>
-
-                                        <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                            <a class="page-link" asp-action="List" asp-route-page="@(Model.TotalPages)"
-                                               asp-route-name="@ViewBag.FilterName"
-                                               asp-route-status="@ViewBag.FilterStatus"
-                                               asp-route-categoryId="@ViewBag.FilterCategoryId">
-                                                @_localizer["Last"]
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+<div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("List","SubCategory")" data-suggest-url="@Url.Action("AutoCompleteSubCategory","SubCategory")">
+    <section class="admin-panel">
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2><a asp-action="CreateSubCategory" class="btn btn-primary">@T("Add subcategory","إضافة فئة فرعية")</a></div>
+        <form id="masterFilters" method="get" asp-action="List" class="admin-register-filters">
+            <div class="form-group"><label for="categoryId">@T("Main category","الفئة الرئيسية")</label>
+                <select id="categoryId" name="categoryId" class="form-control"><option value="">@T("All","الكل")</option>
+                @foreach(var category in (SelectList)ViewBag.Categories){<option value="@category.Value" selected="@(ViewBag.FilterCategoryId?.ToString()==category.Value)">@category.Text</option>}
+                </select></div>
+            <div class="form-group"><label for="name">@T("Search by name","بحث بالاسم")</label>
+                <input id="name" name="name" type="search" class="form-control" list="masterSuggestions" autocomplete="off" value="@ViewBag.FilterName" />
+                <datalist id="masterSuggestions"></datalist>
             </div>
-        </div>
-    </div>
-
-   
+            <div class="form-group"><label for="status">@T("Status","الحالة")</label>
+                <select id="status" name="status" class="form-control"><option value="">@T("All","الكل")</option>
+                    <option value="1" selected="@(ViewBag.FilterStatus?.ToString()=="1")">@T("Active","نشط")</option>
+                    <option value="0" selected="@(ViewBag.FilterStatus?.ToString()=="0")">@T("Inactive","غير نشط")</option>
+                </select></div>
+            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+            <button type="submit" class="btn btn-primary">@T("Search","بحث")</button>
+            <a asp-action="List" id="clearMasterFilters" class="btn btn-default">@T("Clear","مسح")</a>
+        </form>
+        <p id="masterMessage" class="admin-muted" role="status"></p>
+        <div id="masterResults"><partial name="_RegisterRows" model="Model" /></div>
+    </section>
+    
 </div>
-
-
 @section Scripts {
-
-    <script>
-        function deleteSubCategory(id) {
-            return AdminFeedback.remove("/SubCategory/DeleteSubCategory/" + encodeURIComponent(id));
-        }
-    </script>
-    <script>
-        function submitFilter() {
-            const name = document.getElementById('name').value.trim();
-            const status = document.getElementById('status').value;
-            const categoryId = document.getElementById('categoryId').value;
-
-            let url = "/SubCategory/List?";
-            const params = [];
-
-            if (name) params.push(`name=${encodeURIComponent(name)}`);
-            if (status) params.push(`status=${encodeURIComponent(status)}`);
-            if (categoryId) params.push(`categoryId=${encodeURIComponent(categoryId)}`);
-
-            url += params.join("&");
-            window.location.href = url;
-        }
-
-        function resetFilter() {
-            window.location.href = "/Admin/SubCategory/List";
-        }
-    </script>
-
-
-
-
-
-
-
-
-    <script>
-        $(document).ready(function () {
-
-            function fetchSubCategorySuggestions(query) {
-                if (!query || query.length < 2) {
-                    $('#suggestions').hide();
-                    return;
-                }
-
-                $.ajax({
-                    url: '/SubCategory/AutoCompleteSubCategory', // adjust URL
-                    type: 'GET',
-                    data: { term: query },
-                    success: function(data) {
-                        let $suggestionBox = $('#suggestions');
-                        $suggestionBox.empty();
-
-                        if (data && data.length > 0) {
-                            data.forEach(function(item) {
-                                $('<li></li>')
-                                    .text(item) // English or Arabic based on input
-                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
-                                    .on('click', function() {
-                                        $('#name').val(item); // select value
-                                        $suggestionBox.hide();
-                                        $('#name').focus(); // keep focus
-                                    })
-                                    .appendTo($suggestionBox);
-                            });
-                            $suggestionBox.show();
-                        } else {
-                            $suggestionBox.hide();
-                        }
-                    }
-                });
-            }
-
-            // Trigger on input
-            $('#name').on('input', function() {
-                fetchSubCategorySuggestions($(this).val());
-            });
-
-            // Enable arrow key navigation
-            enableSuggestionNavigation('#name', '#suggestions');
-
-            // Hide suggestions if click outside
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('#name, #suggestions').length) {
-                    $('#suggestions').hide();
-                }
-            });
-        });
-    </script>
-
+    <script src="~/js/master-register.js" asp-append-version="true"></script>
 }

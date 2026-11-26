@@ -1,0 +1,73 @@
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BrandViewModel>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    int serial = (Model.PageNumber-1)*Model.PageSize+1;
+    int pages = Math.Max(1,Model.TotalPages);
+    string PageUrl(int page) => Url.Action("Index","Brand",new {page,pageSize=Model.PageSize,name=(string?)ViewBag.FilterName})!;
+}
+<p class="admin-muted order-result-count">@Model.TotalItems @T("records found","سجل")</p>
+<div class="admin-table-scroll"><table class="table table-hover">
+    <thead class="table-light">
+        <tr>
+            <th class="text-center">@_localizer["SN"]</th>
+            <th class="text-center">@_localizer["ID"]</th>
+            <th class="text-center">@_localizer["Name"]</th>
+            <th class="text-center">@_localizer["Discount %"]</th>
+            <th class="text-center">@_localizer["Created Date"]</th>
+            <th class="text-center">@_localizer["BrandLogo"]</th>
+
+            <th class="text-center">@_localizer["Action"]</th>
+        </tr>
+    </thead>
+
+    <tbody>
+            @if (!Model.Items.Any())
+            {
+                <tr><td colspan="7" class="admin-empty-state">@_localizer["No records found"]</td></tr>
+            }
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td class="text-center">@serial</td>
+                <td class="text-center">@item.BrandId</td>
+
+                <td class="text-center">@(ar && !string.IsNullOrWhiteSpace(item.BrandNameAr) ? item.BrandNameAr : item.BrandNameAEn)</td>
+                <td class="text-center">@item.DiscountPersent %</td>
+                <td class="text-center">@(item.CreatedAt?.ToString("dd-MM-yyyy") ?? "")</td>
+
+                <td class="text-center">
+                    @if (!string.IsNullOrEmpty(item.BrandlogoBase64))
+                    {
+                        <img src="@item.BrandlogoBase64" class="admin-product-thumb" loading="lazy" alt="" />
+                    }
+                    else
+                    {
+                        <span class="admin-muted">@T("No image","لا توجد صورة")</span>
+                    }
+                </td>
+
+
+
+                <td class="text-center">
+
+                    <a asp-action="CreateBrand" asp-controller="Brand" asp-route-id="@item.BrandId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
+                        <i class="ti-pencil"></i>
+                    </a>
+
+                    <button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" data-delete-url="@Url.Action("Delete","Brand",new { id=item.BrandId })">
+                        <i class="ti-trash"></i>
+                    </button>
+
+                </td>
+            </tr>
+            serial++;
+        }
+    </tbody>
+</table></div>
+<nav class="order-pagination" aria-label="@T("Pages","الصفحات")">
+    @if(Model.PageNumber>1){<a class="btn btn-default" href="@PageUrl(Model.PageNumber-1)" data-register-page>@T("Previous","السابق")</a>}
+    <span>@T("Page","صفحة") @Model.PageNumber / @pages</span>
+    @if(Model.PageNumber<pages){<a class="btn btn-default" href="@PageUrl(Model.PageNumber+1)" data-register-page>@T("Next","التالي")</a>}
+</nav>

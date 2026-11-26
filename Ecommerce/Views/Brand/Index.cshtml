@@ -1,233 +1,29 @@
-﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BrandViewModel>
-
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    ViewData["Title"] = "Brand List";
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Brands","العلامات التجارية");
 }
-
-<div id="main-content" class="admin-master-register">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card alert">
-
-                <!-- HEADER + ADD BUTTON -->
-                <form id="filterForm" class="admin-register-filters">
-                    <div class="row">
-                        <div class="col-md-6 admin-filter-fields" id="NavigationKey">
-                            <div class="form-group me-3" style="margin-right: 20px; position:relative;">
-                                <label for="name" class="me-1" style="margin-right: 5px;">@_localizer["Name"]:</label>
-                                <input type="text"
-                                       id="name"
-                                       name="name"
-                                       class="form-control"
-                                       autocomplete="off"
-                                       value="@ViewBag.FilterName" />
-                                <ul id="suggestions" style="display:none;
-                                position:absolute;
-                                background:white;
-                                list-style:none;
-                                padding:0;
-                                margin:0;
-                                width:100%;  /* width same as input */
-                                max-height:200px;
-                                overflow-y:auto;
-                                border:1px solid #ccc;
-                                z-index:1000;">
-                                    <!-- Suggestions dynamically appended here -->
-                                </ul>
-                            </div>
-
-
-                            @*  <div class="form-group me-3">
-                                <label for="status" class="me-1">@_localizer["Status"]:</label>
-                       
-                                <select id="status" name="status" class="form-control" style="width: 150px; display: inline-block;">
-                                    <option value="" selected="@(ViewBag.FilterStatus == null ? "selected" : "")"></option>
-                                    <option value="1" selected="@(ViewBag.FilterStatus?.ToString() == "1")">@_localizer["Active"]</option>
-                                    <option value="0" selected="@(ViewBag.FilterStatus?.ToString() == "0")">@_localizer["Inactive"]</option>
-                                </select> 
-                            </div>*@
-                            <div class="form-group ms-3">
-                                <button type="submit" class="btn btn-primary me-2">@_localizer["Search"]</button>
-                            </div>
-                        </div>
-                        <div class="col-md-6 d-flex justify-content-end">
-                            <div class="card-header-right-icon">
-                                <a asp-controller="Brand" asp-action="CreateBrand" class="btn btn-primary">
-                                    <i class="ti-bar-chart-alt me-1"></i> @_localizer["Add Brands"]
-                                </a>
-                            </div>
-                        </div>
-
-                    </div>
-                </form>
-
-                <!-- TABLE -->
-                <div class="card-body admin-register-body">
-                    @{
-                        int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
-                    }
-                    <div class="admin-table-scroll"><table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center">@_localizer["SN"]</th>
-                                <th class="text-center">@_localizer["ID"]</th>
-                                <th class="text-center">@_localizer["Name"]</th>
-                                <th class="text-center">@_localizer["Discount %"]</th>
-                                <th class="text-center">@_localizer["Created Date"]</th>
-                                <th class="text-center">@_localizer["BrandLogo"]</th>
-
-                                <th class="text-center">@_localizer["Action"]</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                                @if (!Model.Items.Any())
-                                {
-                                    <tr><td colspan="7" class="admin-empty-state">@_localizer["No records found"]</td></tr>
-                                }
-                            @foreach (var item in Model.Items)
-                            {
-                                <tr>
-                                    <td class="text-center">@serial</td>
-                                    <td class="text-center">@item.BrandId</td>
-
-                                    <td class="text-center">@item.BrandNameAEn</td>
-                                    <td class="text-center">@item.DiscountPersent %</td>
-                                    <td class="text-center">@(item.CreatedAt?.ToString("dd-MM-yyyy") ?? "")</td>
-
-                                    <td class="text-center">
-                                        @if (!string.IsNullOrEmpty(item.BrandlogoBase64))
-                                        {
-                                            <img src="@item.BrandlogoBase64" class="admin-product-thumb" loading="lazy" alt="" />
-                                        }
-                                        else
-                                        {
-                                            <span>No Image</span>
-                                        }
-                                    </td>
-
-
-
-                                    <td class="text-center">
-
-                                        <a asp-action="CreateBrand" asp-controller="Brand" asp-route-id="@item.BrandId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
-                                            <i class="ti-pencil"></i>
-                                        </a>
-
-                                        <button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" onclick="deleteBrand(@item.BrandId)">
-                                            <i class="ti-trash"></i>
-                                        </button>
-
-                                    </td>
-                                </tr>
-                                serial++;
-                            }
-                        </tbody>
-                    </table></div>
-
-                    <!-- PAGINATION -->
-                    <div class="text-center">
-                        <ul class="pagination justify-content-center">
-
-                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="1" asp-route-name="@ViewBag.FilterName">@_localizer["First"]</a>
-                            </li>
-
-                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber - 1)" asp-route-name="@ViewBag.FilterName">
-                                    @_localizer["Previous"]
-                                </a>
-                            </li>
-
-                            @for (int i = Math.Max(1, Model.PageNumber - 2); i <= Math.Min(Model.TotalPages, Model.PageNumber + 2); i++)
-                            {
-                                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-name="@ViewBag.FilterName">@i</a>
-                                </li>
-                            }
-
-                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber + 1)" asp-route-name="@ViewBag.FilterName">
-                                    @_localizer["Next"]
-                                </a>
-                            </li>
-
-                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@Model.TotalPages" asp-route-name="@ViewBag.FilterName">
-                                    @_localizer["Last"]
-                                </a>
-                            </li>
-
-                        </ul>
-                    </div>
-
-                </div>
+<div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("Index","Brand")" data-suggest-url="@Url.Action("AutoCompleteSubCategory","Brand")">
+    <section class="admin-panel">
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2><a asp-action="CreateBrand" class="btn btn-primary">@T("Add brand","إضافة علامة تجارية")</a></div>
+        <form id="masterFilters" method="get" asp-action="Index" class="admin-register-filters">
+            
+            <div class="form-group"><label for="name">@T("Search by name","بحث بالاسم")</label>
+                <input id="name" name="name" type="search" class="form-control" list="masterSuggestions" autocomplete="off" value="@ViewBag.FilterName" />
+                <datalist id="masterSuggestions"></datalist>
             </div>
-        </div>
-    </div>
-
+            
+            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+            <button type="submit" class="btn btn-primary">@T("Search","بحث")</button>
+            <a asp-action="Index" id="clearMasterFilters" class="btn btn-default">@T("Clear","مسح")</a>
+        </form>
+        <p id="masterMessage" class="admin-muted" role="status"></p>
+        <div id="masterResults"><partial name="_RegisterRows" model="Model" /></div>
+    </section>
+    
 </div>
-
-@section scripts {
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
-        function deleteBrand(id) {
-            return AdminFeedback.remove("/Brand/Delete/" + encodeURIComponent(id));
-        }
-      
-            $(document).ready(function () {
-
-                function fetchSubCategorySuggestions(query) {
-                    if (!query || query.length < 2) {
-                        $('#suggestions').hide();
-                        return;
-                    }
-
-                    $.ajax({
-                        url: '/Brand/AutoCompleteSubCategory', // adjust URL
-                        type: 'GET',
-                        data: { term: query },
-                        success: function(data) {
-                            let $suggestionBox = $('#suggestions');
-                            $suggestionBox.empty();
-
-                            if (data && data.length > 0) {
-                                data.forEach(function(item) {
-                                    $('<li></li>')
-                                        .text(item) // English or Arabic based on input
-                                        .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
-                                        .on('click', function() {
-                                            $('#name').val(item); // select value
-                                            $suggestionBox.hide();
-                                            $('#name').focus(); // keep focus
-                                        })
-                                        .appendTo($suggestionBox);
-                                });
-                                $suggestionBox.show();
-                            } else {
-                                $suggestionBox.hide();
-                            }
-                        }
-                    });
-                }
-
-                // Trigger on input
-                $('#name').on('input', function() {
-                    fetchSubCategorySuggestions($(this).val());
-                });
-
-                // Enable arrow key navigation
-                enableSuggestionNavigation('#name', '#suggestions');
-
-                // Hide suggestions if click outside
-                $(document).on('click', function(e) {
-                    if (!$(e.target).closest('#name, #suggestions').length) {
-                        $('#suggestions').hide();
-                    }
-                });
-            });
-    </script>
-
+@section Scripts {
+    <script src="~/js/master-register.js" asp-append-version="true"></script>
 }
