@@ -250,6 +250,43 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         return RedirectToAction(nameof(Stock), new { id, listingId });
     }
 
+    [HttpGet("store/{id:int}/orders")]
+    public async Task<IActionResult> Orders(int id, int page = 1, CancellationToken ct = default)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
+            !VendorPortalAuth.TryGetUserId(User, out var userId) ||
+            !await StoreMembership(id, userId).AnyAsync(ct)) return NotFound();
+        page = Math.Clamp(page, 1, 100000);
+        var rows = await db.Database.SqlQuery<VendorOrderRow>($"""
+            SELECT v.VendorOrderId,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,
+                   (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
+            FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
+            JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
+            WHERE v.VendorId={id} AND o.PaymentStatus=1 AND p.State='Paid'
+            """).OrderByDescending(o => o.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.VendorId=id; ViewBag.Page=page; ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
+
+    [HttpGet("store/{id:int}/orders/{vendorOrderId:int}")]
+    public async Task<IActionResult> OrderDetails(int id,int vendorOrderId,CancellationToken ct)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
+            !VendorPortalAuth.TryGetUserId(User, out var userId) ||
+            !await StoreMembership(id,userId).AnyAsync(ct)) return NotFound();
+        var rows=await db.Database.SqlQuery<VendorOrderLine>($"""
+            SELECT i.ProductNameSnapshot AS ProductName,i.ProductNameArbSnapshot AS ProductNameArb,
+                   i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price
+            FROM dbo.OrderItems i JOIN dbo.VendorOrders v ON v.VendorOrderId=i.VendorOrderId AND v.OrderId=i.OrderId
+            JOIN dbo.Orders o ON o.OrderId=v.OrderId
+            JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
+            WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId} AND o.PaymentStatus=1 AND p.State='Paid'
+            """).ToListAsync(ct);
+        if(rows.Count==0) return NotFound();
+        ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
+        return View(rows);
+    }
+
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {

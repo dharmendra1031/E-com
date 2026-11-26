@@ -1,0 +1,8 @@
+@model List<EcommerceWebApplication.Models.ViewModels.VendorOrderLine>
+@{ Layout="_VendorPortalLayout"; var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; ViewData["Title"]=ar?"تفاصيل الطلب":"Order details"; }
+<h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2>
+<a asp-action="Orders" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a>
+<div class="table-responsive"><table class="table"><thead><tr><th>@(ar?"المنتج":"Product")</th><th>SKU</th><th>@(ar?"الكمية":"Qty")</th><th>@(ar?"السعر":"Price")</th></tr></thead><tbody>
+@foreach(var row in Model){<tr><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.SellerSku</td><td>@row.Quantity</td><td dir="ltr">KD @row.Price.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td></tr>}
+</tbody></table></div>
+<p>@(ar?"مجموع البضائع وليس صافي التسوية":"Merchandise subtotal, not settlement earnings"): <bdi>KD @Model.Sum(x=>x.Quantity*x.Price).ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</bdi></p>

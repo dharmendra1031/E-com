@@ -1,3 +1,4 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration OrderConfiguration
 @model EcommerceWebApplication.Models.ViewModels.VendorPortalStore
 @{
     Layout = "_VendorPortalLayout";
@@ -11,5 +12,9 @@
         <dt>@(ar ? "الحالة" : "Status")</dt><dd>@(ar ? "معتمد" : "Approved")</dd>
     </dl>
     <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary">@(ar ? "عروض المنتجات" : "Product listings")</a>
-    <p>@(ar ? "إدارة المخزون والطلبات والتسويات غير مفعلة بعد." : "Inventory, order and settlement management are not enabled yet.")</p>
+    @if (OrderConfiguration["Marketplace:VendorOrdersEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        <a asp-action="Orders" asp-route-id="@Model.VendorId" class="btn btn-default">@(ar ? "الطلبات المدفوعة" : "Paid orders")</a>
+    }
+    <p>@(ar ? "التسويات غير مفعلة بعد." : "Settlements are not enabled yet.")</p>
 </div></div>
