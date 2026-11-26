@@ -4,6 +4,8 @@
 @model EditProductViewModel
 
 @{
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en, string arabic) => ar ? arabic : en;
     ViewData["Title"] = "Edit Product";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -25,7 +27,7 @@
                         <div class="alert alert-success">@TempData["Success"]</div>
                     } *@
 
-                    <form asp-action="Edit" id="NavigationKey" method="post" enctype="multipart/form-data">
+                    <form asp-action="Edit" id="NavigationKey" data-subcategories-url="@Url.Action("GetSubCategories","Products")" data-delete-image-url="@Url.Action("DeleteProductImage","Products")" method="post" enctype="multipart/form-data">
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="ProductId" />
 
@@ -51,7 +53,7 @@
                                 <div class="form-group">
                                     <label>@_localizer["Category"] <span style="color:red">*</span></label>
                                     <select asp-for="CategoryId" class="form-control" id="CategoryDropdown">
-                                        <option value="">-- Select Category --</option>
+                                        <option value="">@T("Select category","اختر الفئة")</option>
                                         @foreach (var cat in ViewBag.Categories)
                                         {
                                             <option value="@cat.CategoryId" selected="@(cat.CategoryId == Model.CategoryId)">
@@ -65,7 +67,7 @@
                                 <div class="form-group">
                                     <label>@_localizer["Sub-Category"] <span style="color:red">*</span></label>
                                     <select asp-for="SubCategoryId" class="form-control" id="SubCategoryDropdown">
-                                        <option value="">-- Select SubCategory --</option>
+                                        <option value="">@T("Select subcategory","اختر الفئة الفرعية")</option>
                                         @foreach (var sub in ViewBag.SubCategories)
                                         {
                                             <option value="@sub.SubCategoryId" selected="@(sub.SubCategoryId == Model.SubCategoryId)">
@@ -98,28 +100,7 @@
                         <!-- Price, Stock, Weight -->
                         <div class="row mt-3">
                             <!-- Cost Price -->
-                            @* <div class="col-md-3">
-                                <label>@_localizer["Cost Price"] <span style="color:red">*</span></label>
-                                <input type="text"
-                                       name="CoastPrice"
-                                       id="CoastPrice"
-                                       class="form-control"
-                                       maxlength="8"
-                                       value="@Model.CoastPrice.ToString("F3", CultureInfo.InvariantCulture)"
-                                       onkeypress="return ValidAmount(event, this);" />
-                            </div>
-
-                            <!-- Sale Price -->
-                            <div class="col-md-3">
-                                <label>@_localizer["Sale Price"] <span style="color:red">*</span></label>
-                                <input type="text"
-                                       name="Price"
-                                       id="Price"
-                                       class="form-control"
-                                       maxlength="8"
-                                       value="@Model.Price.ToString("F3", CultureInfo.InvariantCulture)"
-                                       onkeypress="return ValidAmount(event, this);" />
-                            </div> *@
+                            
                             <div class="col-md-3">
                                 <label>@_localizer["Cost Price"] <span style="color:red">*</span></label>
                                 <input type="text"
@@ -169,7 +150,7 @@
                                 <div class="col-md-2">
                                     <label>@_localizer["brand"]</label>
                                     <select asp-for="brandid" class="form-control" id="BrandDropdown">
-                                        <option value="">-- Select brand --</option>
+                                        <option value="">@T("Select brand","اختر العلامة التجارية")</option>
                                         @foreach (var cat in ViewBag.brand1)
                                         {
                                             <option value="@cat.BrandId">@cat.BrandNameAEn</option>
@@ -227,49 +208,24 @@
                             </div>
                         </div>
 
-                        <style>
-                            .image-box {
-                                position: relative;
-                            }
-
-                            .delete-image-btn {
-                                position: absolute;
-                                top: 5px;
-                                right: 5px;
-                                border-radius: 50%;
-                                padding: 4px 6px;
-                            }
-                        </style>
+                        
                         <!-- Existing Images -->
                         <div class="form-group">
                             <label>@_localizer["Images"] <span class="text-danger">*</span></label>
 
-                            <div>
+                            <div class="admin-image-gallery">
                                 @if (Model.ExistingImages != null && Model.ExistingImages.Any())
                                 {
                                     foreach (var img in Model.ExistingImages)
                                     {
-                                        <div data-product-image="@img.ImageId" style="display:inline-block; margin:5px; position:relative;">
+                                        <div data-product-image="@img.ImageId" class="admin-image-tile">
 
-                                            <img src="@img.Base64Image"
-                                                 style="width:100px;height:100px;border:1px solid #ddd;object-fit:cover;" />
+                                            <img src="@img.Base64Image" alt="" loading="lazy" />
 
                                             <!-- Delete Button ON IMAGE -->
                                             <button type="button"
                                                     aria-label="@(CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "حذف الصورة" : "Delete image")"
-                                                    onclick="deleteImage(@img.ImageId)"
-                                                    style="
-                                        position:absolute;
-                                        top:3px;
-                                        right:3px;
-                                        border:none;
-                                        background:red;
-                                        color:white;
-                                        border-radius:50%;
-                                        width:22px;
-                                        height:22px;
-                                        font-size:12px;
-                                        cursor:pointer;">
+                                                    data-delete-image="@img.ImageId" class="btn btn-danger admin-image-remove">
                                                 ✖
                                             </button>
                                         </div>
@@ -287,22 +243,23 @@
                         <!-- Upload New Images -->
                         <div class="form-group">
                             <label>@_localizer["Upload New Images (Optional)"]</label>
-                            <input type="file" name="NewImages" class="form-control" accept="image/*" multiple />
+                            <input type="file" name="NewImages" id="ProductImages" class="form-control" accept="image/*" multiple />
+                            <div id="imagePreview" class="admin-image-gallery"></div>
                             <small class="form-text text-muted">@_localizer["Multiple Images"]</small>
                         </div>
                         <h5 class="mt-4 mb-2">
-                            Specification
-                            <button type="button" id="addSpecRow" class="btn btn-sm btn-outline-primary admin-spec-add" aria-label="Add specification">
+                            @T("Specifications","المواصفات")
+                            <button type="button" id="addSpecRow" class="btn btn-sm btn-outline-primary admin-spec-add" aria-label="@T("Add specification","إضافة مواصفة")">
                                 <i class="fa fa-plus"></i>
                             </button>
                         </h5>
 
                         <!-- Heading Row -->
                         <div class="row mb-1 admin-spec-head">
-                            <div class="col-md-2"><label><b>Spec Name (Ar)</b></label></div>
-                            <div class="col-md-4"><label><b>Spec Value (Ar)</b></label></div>
-                            <div class="col-md-2"><label><b>Spec Name (En)</b></label></div>
-                            <div class="col-md-3"><label><b>Spec Value (En)</b></label></div>
+                            <div class="col-md-2"><label><b>@T("Spec Name (Ar)","اسم المواصفة (عربي)")</b></label></div>
+                            <div class="col-md-4"><label><b>@T("Spec Value (Ar)","قيمة المواصفة (عربي)")</b></label></div>
+                            <div class="col-md-2"><label><b>@T("Spec Name (En)","اسم المواصفة (إنجليزي)")</b></label></div>
+                            <div class="col-md-3"><label><b>@T("Spec Value (En)","قيمة المواصفة (إنجليزي)")</b></label></div>
                             <div class="col-md-1"></div>
                         </div>
 
@@ -313,19 +270,19 @@
                                 {
                                     <div class="row specRow mb-2">
                                         <div class="col-md-2">
-                                            <input type="text" name="Specifications[@i].SpeciNameAr" value="@Model.Specifications[i].SpeciNameAr" class="form-control" placeholder="Arabic Name" />
+                                            <input type="text" name="Specifications[@i].SpeciNameAr" value="@Model.Specifications[i].SpeciNameAr" class="form-control" placeholder="@T("Arabic Name","الاسم بالعربية")" aria-label="@T("Arabic Name","الاسم بالعربية")" />
                                         </div>
                                         <div class="col-md-4">
-                                            <input type="text" name="Specifications[@i].SpecivalueAr" value="@Model.Specifications[i].SpecivalueAr" class="form-control" placeholder="Arabic Value" />
+                                            <input type="text" name="Specifications[@i].SpecivalueAr" value="@Model.Specifications[i].SpecivalueAr" class="form-control" placeholder="@T("Arabic Value","القيمة بالعربية")" aria-label="@T("Arabic Value","القيمة بالعربية")" />
                                         </div>
                                         <div class="col-md-2">
-                                            <input type="text" name="Specifications[@i].SpeciNameEn" value="@Model.Specifications[i].SpeciNameEn" class="form-control" placeholder="English Name" />
+                                            <input type="text" name="Specifications[@i].SpeciNameEn" value="@Model.Specifications[i].SpeciNameEn" class="form-control" placeholder="@T("English Name","الاسم بالإنجليزية")" aria-label="@T("English Name","الاسم بالإنجليزية")" />
                                         </div>
                                         <div class="col-md-3">
-                                            <input type="text" name="Specifications[@i].SpecivalueEn" value="@Model.Specifications[i].SpecivalueEn" class="form-control" placeholder="English Value" />
+                                            <input type="text" name="Specifications[@i].SpecivalueEn" value="@Model.Specifications[i].SpecivalueEn" class="form-control" placeholder="@T("English Value","القيمة بالإنجليزية")" aria-label="@T("English Value","القيمة بالإنجليزية")" />
                                         </div>
                                         <div class="col-md-1 d-flex align-items-center">
-                                            <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
+                                            <button type="button" class="btn btn-danger removeSpecRow" aria-label="@T("Remove specification","حذف مواصفة")"><i class="ti-trash"></i></button>
                                         </div>
                                     </div>
                                 }
@@ -335,19 +292,19 @@
                                 <!-- Default empty row if no specs -->
                                 <div class="row specRow mb-2">
                                     <div class="col-md-2">
-                                        <input type="text" name="Specifications[0].SpeciNameAr" class="form-control" placeholder="Arabic Name" />
+                                        <input type="text" name="Specifications[0].SpeciNameAr" class="form-control" placeholder="@T("Arabic Name","الاسم بالعربية")" aria-label="@T("Arabic Name","الاسم بالعربية")" />
                                     </div>
                                     <div class="col-md-4">
-                                        <input type="text" name="Specifications[0].SpecivalueAr" class="form-control" placeholder="Arabic Value" />
+                                        <input type="text" name="Specifications[0].SpecivalueAr" class="form-control" placeholder="@T("Arabic Value","القيمة بالعربية")" aria-label="@T("Arabic Value","القيمة بالعربية")" />
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="text" name="Specifications[0].SpeciNameEn" class="form-control" placeholder="English Name" />
+                                        <input type="text" name="Specifications[0].SpeciNameEn" class="form-control" placeholder="@T("English Name","الاسم بالإنجليزية")" aria-label="@T("English Name","الاسم بالإنجليزية")" />
                                     </div>
                                     <div class="col-md-3">
-                                        <input type="text" name="Specifications[0].SpecivalueEn" class="form-control" placeholder="English Value" />
+                                        <input type="text" name="Specifications[0].SpecivalueEn" class="form-control" placeholder="@T("English Value","القيمة بالإنجليزية")" aria-label="@T("English Value","القيمة بالإنجليزية")" />
                                     </div>
                                     <div class="col-md-1 d-flex align-items-center">
-                                        <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
+                                        <button type="button" class="btn btn-danger removeSpecRow" aria-label="@T("Remove specification","حذف مواصفة")"><i class="ti-trash"></i></button>
                                     </div>
                                 </div>
                             }
@@ -362,104 +319,5 @@
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        // ✅ Load Subcategories dynamically when Category changes
-        $("#CategoryDropdown").change(function () {
-            var catId = $(this).val();
-            $("#SubCategoryDropdown").empty().append('<option>Loading...</option>');
-            if (catId) {
-                $.getJSON('/Products/GetSubCategories?categoryId=' + catId, function (data) {
-                    $("#SubCategoryDropdown").empty().append('<option value="">-- Select SubCategory --</option>');
-                    $.each(data, function (i, sub) {
-                        $("#SubCategoryDropdown").append(
-                            `<option value="${sub.subCategoryId}">${sub.scName}</option>`
-                        );
-                    });
-                });
-            }
-        });
-    </script>
-    <script>
-        document.querySelector('form').addEventListener('submit', function (e) {
-            const costPrice = parseFloat(document.getElementById('CoastPrice').value) || 0;
-            const salePrice = parseFloat(document.getElementById('Price').value) || 0;
-
-            if (salePrice < costPrice) {
-                e.preventDefault(); // prevent form submission first
-
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Price',
-                    text: 'Sale Price must be greater than or equal to Cost Price.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'OK'
-                });
-
-                return false;
-            }
-        });
-    </script>
-    <script>
-        let specIndex = $("#specContainer .specRow").length;
-
-        // Add new spec row
-        $("#addSpecRow").click(function () {
-            var newRow = `
-            <div class="row specRow mb-2 mt-2">
-                <div class="col-md-2">
-                    <input type="text" name="Specifications[${specIndex}].SpeciNameAr" class="form-control" placeholder="Arabic Name" />
-                </div>
-                <div class="col-md-4">
-                    <input type="text" name="Specifications[${specIndex}].SpecivalueAr" class="form-control" placeholder="Arabic Value" />
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="Specifications[${specIndex}].SpeciNameEn" class="form-control" placeholder="English Name" />
-                </div>
-                <div class="col-md-3">
-                    <input type="text" name="Specifications[${specIndex}].SpecivalueEn" class="form-control" placeholder="English Value" />
-                </div>
-                <div class="col-md-1 d-flex align-items-center">
-                    <button type="button" class="btn btn-danger removeSpecRow" aria-label="Remove specification"><i class="ti-trash"></i></button>
-                </div>
-            </div>`;
-            $("#specContainer").append(newRow);
-            specIndex++;
-        });
-
-        // Remove spec row
-        $(document).on('click', '.removeSpecRow', function () {
-            $(this).closest('.specRow').remove();
-            $("#specContainer .specRow").each(function (index) {
-                $(this).find("input[name^='Specifications[']").each(function () {
-                    this.name = this.name.replace(/Specifications\[\d+\]/, "Specifications[" + index + "]");
-                });
-            });
-            specIndex = $("#specContainer .specRow").length;
-        });
-    </script>
-    <script>
-        function deleteImage(imageId) {
-            const ar = document.documentElement.dir === "rtl";
-            const image = document.querySelector('[data-product-image="' + imageId + '"]');
-            if (!image) return;
-            return AdminFeedback.confirmPost('@Url.Action("DeleteProductImage", "Products")', {
-                method: "POST",
-                body: new URLSearchParams({ imageId })
-            }, ar ? "هل تريد حذف هذه الصورة؟" : "Delete this image?",
-            () => {
-                const gallery = image.parentElement;
-                image.remove();
-                if (!gallery.querySelector("[data-product-image]")) {
-                    const empty = document.createElement("span");
-                    empty.className = "text-muted";
-                    empty.textContent = ar ? "لا توجد صور" : "No images uploaded";
-                    gallery.append(empty);
-                }
-            });
-        }
-    </script>
-
-
+    <script src="~/js/product-editor.js" asp-append-version="true"></script>
 }
