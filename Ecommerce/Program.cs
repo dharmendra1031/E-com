@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 try
 {
     var builder = WebApplication.CreateBuilder(args);
@@ -57,6 +59,14 @@ try
 
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddScoped<IMFClient, MFClient>();
+    builder.Services.AddScoped<VendorPortalAccess>();
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddPolicy(VendorPortalAuth.LoginRatePolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ =>
+                new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    });
     //builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     //    .AddCookie(options =>
     //    {
@@ -111,11 +121,26 @@ try
                     u.Role != null && u.Role.IsActive && u.Role.RoleName == "Admin", context.HttpContext.RequestAborted))
                 context.RejectPrincipal();
         };
+    })
+    .AddCookie(VendorPortalAuth.Scheme, options =>
+    {
+        VendorPortalAuth.ConfigureCookie(options);
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var access = context.HttpContext.RequestServices.GetRequiredService<VendorPortalAccess>();
+            if (!await access.IsCurrentAsync(context.Principal, context.HttpContext.RequestAborted))
+                context.RejectPrincipal();
+        };
     });
-
 
     builder.Services.AddAuthorization(options =>
     {
+        options.AddPolicy(VendorPortalAuth.Policy, policy =>
+        {
+            policy.AddAuthenticationSchemes(VendorPortalAuth.Scheme);
+            policy.RequireAuthenticatedUser();
+            policy.RequireRole(VendorRoles.Owner, VendorRoles.Manager, VendorRoles.Staff);
+        });
         options.AddPolicy("SuperAdminOnly", policy =>
             policy.RequireAssertion(context =>
                 context.User.IsInRole("Admin") &&
@@ -217,6 +242,7 @@ try
 
     app.UseRequestLocalization(localizationOptions);
     app.UseRouting();
+    app.UseRateLimiter();
     app.UseSession();
 
     app.UseAuthentication();

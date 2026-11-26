@@ -1,0 +1,14 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorPortalStore
+@{
+    Layout = "_VendorPortalLayout";
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    ViewData["Title"] = ar ? "لوحة التحكم" : "Dashboard";
+}
+<div class="panel panel-default"><div class="panel-body">
+    <h2>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h2>
+    <dl>
+        <dt>@(ar ? "رمز البائع" : "Vendor code")</dt><dd>@Model.Code</dd>
+        <dt>@(ar ? "الحالة" : "Status")</dt><dd>@(ar ? "معتمد" : "Approved")</dd>
+    </dl>
+    <p>@(ar ? "لم يتم تفعيل إدارة المنتجات والطلبات والتسويات بعد." : "Product, order and settlement management are not enabled yet.")</p>
+</div></div>

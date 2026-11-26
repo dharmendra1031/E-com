@@ -1,0 +1,17 @@
+@model List<EcommerceWebApplication.Models.ViewModels.VendorPortalStore>
+@{
+    Layout = "_VendorPortalLayout";
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    ViewData["Title"] = ar ? "متاجري" : "My stores";
+}
+<h2>@ViewData["Title"]</h2>
+@if (Model.Count == 0) { <p>@(ar ? "لا توجد متاجر متاحة" : "No available stores.")</p> }
+<div class="list-group">
+@foreach (var store in Model)
+{
+    <a class="list-group-item" asp-action="Dashboard" asp-route-id="@store.VendorId">
+        <strong>@(ar && !string.IsNullOrWhiteSpace(store.NameArb) ? store.NameArb : store.Name)</strong>
+        <span> — @store.Code</span>
+    </a>
+}
+</div>
