@@ -42,3 +42,29 @@ Check(SellerCheckoutQuote.Read(protector, "tampered" + protectedQuote, 7) == nul
 Check(!checkoutQuote.MatchesLines(new[] { new SellerQuoteLine(1, 2, 101m), new SellerQuoteLine(2, 2, 95m) }), "Changed basket accepted.");
 Check(!(checkoutQuote with { Lines = new[] { new SellerQuoteLine(1, 1, 101m), new SellerQuoteLine(1, 2, 95m) } }).IsValid(), "Duplicate listing accepted.");
 Console.WriteLine("Seller checkout quotation checks passed.");
+
+var reference = Guid.NewGuid();
+var tx = new MF.Models.TransactionModel { TransactionStatus = "Succss", PaymentId = "test-payment", Currency = "KD",
+    PaidCurrency = "KD", TransationValue = "291.000" };
+var evidence = new MF.Models.GenericResponse<MF.Models.GetPaymentStatusResponse> { IsSuccess = true,
+    Data = new MF.Models.GetPaymentStatusResponse { InvoiceId = 12345, InvoiceStatus = "Paid",
+        CustomerReference = reference.ToString("N"), InvoiceValue = 291m, InvoiceTransactions = new() { tx } } };
+string? Verified() => MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12345,reference,291m);
+Check(Verified()=="test-payment","Valid sandbox evidence rejected.");
+evidence.Data.InvoiceStatus="Pending";
+Check(Verified()==null,"Pending invoice accepted.");
+evidence.Data.InvoiceStatus="Paid";
+tx.TransactionStatus="Failed";
+Check(Verified()==null,"Failed transaction accepted.");
+tx.TransactionStatus="Succss";
+tx.Currency="USD";
+Check(Verified()==null,"Wrong currency accepted.");
+tx.Currency="KD";
+tx.TransationValue="290.000";
+Check(Verified()==null,"Wrong transaction amount accepted.");
+tx.TransationValue="291.000";
+Check(MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12346,reference,291m)==null,"Wrong invoice accepted.");
+Check(MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12345,Guid.NewGuid(),291m)==null,"Wrong order reference accepted.");
+evidence.Data.InvoiceTransactions.Add(tx);
+Check(Verified()==null,"Ambiguous multiple successful transactions accepted.");
+Console.WriteLine("Marketplace payment evidence checks passed.");
