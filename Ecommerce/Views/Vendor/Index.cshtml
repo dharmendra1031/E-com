@@ -26,6 +26,7 @@
                         <td>@vendor.VendorCode</td><td>@vendor.Name</td><td>@vendor.NameArb</td><td>@StatusText(vendor.Status)</td>
                         <td>
                             <a asp-action="Edit" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-primary">@T("Edit", "تعديل")</a>
+                            <a asp-action="Listings" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-default">@T("Listings", "العروض")</a>
                             <a asp-action="Members" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-default">@T("Users", "المستخدمون")</a>
                             <form asp-action="ChangeStatus" method="post" class="form-inline">
                                 <input type="hidden" name="id" value="@vendor.VendorId" />

@@ -1,0 +1,20 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorListingForm
+@{
+    Layout = "_VendorPortalLayout";
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en, string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Product listing","عرض المنتج");
+}
+<div class="panel panel-default"><div class="panel-body">
+    <h2>@Model.ProductName</h2>
+    <form asp-action="EditListing" asp-route-id="@Model.VendorId" method="post">
+        <input asp-for="VendorId" type="hidden" /><input asp-for="ListingId" type="hidden" />
+        <input asp-for="ProductId" type="hidden" /><input asp-for="Version" type="hidden" />
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <div class="form-group"><label asp-for="SellerSku">@T("Seller SKU","رمز البائع")</label><input asp-for="SellerSku" class="form-control" maxlength="100" required /></div>
+        <div class="form-group"><label asp-for="Price">@T("Selling price","سعر البيع")</label><input asp-for="Price" type="number" min="0" step="0.001" class="form-control" required /></div>
+        <p>@T("New or changed listings require admin approval.","العروض الجديدة أو المعدلة تتطلب اعتماد الإدارة.")</p>
+        <button type="submit" class="btn btn-primary">@T("Save","حفظ")</button>
+        <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Cancel","إلغاء")</a>
+    </form>
+</div></div>

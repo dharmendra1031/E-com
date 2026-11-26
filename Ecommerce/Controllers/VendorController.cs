@@ -8,6 +8,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Data;
+using EcommerceWebApplication.Helper;
 
 namespace EcommerceWebApplication.Controllers;
 
@@ -176,6 +177,38 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
         if (updated != 1) return Conflict("Membership changed or user is not eligible.");
         TempData["Success"] = MemberMessage("Membership updated.", "تم تحديث العضوية.");
         return RedirectToAction(nameof(Members), new { id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Listings(int id, string? search, int page = 1, CancellationToken ct = default)
+    {
+        var vendor = await db.Vendors.AsNoTracking().SingleOrDefaultAsync(v => v.VendorId == id, ct);
+        if (vendor == null) return NotFound();
+        return View(await VendorListingQueries.ReadPageAsync(db, id, vendor.Name, search, page, false, true, ct));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ChangeListingStatus(int id, int listingId, string version, string status, CancellationToken ct)
+    {
+        if (status is not ("Approved" or "Inactive") ||
+            !VendorListingQueries.TryVersion(version, out var expected)) return BadRequest();
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var listing = await db.VendorListings.Include(l => l.Product).Include(l => l.Vendor)
+            .SingleOrDefaultAsync(l => l.VendorId == id && l.VendorListingId == listingId, ct);
+        if (listing == null) return NotFound();
+        if (!listing.RowVersion.SequenceEqual(expected)) return Conflict("Listing changed; reload.");
+        if (status == "Approved" && (listing.Vendor.Status != "Approved" || !listing.Product.IsActive ||
+            listing.Status is not ("Pending" or "Inactive"))) return BadRequest();
+        if (status == "Inactive" && listing.Status == "Inactive") return BadRequest();
+        listing.Status = status;
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException) { return Conflict("Listing changed; reload."); }
+        TempData["Success"] = MemberMessage("Listing status updated.", "تم تحديث حالة العرض.");
+        return RedirectToAction(nameof(Listings), new { id });
     }
 
     private static string MemberMessage(string en, string ar) =>

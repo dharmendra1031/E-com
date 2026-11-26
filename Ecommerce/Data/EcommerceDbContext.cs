@@ -23,6 +23,7 @@ namespace EcommerceWebApplication.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
         public DbSet<VendorUser> VendorUsers { get; set; }
+        public DbSet<VendorListing> VendorListings { get; set; }
         public DbSet<Customers> Customers { get; set; }
 
         //public DbSet<Driver> Drivers { get; set; }
@@ -79,6 +80,13 @@ namespace EcommerceWebApplication.Data
         public DbSet<OrderProductViewModel> OrderProductViewModel { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<VendorListing>(entity =>
+            {
+                entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(x => new { x.VendorId, x.SellerSku }).IsUnique();
+                entity.HasIndex(x => new { x.VendorId, x.ProductId }).IsUnique();
+            });
             modelBuilder.Entity<VendorUser>(entity =>
             {
                 entity.HasKey(x => new { x.VendorId, x.UserId });

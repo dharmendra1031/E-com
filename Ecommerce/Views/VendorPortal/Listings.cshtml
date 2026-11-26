@@ -1,0 +1,6 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorListingsPage
+@{
+    Layout = "_VendorPortalLayout";
+    ViewData["Title"] = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" ? "العروض" : "Listings";
+}
+<div class="panel panel-default"><div class="panel-body"><partial name="_VendorListings" model="Model" /></div></div>

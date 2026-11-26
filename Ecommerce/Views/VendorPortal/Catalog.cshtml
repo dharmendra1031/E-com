@@ -1,0 +1,26 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorListingsPage
+@{
+    Layout = "_VendorPortalLayout";
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en, string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Catalog","الكتالوج");
+}
+<h2>@ViewData["Title"]</h2>
+<a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back to listings","العودة إلى العروض")</a>
+<form asp-action="Catalog" asp-route-id="@Model.VendorId" method="get" class="form-inline">
+    <label for="search">@T("Search name, SKU or barcode","بحث بالاسم أو الرمز أو الباركود")</label>
+    <input id="search" name="search" value="@Model.Search" class="form-control" />
+    <button class="btn btn-primary" type="submit">@T("Search","بحث")</button>
+</form>
+<div class="list-group">
+@foreach (var row in Model.Rows)
+{
+    <a class="list-group-item" asp-action="EditListing" asp-route-id="@Model.VendorId" asp-route-productId="@row.ProductId">@(ar ? row.ProductNameArb : row.ProductName) — @T("Add listing","إضافة عرض")</a>
+}
+@if (Model.Rows.Count == 0) { <p>@T("No available products","لا توجد منتجات متاحة")</p> }
+</div>
+<nav>
+@if (Model.Page > 1) { <a asp-action="Catalog" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page-1)" class="btn btn-default">@T("Previous","السابق")</a> }
+<span>@Model.Page</span>
+@if (Model.HasNext) { <a asp-action="Catalog" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page+1)" class="btn btn-default">@T("Next","التالي")</a> }
+</nav>

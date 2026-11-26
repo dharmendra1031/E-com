@@ -10,5 +10,6 @@
         <dt>@(ar ? "رمز البائع" : "Vendor code")</dt><dd>@Model.Code</dd>
         <dt>@(ar ? "الحالة" : "Status")</dt><dd>@(ar ? "معتمد" : "Approved")</dd>
     </dl>
-    <p>@(ar ? "لم يتم تفعيل إدارة المنتجات والطلبات والتسويات بعد." : "Product, order and settlement management are not enabled yet.")</p>
+    <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary">@(ar ? "عروض المنتجات" : "Product listings")</a>
+    <p>@(ar ? "إدارة المخزون والطلبات والتسويات غير مفعلة بعد." : "Inventory, order and settlement management are not enabled yet.")</p>
 </div></div>

@@ -81,4 +81,11 @@ END TRY
 BEGIN CATCH
     IF ERROR_NUMBER() <> 547 THROW;
 END CATCH;
+DECLARE @oldVersion binary(8) = (SELECT RowVersion FROM dbo.VendorListings WHERE VendorId = @A AND ProductId = 1);
+UPDATE dbo.VendorListings SET Price = 101.000 WHERE VendorId = @A AND ProductId = 1 AND RowVersion = @oldVersion;
+IF @@ROWCOUNT <> 1 THROW 51125, 'Expected listing update rejected.', 1;
+UPDATE dbo.VendorListings SET Price = 102.000 WHERE VendorId = @A AND ProductId = 1 AND RowVersion = @oldVersion;
+IF @@ROWCOUNT <> 0 THROW 51126, 'Stale listing version accepted.', 1;
+IF NOT EXISTS (SELECT 1 FROM dbo.VendorListings WHERE VendorId = @B AND ProductId = 1 AND Price = 95.000)
+    THROW 51127, 'Updating one vendor changed another price.', 1;
 PRINT 'Marketplace schema fixture passed.';
