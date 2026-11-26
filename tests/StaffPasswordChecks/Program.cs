@@ -29,3 +29,16 @@ Check(VendorPortalAuth.CredentialVersion(first) != VendorPortalAuth.CredentialVe
 Check(!EcommerceWebApplication.Models.VendorRoles.IsVendorRole("Admin") &&
     EcommerceWebApplication.Models.VendorRoles.IsVendorRole("VendorOwner"), "Vendor role boundary incorrect.");
 Console.WriteLine("Vendor portal authentication configuration checks passed.");
+
+var protector = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider().CreateProtector("test-quote");
+var checkoutQuote = new SellerCheckoutQuote(Guid.NewGuid(), 7, DateTime.UtcNow.AddMinutes(10), 3m, 5m,
+    new[] { new SellerQuoteLine(1, 1, 101m), new SellerQuoteLine(2, 2, 95m) });
+Check(checkoutQuote.IsValid() && checkoutQuote.Subtotal == 291m && checkoutQuote.VatAmount == 14.55m &&
+    checkoutQuote.Total == 308.55m, "Checkout arithmetic incorrect.");
+var protectedQuote = checkoutQuote.Protect(protector);
+Check(SellerCheckoutQuote.Read(protector, protectedQuote, 7)?.RequestId == checkoutQuote.RequestId, "Quote could not be recovered.");
+Check(SellerCheckoutQuote.Read(protector, protectedQuote, 8) == null, "Cross-customer quote accepted.");
+Check(SellerCheckoutQuote.Read(protector, "tampered" + protectedQuote, 7) == null, "Tampered quote accepted.");
+Check(!checkoutQuote.MatchesLines(new[] { new SellerQuoteLine(1, 2, 101m), new SellerQuoteLine(2, 2, 95m) }), "Changed basket accepted.");
+Check(!(checkoutQuote with { Lines = new[] { new SellerQuoteLine(1, 1, 101m), new SellerQuoteLine(1, 2, 95m) } }).IsValid(), "Duplicate listing accepted.");
+Console.WriteLine("Seller checkout quotation checks passed.");

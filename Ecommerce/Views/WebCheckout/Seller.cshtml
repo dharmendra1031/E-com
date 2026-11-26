@@ -1,0 +1,65 @@
+@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.SellerCheckoutPage
+@{
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en, string arabic) => ar ? arabic : en;
+    string Money(decimal amount) => "KD " + amount.ToString("F3", CultureInfo.InvariantCulture);
+    ViewData["Title"] = T("Seller checkout","الدفع للبائعين");
+}
+<div class="container py-3">
+    <h1 class="h4">@ViewData["Title"]</h1>
+    <p class="alert alert-warning">@T("Development test only. No payment will be taken. Charges use current store settings for testing.", "اختبار تطوير فقط. لن يتم تحصيل أي مبلغ. الرسوم حسب إعدادات المتجر للاختبار.")</p>
+    <form asp-action="PlaceSellerOrder" method="post">
+        <input type="hidden" name="token" value="@Model.Token" />
+        <div class="row g-3">
+            <section class="col-lg-8">
+                <div class="store-cart-panel p-3">
+                    <h2 class="h5">@T("Delivery address","عنوان التوصيل")</h2>
+                    @if (Model.Addresses.Count == 0)
+                    {
+                        <p>@T("Add an address using your customer account before checkout.","أضف عنواناً في حساب العميل قبل الدفع.")</p>
+                    }
+                    else
+                    {
+                        @foreach (var address in Model.Addresses)
+                        {
+                            <label class="d-block border rounded p-2 mb-2">
+                                <input type="radio" name="addressId" value="@address.AddressId" required checked="@(address.AddressId == Model.Addresses.First().AddressId)" />
+                                <strong>@address.Title</strong> — @address.Street, @address.HouseNo, @address.Phone
+                            </label>
+                        }
+                    }
+                    @foreach (var group in Model.Lines.GroupBy(l => new { l.VendorId, l.VendorName, l.VendorNameArb }))
+                    {
+                        <h3 class="h6 mt-3">@(ar && !string.IsNullOrWhiteSpace(group.Key.VendorNameArb) ? group.Key.VendorNameArb : group.Key.VendorName)</h3>
+                        <div class="table-responsive"><table class="table">
+                            <thead><tr><th>@T("Product","المنتج")</th><th>@T("Qty","الكمية")</th><th>@T("Unit price","سعر الوحدة")</th><th>@T("Amount","المبلغ")</th></tr></thead>
+                            <tbody>
+                            @foreach (var line in group)
+                            {
+                                <tr><td>@(ar && !string.IsNullOrWhiteSpace(line.ProductNameArb) ? line.ProductNameArb : line.ProductName)</td><td>@line.Quantity</td><td dir="ltr">@Money(line.SavedPrice)</td><td dir="ltr">@Money(line.SavedPrice * line.Quantity)</td></tr>
+                            }
+                            </tbody>
+                        </table></div>
+                        <p class="text-end">@T("Seller subtotal","مجموع البائع") <bdi>@Money(group.Sum(l => l.Quantity * l.SavedPrice))</bdi></p>
+                    }
+                </div>
+            </section>
+            <aside class="col-lg-4">
+                <div class="store-cart-panel p-3">
+                    <h2 class="h5">@T("Order summary","ملخص الطلب")</h2>
+                    <dl>
+                        <dt>@T("Subtotal","المجموع الفرعي")</dt><dd dir="ltr">@Money(Model.Quote.Subtotal)</dd>
+                        <dt>@T("Delivery","التوصيل")</dt><dd dir="ltr">@Money(Model.Quote.DeliveryCharge)</dd>
+                        <dt>@T("VAT","ضريبة القيمة المضافة") (@Model.Quote.VatPercent%)</dt><dd dir="ltr">@Money(Model.Quote.VatAmount)</dd>
+                        <dt>@T("Total","الإجمالي")</dt><dd dir="ltr"><strong>@Money(Model.Quote.Total)</strong></dd>
+                    </dl>
+                    <p class="small">@T("Quote valid for 10 minutes. No coupons or payment in this test.","العرض صالح لمدة 10 دقائق. لا توجد قسائم أو دفع في الاختبار.")</p>
+                    <button class="btn btn-primary w-100" type="submit" disabled="@(Model.Addresses.Count == 0)">@T("Create unpaid test order","إنشاء طلب اختبار غير مدفوع")</button>
+                    <a class="d-block mt-2" asp-controller="WebCart" asp-action="Cart">@T("Back to cart","العودة إلى السلة")</a>
+                </div>
+            </aside>
+        </div>
+    </form>
+</div>

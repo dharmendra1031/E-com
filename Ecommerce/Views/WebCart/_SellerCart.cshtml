@@ -1,5 +1,7 @@
 @using System.Globalization
 @model List<EcommerceWebApplication.Models.ViewModels.SellerCartLine>
+@inject Microsoft.Extensions.Configuration.IConfiguration CheckoutConfiguration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment CheckoutEnvironment
 @{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
 <section class="store-cart-panel p-3 mb-3">
     <h2 class="h5">@(ar ? "سلة البائعين — معاينة" : "Seller cart — preview")</h2>
@@ -41,5 +43,10 @@
     @if (Model.Count > 0 && Model.All(l => l.CurrentPrice.HasValue && l.AvailableQuantity >= l.Quantity))
     {
         <p class="fw-semibold">@(ar ? "المجموع التقديري للبائعين" : "Estimated seller subtotal") <bdi>KD @Model.Sum(l => l.CurrentPrice!.Value * l.Quantity).ToString("F3", CultureInfo.InvariantCulture)</bdi></p>
+    }
+    @if (EcommerceWebApplication.Helper.SellerCartAccess.CheckoutEnabled(CheckoutConfiguration, CheckoutEnvironment) &&
+         Model.Count > 0 && Model.All(l => l.CurrentPrice == l.SavedPrice && l.AvailableQuantity >= l.Quantity))
+    {
+        <a class="btn btn-primary" asp-controller="WebCheckout" asp-action="Seller">@(ar ? "مراجعة طلب الاختبار" : "Review test checkout")</a>
     }
 </section>

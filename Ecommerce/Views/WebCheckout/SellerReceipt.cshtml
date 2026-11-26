@@ -1,0 +1,15 @@
+@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.SellerOrderReceipt
+@{
+    Layout = "~/Views/Shared/_WebLayout.cshtml";
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = ar ? "طلب الاختبار" : "Test order";
+}
+<div class="container py-4">
+    <div class="store-cart-panel p-3">
+        <h1 class="h4">@(ar ? "طلب الاختبار" : "Test order") #@Model.OrderId</h1>
+        <p dir="ltr">KD @Model.Total.ToString("F3", CultureInfo.InvariantCulture)</p>
+        <p>@(ar ? "لم يتم بدء الدفع عبر هذه الشاشة." : "No payment was initiated by this screen.")</p>
+        <a class="btn btn-outline-primary" asp-controller="WebCart" asp-action="Cart">@(ar ? "العودة إلى السلة" : "Return to cart")</a>
+    </div>
+</div>

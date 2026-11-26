@@ -1,4 +1,7 @@
 ﻿using System.Data;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Data.SqlClient;
+using System.Text.Json;
 using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
@@ -14,9 +17,140 @@ namespace EcommerceWebApplication.Controllers
     {
         private readonly EcommerceDbContext _context;
 
-        public WebCheckoutController(EcommerceDbContext context)
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IDataProtector _quoteProtector;
+
+        public WebCheckoutController(EcommerceDbContext context, IConfiguration configuration,
+            IWebHostEnvironment environment, IDataProtectionProvider protection)
         {
             _context = context;
+            _configuration = configuration;
+            _environment = environment;
+            _quoteProtector = protection.CreateProtector("Ecom.SellerCheckout.Quote.v1");
+        }
+
+        private bool SellerCheckoutEnabled => SellerCartAccess.CheckoutEnabled(_configuration, _environment);
+
+        private async Task<List<UserAddress>> SellerAddresses(int customerId, CancellationToken ct) =>
+            await _context.UserAddresses.AsNoTracking().Where(a => a.UserId == customerId && a.isdeleted == 0)
+                .OrderByDescending(a => a.IsDefault).ThenBy(a => a.AddressId).ToListAsync(ct);
+
+        private async Task<bool> ValidSellerAddress(int customerId, int addressId, CancellationToken ct)
+        {
+            var address = await _context.UserAddresses.AsNoTracking().SingleOrDefaultAsync(a =>
+                a.UserId == customerId && a.AddressId == addressId && a.isdeleted == 0, ct);
+            return address != null && !string.IsNullOrWhiteSpace(address.Street) && !string.IsNullOrWhiteSpace(address.Phone)
+                && int.TryParse(address.Area, out var area) && int.TryParse(address.Block, out var block)
+                && await _context.Block.AnyAsync(b => b.Id == block && b.AreaId == area, ct);
+        }
+
+        private async Task<(decimal Delivery, decimal Vat)?> SellerCharges(CancellationToken ct)
+        {
+            var company = await _context.CompanyDetails.AsNoTracking().OrderByDescending(c => c.CompanyId)
+                .Select(c => new { c.DeliveryCharge, c.Vat }).FirstOrDefaultAsync(ct);
+            if (company == null || company.DeliveryCharge < 0 || company.Vat < 0 || company.Vat > 100) return null;
+            return (Money(company.DeliveryCharge), company.Vat);
+        }
+
+        private static SellerQuoteLine[] QuoteLines(IEnumerable<SellerCartLine> rows) =>
+            rows.OrderBy(r => r.ListingId).Select(r => new SellerQuoteLine(r.ListingId, r.Quantity, r.SavedPrice)).ToArray();
+
+        private static bool ReadyForSellerQuote(List<SellerCartLine> rows) =>
+            rows.Count is > 0 and <= 100 && rows.All(r => r.CurrentPrice == r.SavedPrice &&
+                r.Quantity > 0 && r.AvailableQuantity >= r.Quantity);
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Seller(CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            var rows = await SellerCartAccess.ReadAsync(_context, customerId, ct);
+            var charges = await SellerCharges(ct);
+            if (!ReadyForSellerQuote(rows) || charges == null)
+            {
+                TempData["SellerCartMessage"] = "Review seller quantities, prices and checkout settings. / راجع السلة وإعدادات الدفع.";
+                return RedirectToAction("Cart", "WebCart");
+            }
+            var quote = new SellerCheckoutQuote(Guid.NewGuid(), customerId, DateTime.UtcNow.AddMinutes(10),
+                charges.Value.Delivery, charges.Value.Vat, QuoteLines(rows));
+            if (!quote.IsValid()) return Conflict("Invalid checkout amount.");
+            return View(new SellerCheckoutPage { Lines = rows, Addresses = await SellerAddresses(customerId, ct),
+                Quote = quote, Token = quote.Protect(_quoteProtector) });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PlaceSellerOrder(string token, int addressId, CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled) return NotFound();
+            if (!ModelState.IsValid || addressId <= 0) return BadRequest();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            var quote = SellerCheckoutQuote.Read(_quoteProtector, token, customerId);
+            if (quote == null) return BadRequest("Invalid checkout quotation.");
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            try
+            {
+                if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) != customerId) return Unauthorized();
+                var existing = await _context.Orders.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(o =>
+                    o.CustomerId == customerId && o.MarketplaceRequestId == quote.RequestId, ct);
+                if (existing != null)
+                {
+                    var snapshots = await _context.OrderItems.IgnoreQueryFilters().AsNoTracking()
+                        .Where(i => i.OrderId == existing.OrderId && i.VendorListingId != null)
+                        .Select(i => new SellerQuoteLine(i.VendorListingId!.Value, i.Quantity!.Value, i.Price!.Value)).ToListAsync(ct);
+                    if (existing.DeliveryAddress != addressId || existing.TotalAmount != quote.Total ||
+                        existing.DeliveryCharge != quote.DeliveryCharge || existing.VatPercent != quote.VatPercent ||
+                        !quote.MatchesLines(snapshots)) return Conflict("Request already used with different details.");
+                    return RedirectToAction(nameof(SellerReceipt), new { requestId = quote.RequestId });
+                }
+                if (quote.ExpiresAtUtc <= DateTime.UtcNow) return Conflict("Quote expired. Review checkout again.");
+                if (!await ValidSellerAddress(customerId, addressId, ct)) return BadRequest("Invalid delivery address.");
+                var rows = await SellerCartAccess.ReadAsync(_context, customerId, ct);
+                var charges = await SellerCharges(ct);
+                if (!ReadyForSellerQuote(rows) || !quote.MatchesLines(QuoteLines(rows)) || charges == null ||
+                    charges.Value.Delivery != quote.DeliveryCharge || charges.Value.Vat != quote.VatPercent)
+                    return Conflict("Cart or checkout charges changed. Review checkout again.");
+
+                var now = DateTime.Now;
+                var order = new OrderModel { CustomerId = customerId, MarketplaceRequestId = quote.RequestId,
+                    TotalAmount = quote.Total, VatAmount = quote.VatAmount, VatPercent = quote.VatPercent,
+                    DeliveryCharge = quote.DeliveryCharge, DiscountAmount = 0, Status = 1, PaymentStatus = 2,
+                    PaymentType = "Online", DeliveryAddress = addressId, OrderTransaction = "0",
+                    CreatedAt = now, UpdatedAt = now, NewNotification = 0 };
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync(ct);
+                var linesJson = JsonSerializer.Serialize(quote.Lines, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var expires = DateTime.UtcNow.AddMinutes(15);
+                await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                    EXEC dbo.AttachMarketplaceOrder @OrderId={order.OrderId}, @CustomerId={customerId},
+                        @ExpectedLines={linesJson}, @ExpiresAtUtc={expires}
+                    """, ct);
+                await transaction.CommitAsync(ct);
+                return RedirectToAction(nameof(SellerReceipt), new { requestId = quote.RequestId });
+            }
+            catch (SqlException ex) when (ex.Number is 1205 or 2601 or 2627 or >= 51400 and <= 51499 or >= 51700 and <= 51799)
+            {
+                return Conflict("Order not confirmed. Check the receipt using the same checkout request before retrying.");
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 1205 or 2601 or 2627 })
+            {
+                return Conflict("Order not confirmed. Retry the same checkout request.");
+            }
+        }
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> SellerReceipt(Guid requestId, CancellationToken ct)
+        {
+            if (!SellerCheckoutEnabled) return NotFound();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            var receipt = await _context.Orders.IgnoreQueryFilters().AsNoTracking()
+                .Where(o => o.CustomerId == customerId && o.MarketplaceRequestId == requestId)
+                .Select(o => new SellerOrderReceipt { OrderId = o.OrderId, Total = o.TotalAmount, PaymentStatus = o.PaymentStatus })
+                .SingleOrDefaultAsync(ct);
+            return receipt == null ? NotFound() : View(receipt);
         }
         private int? CustomerId => User.IsInRole("Customer") && int.TryParse(User.FindFirst("UserId")?.Value, out var id) && HttpContext.Session.GetInt32("UserId") == id ? id : null;
 

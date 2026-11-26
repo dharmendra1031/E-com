@@ -22,48 +22,12 @@ namespace EcommerceWebApplication.Controllers
             _context = context;
             _configuration = configuration;
         }
-        private bool SellerCartEnabled => MarketplaceOffers.Enabled(_configuration) &&
-            _configuration.GetValue("Marketplace:SellerCartEnabled", false);
-
-        private async Task<int?> SellerCustomerAsync(CancellationToken ct)
-        {
-            if (!User.IsInRole("Customer") || !int.TryParse(User.FindFirst("UserId")?.Value, out var id) ||
-                id <= 0 || HttpContext.Session.GetInt32("UserId") != id) return null;
-            return await _context.Customers.AnyAsync(c => c.UserId == id && c.IsActive && c.IsDeleted == 0 &&
-                c.Role != null && c.Role.IsActive && c.Role.RoleName == "Customer", ct) ? id : null;
-        }
-
-        // Only authenticated marketplace cart paths bypass the legacy global filter.
-        private IQueryable<CartItem> SellerLines(int userId) => _context.CartItems.IgnoreQueryFilters()
-            .Where(c => c.UserId == userId && c.VendorListingId != null);
+        private bool SellerCartEnabled => SellerCartAccess.Enabled(_configuration);
 
         public async Task<IActionResult> Cart(CancellationToken ct)
         {
-            if (SellerCartEnabled && await SellerCustomerAsync(ct) is int customerId)
-            {
-                var rows = await (from c in SellerLines(customerId).AsNoTracking()
-                    join l in _context.VendorListings.AsNoTracking() on c.VendorListingId equals (int?)l.VendorListingId
-                    select new EcommerceWebApplication.Models.ViewModels.SellerCartLine
-                    {
-                        CartItemId = c.CartItemId, ListingId = l.VendorListingId, VendorId = l.VendorId,
-                        VendorName = l.Vendor.Name, VendorNameArb = l.Vendor.NameArb,
-                        ProductId = c.ProductId, ProductName = l.Product.Name, ProductNameArb = l.Product.NameArb,
-                        Quantity = c.Quantity, SavedPrice = c.Price
-                    }).OrderBy(c => c.VendorId).ThenBy(c => c.CartItemId).ToListAsync(ct);
-                var listingIds = rows.Select(c => c.ListingId).ToArray();
-                if (listingIds.Length > 0)
-                {
-                    var offers = await MarketplaceOffers.Available(_context).Where(o => listingIds.Contains(o.ListingId))
-                        .ToDictionaryAsync(o => o.ListingId, ct);
-                    foreach (var row in rows)
-                        if (offers.TryGetValue(row.ListingId, out var offer))
-                        {
-                            row.CurrentPrice = offer.Price;
-                            row.AvailableQuantity = offer.AvailableQuantity;
-                        }
-                }
-                ViewBag.SellerCart = rows;
-            }
+            if (SellerCartEnabled && await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is int customerId)
+                ViewBag.SellerCart = await SellerCartAccess.ReadAsync(_context, customerId, ct);
             return View();
         }
 
@@ -72,7 +36,7 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> SetSellerQuantity(int listingId, int quantity, CancellationToken ct)
         {
             if (!SellerCartEnabled) return NotFound();
-            if (await SellerCustomerAsync(ct) is not int customerId) return Unauthorized();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
             if (!ModelState.IsValid || listingId <= 0 || quantity < 1 || quantity > 1000000)
                 return BadRequest("Invalid listing or quantity.");
             await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
@@ -82,10 +46,10 @@ namespace EcommerceWebApplication.Controllers
                 TempData["SellerCartMessage"] = "Seller offer or requested stock unavailable. / العرض أو الكمية غير متاحة.";
                 return RedirectToAction(nameof(Cart));
             }
-            var line = await SellerLines(customerId).SingleOrDefaultAsync(c => c.VendorListingId == listingId, ct);
+            var line = await SellerCartAccess.Lines(_context, customerId).SingleOrDefaultAsync(c => c.VendorListingId == listingId, ct);
             if (line == null)
             {
-                if (await SellerLines(customerId).CountAsync(ct) >= 100)
+                if (await SellerCartAccess.Lines(_context, customerId).CountAsync(ct) >= 100)
                     return Conflict("Seller cart is limited to 100 listings.");
                 var product = await _context.Products.AsNoTracking().Where(p => p.ProductId == offer.ProductId)
                     .Select(p => new { p.Name, p.NameArb }).SingleAsync(ct);
@@ -113,8 +77,8 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> RemoveSellerLine(int listingId, CancellationToken ct)
         {
             if (!SellerCartEnabled) return NotFound();
-            if (await SellerCustomerAsync(ct) is not int customerId) return Unauthorized();
-            await SellerLines(customerId).Where(c => c.VendorListingId == listingId).ExecuteDeleteAsync(ct);
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            await SellerCartAccess.Lines(_context, customerId).Where(c => c.VendorListingId == listingId).ExecuteDeleteAsync(ct);
             return RedirectToAction(nameof(Cart));
         }
 
