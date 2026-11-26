@@ -30,7 +30,7 @@ BEGIN TRY
     DROP TABLE dbo.InventoryReservations;
     DROP TABLE dbo.InventoryBalances;
 
-    CREATE TABLE dbo.InventoryBalances (
+    EXEC sys.sp_executesql N'    CREATE TABLE dbo.InventoryBalances (
         VendorListingId int NOT NULL CONSTRAINT PK_InventoryBalances PRIMARY KEY,
         OnHandQuantity bigint NOT NULL,
         ReservedQuantity bigint NOT NULL CONSTRAINT DF_InventoryBalances_Reserved DEFAULT (0),
@@ -39,9 +39,9 @@ BEGIN TRY
         RowVersion rowversion NOT NULL,
         CONSTRAINT FK_InventoryBalances_Listings FOREIGN KEY (VendorListingId) REFERENCES dbo.VendorListings(VendorListingId),
         CONSTRAINT CK_InventoryBalances_Quantity CHECK (OnHandQuantity >= 0 AND ReservedQuantity >= 0 AND ReservedQuantity <= OnHandQuantity)
-    );
+    );';
 
-    CREATE TABLE dbo.InventoryReservations (
+    EXEC sys.sp_executesql N'    CREATE TABLE dbo.InventoryReservations (
         OrderId int NOT NULL,
         VendorListingId int NOT NULL,
         Quantity bigint NOT NULL,
@@ -53,12 +53,12 @@ BEGIN TRY
         CONSTRAINT FK_InventoryReservations_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId),
         CONSTRAINT FK_InventoryReservations_Balances FOREIGN KEY (VendorListingId) REFERENCES dbo.InventoryBalances(VendorListingId),
         CONSTRAINT CK_InventoryReservations_Quantity CHECK (Quantity > 0),
-        CONSTRAINT CK_InventoryReservations_Status CHECK (Status IN ('Reserved', 'Consumed', 'Released')),
+        CONSTRAINT CK_InventoryReservations_Status CHECK (Status IN (''Reserved'', ''Consumed'', ''Released'')),
         CONSTRAINT CK_InventoryReservations_Expiry CHECK (ExpiresAtUtc > CreatedAtUtc)
     );
-    CREATE INDEX IX_InventoryReservations_Expiry ON dbo.InventoryReservations (Status, ExpiresAtUtc) INCLUDE (VendorListingId, Quantity);
+    CREATE INDEX IX_InventoryReservations_Expiry ON dbo.InventoryReservations (Status, ExpiresAtUtc) INCLUDE (VendorListingId, Quantity);';
 
-    CREATE TABLE dbo.InventoryTransactions (
+    EXEC sys.sp_executesql N'    CREATE TABLE dbo.InventoryTransactions (
         InventoryTransactionId bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_InventoryTransactions PRIMARY KEY,
         VendorListingId int NOT NULL,
         OnHandDelta bigint NOT NULL,
@@ -73,10 +73,10 @@ BEGIN TRY
         CONSTRAINT FK_InventoryTransactions_Balances FOREIGN KEY (VendorListingId) REFERENCES dbo.InventoryBalances(VendorListingId),
         CONSTRAINT CK_InventoryTransactions_Delta CHECK (OnHandDelta <> 0 OR ReservedDelta <> 0),
         CONSTRAINT UQ_InventoryTransactions_Source UNIQUE (VendorListingId, SourceType, SourceId, SourceLineId)
-    );
+    );';
 
-    CREATE UNIQUE INDEX UX_InventoryTransactions_Request ON dbo.InventoryTransactions(RequestId) WHERE RequestId IS NOT NULL;
-    CREATE INDEX IX_InventoryTransactions_Listing ON dbo.InventoryTransactions(VendorListingId, InventoryTransactionId DESC);
+    EXEC sys.sp_executesql N'    CREATE UNIQUE INDEX UX_InventoryTransactions_Request ON dbo.InventoryTransactions(RequestId) WHERE RequestId IS NOT NULL;
+    CREATE INDEX IX_InventoryTransactions_Listing ON dbo.InventoryTransactions(VendorListingId, InventoryTransactionId DESC);';
 
     COMMIT TRANSACTION;
     PRINT 'Empty staged inventory re-keyed to seller listings.';
