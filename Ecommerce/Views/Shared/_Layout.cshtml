@@ -804,6 +804,8 @@
         });
     </script>
 
+    @* Shared token for admin AJAX actions on pages without a POST form. *@
+    @Html.AntiForgeryToken()
     <dialog id="adminFeedback" class="admin-feedback" aria-labelledby="adminFeedbackTitle" aria-describedby="adminFeedbackMessage"
             data-success="@TempData["Success"]" data-error="@TempData["Error"]" data-invalid="@(!ViewData.ModelState.IsValid ? "true" : "false")">
         <div class="admin-feedback-symbol" aria-hidden="true"></div>

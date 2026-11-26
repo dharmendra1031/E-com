@@ -82,73 +82,6 @@ namespace EcommerceWebApplication.Controllers
             return RedirectToAction(nameof(Cart));
         }
 
-        //[HttpPost]
-        //public IActionResult AddOrUpdateCart(int productId, int qty = 1)
-        //{
-        //    try
-        //    {
-        //        int userId = 0;
-
-        //        // ✅ SAFEST way to check session availability
-        //        var sessionFeature = HttpContext.Features.Get<ISessionFeature>();
-
-        //        if (sessionFeature != null)
-        //        {
-        //            userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-        //        }
-        //        string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
-
-        //        // product details (price, name, image)
-        //        var product = _context.Products.FirstOrDefault(p => p.ProductId == productId);
-        //        if (product == null)
-        //            return BadRequest("Product not found");
-
-        //        CartItem existingItem;
-
-        //        // 🔹 CASE 1: Logged-in user
-        //        if (userId > 0)
-        //        {
-        //            existingItem = _context.CartItems
-        //                .FirstOrDefault(c => c.UserId == userId && c.ProductId == productId);
-        //        }
-        //        else
-        //        {
-        //            // 🔹 CASE 2: Guest user (DeviceId)
-        //            existingItem = _context.CartItems
-        //                .FirstOrDefault(c => c.DeviceId == deviceId && c.UserId == 0 && c.ProductId == productId);
-        //        }
-
-        //        if (existingItem != null)
-        //        {
-        //            // ✅ Quantity increase
-        //            existingItem.Quantity += qty;
-        //        }
-        //        else
-        //        {
-        //            // ✅ New cart item
-        //            _context.CartItems.Add(new CartItem
-        //            {
-        //                UserId = userId,              // 0 for guest
-        //                DeviceId = deviceId,
-        //                ProductId = product.ProductId,
-        //                ProductName = product.Name,
-        //                ProductNameArb = product.NameArb,
-        //                Price = product.Price,
-        //                Quantity = qty,
-        //                ImageBase64 = ImageBase64,
-        //                CreatedAt = DateTime.Now
-        //            });
-        //        }
-
-        //        _context.SaveChanges();
-
-        //        return Ok(new { success = true, message = "Added to cart" });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ex.Message);
-        //    }
-        //}
 
         [HttpPost]
         public IActionResult AddOrUpdateCart(int productId, int qty = 1)
@@ -318,8 +251,6 @@ namespace EcommerceWebApplication.Controllers
                 .Select(c => new CartItemDto
                 {
                     ProductId = c.ProductId,
-                    //ProductName = c.ProductName,
-                    //ProductNameArb = c.ProductNameArb,
                     ProductName = isArabic ? c.ProductNameArb : c.ProductName,
                     Price = c.Price,
                     Quantity = c.Quantity,

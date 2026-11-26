@@ -1,30 +1,58 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration PortalConfiguration
 @{
     Layout = null;
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en,string arabic) => ar ? arabic : en;
+    var signedIn = User.Identity?.IsAuthenticated == true && User.Identity.AuthenticationType == EcommerceWebApplication.Helper.VendorPortalAuth.Scheme;
+    var hasStore = signedIn && int.TryParse(ViewContext.RouteData.Values["id"]?.ToString(), out _);
+    var storeId = ViewContext.RouteData.Values["id"];
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    bool Enabled(string key) => PortalConfiguration[key]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true;
+    var returnUrl = Context.Request.PathBase.ToString()+Context.Request.Path.ToString()+Context.Request.QueryString.ToString();
 }
 <!DOCTYPE html>
 <html lang="@(ar ? "ar" : "en")" dir="@(ar ? "rtl" : "ltr")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] — @(ar ? "بوابة البائع" : "Vendor Portal")</title>
+    <title>@ViewData["Title"] — @T("Vendor Portal","بوابة البائع")</title>
     <link rel="stylesheet" href="~/AdminTheame/assets/css/lib/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/vendor-portal.css" asp-append-version="true" />
 </head>
-<body>
-    <header class="container">
-        <div class="page-header">
-            <h1>@(ar ? "بوابة البائع" : "Vendor Portal")</h1>
-            @if (User.Identity?.AuthenticationType == EcommerceWebApplication.Helper.VendorPortalAuth.Scheme)
-            {
-                <nav aria-label="@(ar ? "القائمة" : "Navigation")">
-                    <a asp-controller="VendorPortal" asp-action="Index" class="btn btn-default">@(ar ? "المتاجر" : "My stores")</a>
-                    <form asp-controller="VendorPortal" asp-action="Logout" method="post" class="form-inline">
-                        <button type="submit" class="btn btn-default">@(ar ? "تسجيل الخروج" : "Sign out")</button>
+<body class="seller-workspace">
+    <a class="sr-only sr-only-focusable" href="#seller-main">@T("Skip to content","انتقل إلى المحتوى")</a>
+    <header class="seller-header">
+        <div class="container seller-header-row">
+            <span class="seller-brand">@T("Seller center","مركز البائع")</span>
+            <div class="seller-header-actions">
+                <a asp-controller="Home" asp-action="SetLanguage" asp-route-culture="@(ar ? "en" : "ar")" asp-route-returnUrl="@returnUrl" class="btn btn-default">@(ar ? "English" : "العربية")</a>
+                @if(signedIn)
+                {
+                    <a asp-controller="VendorPortal" asp-action="Index" class="btn btn-default">@T("My stores","متاجري")</a>
+                    <form asp-controller="VendorPortal" asp-action="Logout" method="post">
+                        <button type="submit" class="btn btn-default">@T("Sign out","تسجيل الخروج")</button>
                     </form>
-                </nav>
-            }
+                }
+            </div>
         </div>
     </header>
-    <main class="container">@RenderBody()</main>
+    @if(hasStore)
+    {
+        <nav class="seller-nav" aria-label="@T("Store navigation","قائمة المتجر")">
+            <div class="container seller-nav-row">
+                <a asp-controller="VendorPortal" asp-action="Dashboard" asp-route-id="@storeId" aria-current="@(action=="Dashboard"?"page":null)">@T("Overview","نظرة عامة")</a>
+                <a asp-controller="VendorPortal" asp-action="Listings" asp-route-id="@storeId" aria-current="@(action is "Listings" or "Catalog" or "EditListing" or "Stock"?"page":null)">@T("Products & stock","المنتجات والمخزون")</a>
+                @if(Enabled("Marketplace:VendorOrdersEnabled"))
+                {
+                    <a asp-controller="VendorPortal" asp-action="Orders" asp-route-id="@storeId" aria-current="@(action is "Orders" or "OrderDetails"?"page":null)">@T("Orders","الطلبات")</a>
+                }
+                @if(User.IsInRole("VendorOwner") && Enabled("Marketplace:FinancePreviewEnabled"))
+                {
+                    <a asp-controller="VendorPortal" asp-action="FinanceReview" asp-route-id="@storeId" aria-current="@(action=="FinanceReview"?"page":null)">@T("Finance","المالية")</a>
+                }
+            </div>
+        </nav>
+    }
+    <main id="seller-main" class="container seller-main">@RenderBody()</main>
 </body>
 </html>

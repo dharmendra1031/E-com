@@ -1,24 +1,14 @@
-@inject Microsoft.Extensions.Configuration.IConfiguration OrderConfiguration
 @model EcommerceWebApplication.Models.ViewModels.VendorPortalStore
 @{
     Layout = "_VendorPortalLayout";
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
     ViewData["Title"] = ar ? "لوحة التحكم" : "Dashboard";
 }
+<h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
 <div class="panel panel-default"><div class="panel-body">
-    <h2>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h2>
-    <dl>
+    <dl class="seller-store-details">
         <dt>@(ar ? "رمز البائع" : "Vendor code")</dt><dd>@Model.Code</dd>
         <dt>@(ar ? "الحالة" : "Status")</dt><dd>@(ar ? "معتمد" : "Approved")</dd>
     </dl>
-    <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary">@(ar ? "عروض المنتجات" : "Product listings")</a>
-    @if (OrderConfiguration["Marketplace:VendorOrdersEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
-    {
-        <a asp-action="Orders" asp-route-id="@Model.VendorId" class="btn btn-default">@(ar ? "الطلبات المدفوعة" : "Paid orders")</a>
-    }
-    @if (User.IsInRole("VendorOwner") && OrderConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true)
-    {
-        <a asp-action="FinanceReview" asp-route-id="@Model.VendorId" class="btn btn-default">@(ar?"مراجعة العمولة":"Commission review")</a>
-    }
-    <p>@(ar ? "التسويات غير مفعلة بعد." : "Settlements are not enabled yet.")</p>
+    <p class="text-muted">@(ar ? "اختر المنتجات أو الطلبات من القائمة لإدارة متجرك." : "Use the store navigation to manage products and orders.")</p>
 </div></div>

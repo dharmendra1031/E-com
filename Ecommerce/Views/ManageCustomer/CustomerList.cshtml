@@ -2,10 +2,8 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.CustomerGridViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    ViewData["Title"] = "Users with Role ID = 2";
+    ViewData["Title"] = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العملاء" : "Customers";
 
-    // Serialize model to JSON (agar jsGrid ya datatable use karna ho)
-    var userJson = System.Text.Json.JsonSerializer.Serialize(Model);
 
 }
 
@@ -446,87 +444,6 @@
             const input = document.getElementById(id);
             input.type = input.type === "password" ? "text" : "password";
         }
-    </script>
-    <script>
-        // document.addEventListener("DOMContentLoaded", function () {
-        //     var users = @Html.Raw(userJson);
-
-        //     $("#jsGrid").jsGrid({
-        //         width: "100%",
-        //         height: "400px",
-        //         sorting: true,
-        //         paging: true,
-        //         pageSize: 10,
-        //         pageButtonCount: 5,
-        //         data: users,
-        //         fields: [
-        //             {
-        //                 name: "SNo",
-        //                 title: "@_localizer["SN"]",
-        //                 width: 35,
-        //                 align: "center",
-        //                 itemTemplate: function (_, item) {
-        //                     const index = users.findIndex(p => p.UserId === item.UserId);
-        //                     return index + 1;
-        //                 }
-        //             },
-        //             { name: "UserId",   align: "center", title: "@_localizer["ID"]", type: "number", width: 35 },
-        //             { name: "FullName", title: "@_localizer["Full Name"]", type: "text", width: 65 },
-        //             { name: "Email", title: "@_localizer["Email"]", type: "text", width: 120 },
-        //             { name: "Phone",   align: "center", title: "@_localizer["Phone"]", type: "text", width: 70 },
-        //                            {
-        //     name: "IsActive",
-        //     title: "@_localizer["Status"]",
-        //     width: 60,
-        //     align: "center",
-        //     itemTemplate: function (value) {
-        //         return value
-        //             ? "<span class='btn btn-xs label-success' style='display:inline-block;min-width:70px;color:#fff;'>@_localizer["Active"]</span>"
-        //             : "<span class='btn btn-xs label-danger' style='display:inline-block;min-width:70px;color:#fff;'>@_localizer["Inactive"]</span>";
-        //     }
-        // },
-
-        //              {
-        //                 name: "CreatedAt",
-        //                title: "@_localizer["Created Date"]",
-        //                 width: 60,
-        //                  align: "center",
-        //                 itemTemplate: function (value) {
-        //                     const date = new Date(value);
-        //                     const day = String(date.getDate()).padStart(2, '0');
-        //                     const month = String(date.getMonth() + 1).padStart(2, '0');
-        //                     const year = date.getFullYear();
-        //                     return `${day}-${month}-${year}`;
-        //                 }
-        //             },
-        //                                          {
-        //     title: "@_localizer["Action"]",
-        //     width: 120,
-        //     align: "center",
-        //     itemTemplate: function (_, item) {
-        //         return `
-        //             <div style="display: inline-flex; gap: 8px;">
-        //                 <button class='btn btn-primary' onclick='showCustomerDetails(${item.UserId})'>
-        //                     @_localizer["View Details"]
-        //                 </button>
-        //                 <button class='btn btn-${item.IsActive ? 'danger' : 'success'}'
-        //                         onclick='toggleUserStatus(${item.UserId}, ${item.IsActive})'
-        //                         style="width: 90px;">
-        //                     ${item.IsActive ? '@_localizer["Block"]' : '@_localizer["Unblock"]'}
-        //                 </button>
-        //             </div>`;
-        //     }
-        // }
-        //         ]
-        //     });
-
-            document.getElementById("date-time").innerText = new Date().toLocaleString();
-
-            document.querySelector(".page-refresh").addEventListener("click", function (e) {
-                e.preventDefault();
-                location.reload();
-            });
-       // });
     </script>
     <script>
            function submitFilter(event) {
