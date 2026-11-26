@@ -27,3 +27,18 @@ html[dir=rtl] .seller-workspace .table th {text-align:right;}
  html[dir=rtl] .seller-workspace .col-sm-offset-3 {margin-left:0;}
 }
 @media(min-width:768px) {html[dir=rtl] .seller-workspace .col-sm-offset-3 {margin-left:0;margin-right:25%;}}
+
+/* Store overview and register headings. */
+.seller-section-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.seller-section-heading h1,.seller-section-heading h2 {margin:0 0 6px;}
+.seller-section-heading p {margin:0;}
+.seller-kpi-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;}
+.seller-kpi {display:flex;flex-direction:column;gap:8px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:6px;color:#171717;min-width:0;overflow-wrap:anywhere;text-decoration:none;}
+.seller-kpi:hover,.seller-kpi:focus {border-color:#171717;color:#171717;text-decoration:none;}
+.seller-kpi span {color:#525252;font-size:13px;}
+.seller-kpi strong {font-size:26px;font-variant-numeric:tabular-nums;}
+.seller-dashboard-note {margin-top:12px;}
+.seller-workspace .table {margin-bottom:0;}
+.seller-workspace .table th {background:#f5f5f5;white-space:nowrap;}
+.seller-workspace .table td {vertical-align:middle;}
+@media(max-width:767px) {.seller-kpi-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.seller-kpi {padding:12px;}.seller-kpi strong {font-size:22px;}}

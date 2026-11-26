@@ -75,6 +75,26 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             .Select(m => new VendorPortalStore { VendorId = m.VendorId, Code = m.Vendor.VendorCode,
                 Name = m.Vendor.Name, NameArb = m.Vendor.NameArb }).SingleOrDefaultAsync(ct);
         if (store == null) return NotFound();
+        var products = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id)
+            .GroupBy(l => l.VendorId)
+            .Select(g => new { Total = g.Count(), Approved = g.Count(l => l.Status == "Approved" && l.Product.IsActive),
+                Pending = g.Count(l => l.Status == "Pending") }).SingleOrDefaultAsync(ct);
+        ViewBag.ProductCount = products?.Total ?? 0;
+        ViewBag.ApprovedCount = products?.Approved ?? 0;
+        ViewBag.PendingCount = products?.Pending ?? 0;
+        if (InventoryEnabled)
+            ViewBag.OutOfStock = await db.Database.SqlQuery<int>($"""
+                SELECT COUNT(*) AS Value FROM dbo.VendorListings l
+                JOIN dbo.Products p ON p.ProductId=l.ProductId
+                LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId=l.VendorListingId
+                WHERE l.VendorId={id} AND l.Status='Approved' AND p.IsActive=1 AND COALESCE(b.AvailableQuantity,0)=0
+                """).SingleAsync(ct);
+        if (configuration.GetValue("Marketplace:VendorOrdersEnabled",false))
+            ViewBag.ToPack = await db.Database.SqlQuery<int>($"""
+                SELECT COUNT(*) AS Value FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
+                JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
+                WHERE v.VendorId={id} AND o.PaymentStatus=1 AND p.State='Paid' AND v.FulfillmentStatus='AwaitingPacking'
+                """).SingleAsync(ct);
         return View(store);
     }
 
@@ -235,18 +255,28 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     {
         if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
             !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
-        if (!ModelState.IsValid || adjustment.RequestId == Guid.Empty || adjustment.Delta == 0)
-            return BadRequest("Invalid stock adjustment.");
+        if (!ModelState.IsValid || adjustment.RequestId == Guid.Empty ||
+            adjustment.Quantity is < 1 or > 1000000000 || adjustment.Direction is not ("Add" or "Reduce") ||
+            string.IsNullOrWhiteSpace(adjustment.Reason))
+        {
+            TempData["StockError"] = "Enter a valid quantity and reason. / أدخل كمية وسبباً صحيحين.";
+            return RedirectToAction(nameof(Stock), new { id, listingId });
+        }
+        var delta = adjustment.Direction == "Add" ? adjustment.Quantity : -adjustment.Quantity;
         try
         {
             await db.Database.ExecuteSqlInterpolatedAsync($"""
                 EXEC dbo.PostInventoryAdjustment @VendorId={id}, @VendorListingId={listingId},
-                    @UserId={userId}, @RequestId={adjustment.RequestId}, @Delta={adjustment.Delta}, @Reason={adjustment.Reason}
+                    @UserId={userId}, @RequestId={adjustment.RequestId}, @Delta={delta}, @Reason={adjustment.Reason.Trim()}
                 """, ct);
         }
         catch (SqlException ex) when (ex.Number == 51312) { return NotFound(); }
-        catch (SqlException ex) when (ex.Number is 51313 or 51314) { return Conflict("Stock or request conflict. Reload and review."); }
-        catch (SqlException ex) when (ex.Number == 51310) { return BadRequest("Invalid stock adjustment."); }
+        catch (SqlException ex) when (ex.Number is 51313 or 51314 or 51310)
+        {
+            TempData["StockError"] = "Stock not changed. Review available quantity and retry. / لم يتغير المخزون. راجع الكمية المتاحة.";
+            return RedirectToAction(nameof(Stock), new { id, listingId });
+        }
+        TempData["StockSuccess"] = "Stock updated. / تم تحديث المخزون.";
         return RedirectToAction(nameof(Stock), new { id, listingId });
     }
 

@@ -15,7 +15,7 @@
 <div class="list-group">
 @foreach (var row in Model.Rows)
 {
-    <a class="list-group-item" asp-action="EditListing" asp-route-id="@Model.VendorId" asp-route-productId="@row.ProductId">@(ar ? row.ProductNameArb : row.ProductName) — @T("Add listing","إضافة عرض")</a>
+    <a class="list-group-item" asp-action="EditListing" asp-route-id="@Model.VendorId" asp-route-productId="@row.ProductId">@(ar && !string.IsNullOrWhiteSpace(row.ProductNameArb) ? row.ProductNameArb : row.ProductName) — @T("Add product","إضافة منتج")</a>
 }
 @if (Model.Rows.Count == 0) { <p>@T("No available products","لا توجد منتجات متاحة")</p> }
 </div>

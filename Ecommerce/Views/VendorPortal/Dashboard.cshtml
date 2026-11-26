@@ -2,13 +2,25 @@
 @{
     Layout = "_VendorPortalLayout";
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
-    ViewData["Title"] = ar ? "لوحة التحكم" : "Dashboard";
+    string T(string en,string arabic)=>ar?arabic:en;
+    ViewData["Title"] = T("Dashboard","لوحة التحكم");
 }
-<h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
-<div class="panel panel-default"><div class="panel-body">
-    <dl class="seller-store-details">
-        <dt>@(ar ? "رمز البائع" : "Vendor code")</dt><dd>@Model.Code</dd>
-        <dt>@(ar ? "الحالة" : "Status")</dt><dd>@(ar ? "معتمد" : "Approved")</dd>
-    </dl>
-    <p class="text-muted">@(ar ? "اختر المنتجات أو الطلبات من القائمة لإدارة متجرك." : "Use the store navigation to manage products and orders.")</p>
-</div></div>
+<header class="seller-section-heading">
+    <div><h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
+        <p class="text-muted">@T("Vendor code","رمز البائع"): <bdi>@Model.Code</bdi> · @T("Approved","معتمد")</p></div>
+    <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary">@T("Manage products","إدارة المنتجات")</a>
+</header>
+<div class="seller-kpi-grid">
+    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("My products","منتجاتي")</span><strong>@ViewBag.ProductCount</strong></a>
+    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Approved active products","المنتجات المعتمدة النشطة")</span><strong>@ViewBag.ApprovedCount</strong></a>
+    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Pending approval","بانتظار الاعتماد")</span><strong>@ViewBag.PendingCount</strong></a>
+    @if(ViewBag.OutOfStock != null)
+    {
+        <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة")</span><strong>@ViewBag.OutOfStock</strong></a>
+    }
+    @if(ViewBag.ToPack != null)
+    {
+        <a class="seller-kpi" asp-action="Orders" asp-route-id="@Model.VendorId"><span>@T("Paid orders to pack","طلبات مدفوعة للتجهيز")</span><strong>@ViewBag.ToPack</strong></a>
+    }
+</div>
+<p class="text-muted seller-dashboard-note">@T("Select a card to open the related register. Counts reflect current store records.","اختر بطاقة لفتح السجل المرتبط بها. الأعداد حسب سجلات المتجر الحالية.")</p>

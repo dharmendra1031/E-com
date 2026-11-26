@@ -59,7 +59,13 @@
  {
     { "Vendor_Index", isArabic ? "البائعون" : "VENDORS" },
     { "Vendor_Edit", isArabic ? "البائع" : "VENDOR" },
-    { "Vendor_Members", isArabic ? "مستخدمو البائع" : "VENDOR USERS" },
+    { "Vendor_Members", isArabic ? "مستخدمو البائع" : "Vendor users" },
+    { "Vendor_Listings", isArabic ? "منتجات البائع" : "Vendor products" },
+    { "Vendor_Commission", isArabic ? "عمولة البائع" : "Vendor commission" },
+    { "Vendor_PaymentReview", isArabic ? "مراجعة الدفع" : "Payment review" },
+    { "Vendor_ReturnReview", isArabic ? "طلبات الإرجاع" : "Return requests" },
+    { "Vendor_FinanceReview", isArabic ? "المراجعة المالية" : "Finance review" },
+    { "Vendor_RefundReview", isArabic ? "مراجعة الاسترداد" : "Refund review" },
     { "AdminDashboard_Index", isArabic ? "لوحة التحكم" : "DASHBOARD" },
     { "Companydetails_Index", isArabic ? "تفاصيل الشركة" : "COMPANY DETAIL" },
     { "Category_Index", isArabic ? "الفئة" : "CATEGORY LIST" },
@@ -83,16 +89,16 @@
     { "Blog_Add_Blog", isArabic ? "المدونة" : "BLOG" },
     { "RolePermission_RoleIndex", isArabic ? "صلاحيات الأدوار" : "ROLE PERMISSION" },
     { "RolePermission_PermissionList", isArabic ? "صلاحيات الأدوار" : "PERMISSION LIST" },
-    { "SendNotification_Index", isArabic ? "صلاحيات الأدوار" : "NOTIFICATION" },
+    { "SendNotification_Index", isArabic ? "الإشعارات" : "Notifications" },
     { "ProductStock_Index", isArabic ? "مخزون المنتجات" : "PRODUCT STOCK" },
     { "Report_ItemReport", isArabic ? "تقرير العنصر" : "ITEM REPORT" },
     { "Report_StockReport", isArabic ? "تقرير المخزون" : "STOCK REPORT" },
     { "Report_Index", isArabic ? "تقرير المبيعات اليومي" : "DAILY SALE REPORT" },
     { "Report_CategoryWiseSalereport", isArabic ? "تقرير مبيعات الفئة" : "CATEGORY SALE REPORT" },
     { "Report_Customers", isArabic ? "تقرير العملاء" : "CUSTOMERS REPORT" },
-    { "Areas_AreaList", isArabic ? "تقرير العملاء" : "AREALIST"},
-    { "Blocks_BlockList", isArabic ? "تقرير العملاء" : "BLOCKLIST"},
-    { "Blocks_Create", isArabic ? "تقرير العملاء" : "ADD BLOCK"},
+    { "Areas_AreaList", isArabic ? "المناطق" : "Areas"},
+    { "Blocks_BlockList", isArabic ? "القطع" : "Blocks"},
+    { "Blocks_Create", isArabic ? "إضافة قطعة" : "Add block"},
 
 
  };
@@ -278,6 +284,24 @@
                     <li class="@activeClass("SubCategory", "List")"><a href="@Url.Action("List", "SubCategory")" title="@_localizer["Sub-Category"]"><i class="ti-bookmark-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Sub-Category"]</span></a></li>
                     <li class="@activeClass("Category", "TopCategory")"><a href="@Url.Action("TopCategory", "Category")" title="@_localizer["Top-Categories"]"><i class="ti-star" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Top-Categories"]</span></a></li>
                     <li class="@activeClass("Brand", "Index")"><a href="@Url.Action("Index", "Brand")" title="@_localizer["Brand"]"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Brand"]</span></a></li>
+                    @if (isSuperAdmin && MarketplaceConfiguration["Marketplace:VendorMasterEnabled"] == "true")
+                    {
+                        <li class="label">@(isArabic ? "السوق" : "Marketplace")</li>
+                        <li class="@activeClass("Vendor", "Index")"><a asp-controller="Vendor" asp-action="Index"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "البائعون" : "Vendors")</span></a></li>
+                        @if (MarketplaceConfiguration["Marketplace:ReturnWorkflowEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            <li class="@activeClass("Vendor", "ReturnReview")"><a asp-controller="Vendor" asp-action="ReturnReview"><i class="ti-back-left" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "طلبات الإرجاع" : "Returns")</span></a></li>
+                        }
+                        @if (MarketplaceConfiguration["Marketplace:PaymentReviewEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            <li class="@activeClass("Vendor", "PaymentReview")"><a asp-controller="Vendor" asp-action="PaymentReview"><i class="ti-wallet" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "مراجعة الدفع" : "Payment review")</span></a></li>
+                        }
+                        @if (MarketplaceConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            <li class="@activeClass("Vendor", "FinanceReview")"><a asp-controller="Vendor" asp-action="FinanceReview"><i class="ti-money" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "المراجعة المالية" : "Finance review")</span></a></li>
+                            <li class="@activeClass("Vendor", "RefundReview")"><a asp-controller="Vendor" asp-action="RefundReview"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "مراجعة الاسترداد" : "Refund review")</span></a></li>
+                        }
+                    }
                     <li class="label">@(isArabic ? "التسويق" : "Marketing")</li>
                     <li class="@activeClass("WekendDeals", "WekendDealsList")"><a href="@Url.Action("WekendDealsList", "WekendDeals")" title="@_localizer["Wekend Deals"]"><i class="ti-tag" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Wekend Deals"]</span></a></li>
                     <li class="@activeClass("Coupon", "Index")"><a href="@Url.Action("Index", "Coupon")" title="@_localizer["Coupon"]"><i class="ti-ticket" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Coupon"]</span></a></li>
@@ -317,10 +341,6 @@
                     <li class="@activeClass("Changecolors", "Index")"><a href="@Url.Action("Index", "Changecolors")" title="@_localizer["Change Colors"]"><i class="ti-palette" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Change Colors"]</span></a></li>
                     @if (isSuperAdmin)
                     {
-                    @if (MarketplaceConfiguration["Marketplace:VendorMasterEnabled"] == "true")
-                    {
-                        <li class="@activeClass("Vendor", "Index")"><a asp-controller="Vendor" asp-action="Index"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@(isArabic ? "البائعون" : "Vendors")</span></a></li>
-                    }
                     <li class="@activeClass("User", "UserList")"><a href="@Url.Action("UserList", "User")" title="@_localizer["Users"]"><i class="ti-user" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Users"]</span></a></li>
                     <li class="@activeClass("RolePermission", "RoleIndex")"><a href="@Url.Action("RoleIndex", "RolePermission")" title="@_localizer["Role Permission"]"><i class="ti-lock" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Role Permission"]</span></a></li>
                     }

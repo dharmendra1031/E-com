@@ -6,6 +6,8 @@
     ViewData["Title"] = T("Stock","المخزون");
 }
 <h2>@Model.ProductName — @ViewData["Title"]</h2>
+@if (TempData["StockError"] is string error) { <p class="alert alert-danger" role="alert">@error</p> }
+@if (TempData["StockSuccess"] is string success) { <p class="alert alert-success" role="status">@success</p> }
 <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back to listings","العودة إلى العروض")</a>
 @if (!Model.HasBalance) { <p>@T("No opening stock posted.","لم يتم تسجيل رصيد افتتاحي.")</p> }
 <div class="row">
@@ -19,12 +21,19 @@
         <div class="panel-body">
             <input asp-for="Adjustment.RequestId" type="hidden" />
             <div class="form-group">
-                <label asp-for="Adjustment.Delta">@T("Quantity change (+ receipt / − adjustment)","تغيير الكمية (إضافة أو خصم)")</label>
-                <input asp-for="Adjustment.Delta" type="number" min="-1000000000" max="1000000000" step="1" class="form-control" required />
+                <label asp-for="Adjustment.Direction">@T("Stock action","إجراء المخزون")</label>
+                <select asp-for="Adjustment.Direction" class="form-control">
+                    <option value="Add">@T("Add stock","إضافة مخزون")</option>
+                    <option value="Reduce">@T("Reduce stock","خصم مخزون")</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Adjustment.Quantity">@T("Quantity","الكمية")</label>
+                <input asp-for="Adjustment.Quantity" type="number" min="1" max="1000000000" step="1" class="form-control" required />
             </div>
             <div class="form-group"><label asp-for="Adjustment.Reason">@T("Reason / reference","السبب أو المرجع")</label>
                 <input asp-for="Adjustment.Reason" maxlength="200" class="form-control" required /></div>
-            <button type="submit" class="btn btn-primary">@T("Post stock movement","ترحيل حركة المخزون")</button>
+            <button type="submit" class="btn btn-primary">@T("Save stock change","حفظ تغيير المخزون")</button>
         </div>
     </form>
 }

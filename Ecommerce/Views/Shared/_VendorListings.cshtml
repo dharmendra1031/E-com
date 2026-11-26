@@ -5,7 +5,7 @@
     string T(string en, string arabic) => ar ? arabic : en;
     string Status(string status) => status switch { "Approved" => T("Approved","معتمد"), "Inactive" => T("Inactive","غير نشط"), _ => T("Pending","قيد المراجعة") };
 }
-<h2>@Model.VendorName — @T("Listings", "العروض")</h2>
+<h2>@Model.VendorName — @T("Products", "المنتجات")</h2>
 <a asp-action="@(Model.IsAdmin ? "Index" : "Dashboard")" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back","رجوع")</a>
 @if (Model.CanEdit)
 {
@@ -20,11 +20,11 @@
 <table class="table table-hover">
 <thead><tr><th>@T("Product","المنتج")</th><th>SKU</th><th>@T("Price","السعر")</th><th>@T("Status","الحالة")</th><th>@T("Action","الإجراء")</th></tr></thead>
 <tbody>
-@if (Model.Rows.Count == 0) { <tr><td colspan="5">@T("No listings","لا توجد عروض")</td></tr> }
+@if (Model.Rows.Count == 0) { <tr><td colspan="5">@T("No products yet","لا توجد منتجات بعد")</td></tr> }
 @foreach (var row in Model.Rows)
 {
-    <tr><td>@(ar ? row.ProductNameArb : row.ProductName) @if (!row.ProductActive) { <span> (@T("Product inactive","المنتج غير نشط"))</span> }</td>
-        <td>@row.SellerSku</td><td>@row.Price.ToString("F3")</td><td>@Status(row.Status)</td>
+    <tr><td>@(ar && !string.IsNullOrWhiteSpace(row.ProductNameArb) ? row.ProductNameArb : row.ProductName) @if (!row.ProductActive) { <span> (@T("Product inactive","المنتج غير نشط"))</span> }</td>
+        <td>@row.SellerSku</td><td><bdi>KD @row.Price.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</bdi></td><td>@Status(row.Status)</td>
         <td>
         @if (!Model.IsAdmin && InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
         {
