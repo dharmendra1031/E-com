@@ -24,7 +24,7 @@ namespace EcommerceWebApplication.Controllers
             _configuration = configuration;
         }
 
-        public IActionResult PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10)
+        public IActionResult PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10, bool partial = false)
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
@@ -65,13 +65,22 @@ namespace EcommerceWebApplication.Controllers
 
 
             // Filter by Date Range using dd-MM-yyyy format
-            DateTime parsedStartDate, parsedEndDate;
-            if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate) &&
-                DateTime.TryParseExact(startDate, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedStartDate) &&
-                DateTime.TryParseExact(endDate, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedEndDate))
+            var formats = new[] { "yyyy-MM-dd", "dd-MM-yyyy" };
+            var hasStart = !string.IsNullOrWhiteSpace(startDate);
+            var hasEnd = !string.IsNullOrWhiteSpace(endDate);
+            DateTime from = default, to = default;
+            if ((hasStart && !DateTime.TryParseExact(startDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out from)) ||
+                (hasEnd && !DateTime.TryParseExact(endDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out to)) ||
+                (hasStart && hasEnd && from > to))
+                return BadRequest(isArabic ? "نطاق التاريخ غير صالح." : "Invalid date range.");
+            if (hasStart) query = query.Where(x => x.Orderdate >= from);
+            if (hasEnd && to < DateTime.MaxValue.Date)
             {
-                query = query.Where(x => x.Orderdate.Date >= parsedStartDate.Date && x.Orderdate.Date <= parsedEndDate.Date);
+                var endExclusive = to.AddDays(1);
+                query = query.Where(x => x.Orderdate < endExclusive);
             }
+            startDate = hasStart ? from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null;
+            endDate = hasEnd ? to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null;
 
             // Sort descending by Order Date
             query = query.OrderByDescending(x => x.Orderdate).ThenByDescending(x => x.OrderId);
@@ -115,7 +124,7 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.CurrentStartDate = startDate;
             ViewBag.CurrentEndDate = endDate;
 
-            return View(pagedModel);
+            return partial ? PartialView("_OrderRegister", pagedModel) : View(pagedModel);
         }
 
 
@@ -124,12 +133,13 @@ namespace EcommerceWebApplication.Controllers
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
             var currentStatusId = order?.Status ?? 0;
+            var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 
             var statusList = _context.OrderStatus
                 .Select(s => new SelectListItem
                 {
                     Value = s.OrderstatusId.ToString(),
-                    Text = s.OrderstatusName,
+                    Text = ar ? s.OrderStatusNameArb : s.OrderstatusName,
                     Selected = (s.OrderstatusId == currentStatusId)
                 }).ToList();
 
@@ -291,12 +301,13 @@ namespace EcommerceWebApplication.Controllers
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
             var paymentstatusId = order?.PaymentStatus ?? 0;
+            var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 
             var statusList = _context.PaymentStatus
                 .Select(s => new SelectListItem
                 {
                     Value = s.PaymentstatusId.ToString(),
-                    Text = s.PaymentstatusName,
+                    Text = ar ? s.PaymentStatusNameArb : s.PaymentstatusName,
                     Selected = (s.PaymentstatusId == paymentstatusId)
                 }).ToList();
 

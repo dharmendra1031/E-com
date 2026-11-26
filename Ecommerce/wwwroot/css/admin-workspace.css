@@ -166,3 +166,18 @@
 .admin-workspace .admin-feedback[data-state=confirm] .admin-feedback-symbol::before { content:"?"; }
 @keyframes admin-feedback-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .admin-workspace .admin-feedback[data-state=processing] .admin-feedback-symbol { animation:none; } }
+
+/* Order register and detail workspace. */
+.admin-workspace .admin-orders [hidden] {display:none!important;}
+.admin-workspace .admin-orders h2 {font-size:20px;font-weight:700;margin:0;}
+.admin-workspace .admin-orders h3 {font-size:16px;font-weight:700;margin:0 0 12px;}
+.admin-workspace .order-result-count {margin:16px 0 8px;}
+.admin-workspace .order-pagination,.admin-workspace .order-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.admin-workspace .order-pagination {justify-content:center;margin-top:16px;}
+.admin-workspace .order-detail-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-bottom:20px;}
+.admin-workspace .order-detail-grid section,.admin-workspace .order-status-editor {border:1px solid var(--admin-border);border-radius:6px;padding:14px;min-width:0;}
+.admin-workspace .order-status-editor {margin-bottom:20px;max-width:520px;}
+.admin-workspace .order-detail-grid dl,.admin-workspace .order-totals {display:grid;grid-template-columns:minmax(90px,1fr) minmax(0,1fr);gap:8px;margin:0 0 12px;}
+.admin-workspace .order-detail-grid dd,.admin-workspace .order-totals dd {margin:0;overflow-wrap:anywhere;}
+.admin-workspace .order-totals {max-width:360px;margin:16px 0 0;margin-inline-start:auto;padding:16px;background:var(--admin-surface);border-radius:6px;}
+.admin-workspace .order-totals dd {text-align:end;direction:ltr;}

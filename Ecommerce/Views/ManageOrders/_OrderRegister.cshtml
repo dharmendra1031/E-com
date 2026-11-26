@@ -1,0 +1,31 @@
+@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.OrderItemViewModel>
+@{
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    var pages = Math.Max(1,Model.TotalPages);
+    string PageUrl(int page) => Url.Action("PendingOrder","ManageOrders",new {page,pageSize=Model.PageSize,status=(int?)ViewBag.CurrentStatus,paymentstatus=(int?)ViewBag.CurrentPaymentStatus,paymenttype=(string?)ViewBag.CurrentPaymentType,startDate=(string?)ViewBag.CurrentStartDate,endDate=(string?)ViewBag.CurrentEndDate})!;
+}
+<p class="admin-muted order-result-count">@Model.TotalItems @T("orders found","طلب")</p>
+<div class="admin-table-scroll admin-order-stock-table"><table class="table table-hover">
+<thead><tr><th>@T("Order","الطلب")</th><th>@T("Customer","العميل")</th><th>@T("Payment method","طريقة الدفع")</th><th>@T("Payment status","حالة الدفع")</th><th>@T("Order status","حالة الطلب")</th><th>@T("Total","الإجمالي")</th><th>@T("Date","التاريخ")</th><th>@T("Action","الإجراء")</th></tr></thead>
+<tbody>
+@if(Model.Items.Count==0){<tr><td colspan="8" class="text-center">@T("No orders found. Try changing the filters.","لا توجد طلبات. جرّب تغيير الفلاتر.")</td></tr>}
+@foreach(var item in Model.Items)
+{
+    var statusClass = item.OrderStatusId switch {1=>"btn-warning",2=>"btn-info",3=>"btn-success",4=>"btn-danger",5=>"btn-primary",_=>"btn-default"};
+    <tr>
+        <td><bdi>#@item.OrderId</bdi></td><td>@item.FullName</td><td>@item.Paytype</td>
+        <td><span class="admin-status @(item.PaymentStatusId==1?"btn-success":item.PaymentStatusId==3?"btn-danger":"btn-warning")">@item.PaymentStatus</span></td>
+        <td><span class="admin-status @statusClass">@item.OrderStatus</span></td>
+        <td><bdi>KD @Convert.ToDecimal(item.TotalPrice).ToString("F3",CultureInfo.InvariantCulture)</bdi></td>
+        <td><bdi>@Convert.ToDateTime(item.Orderdate).ToString("dd-MM-yyyy",CultureInfo.InvariantCulture)</bdi></td>
+        <td><button type="button" class="btn btn-primary" data-order-id="@item.OrderId" data-payment-status="@item.PaymentStatusId">@T("View","عرض")</button></td>
+    </tr>
+}
+</tbody></table></div>
+<nav class="order-pagination" aria-label="@T("Order pages","صفحات الطلبات")">
+    @if(Model.PageNumber>1){<a class="btn btn-default" href="@PageUrl(Model.PageNumber-1)" data-order-page>@T("Previous","السابق")</a>}
+    <span>@T("Page","صفحة") @Model.PageNumber / @pages</span>
+    @if(Model.PageNumber<pages){<a class="btn btn-default" href="@PageUrl(Model.PageNumber+1)" data-order-page>@T("Next","التالي")</a>}
+</nav>
