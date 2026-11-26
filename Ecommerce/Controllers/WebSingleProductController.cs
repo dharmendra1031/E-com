@@ -1,4 +1,5 @@
 using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,9 +11,11 @@ namespace EcommerceWebApplication.Controllers
     {
         private const int ReviewPageSize = 10;
         private readonly EcommerceDbContext _context;
-        public WebSingleProductController(EcommerceDbContext context) => _context = context;
+        private readonly IConfiguration _configuration;
+        public WebSingleProductController(EcommerceDbContext context, IConfiguration configuration)
+        { _context = context; _configuration = configuration; }
 
-        public IActionResult SingleProduct(int id)
+        public IActionResult SingleProduct(int id, int sellerPage = 1, int? listingId = null)
         {
             bool ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var product = _context.Products.AsNoTracking().Where(p => p.ProductId == id && p.IsActive)
@@ -77,6 +80,22 @@ namespace EcommerceWebApplication.Controllers
                 product.DiscPer = deal.DiscPer;
                 product.DiscountAmount = product.Price * deal.DiscPer / 100;
                 product.OfferPrice = product.Price - product.DiscountAmount;
+            }
+            if (MarketplaceOffers.Enabled(_configuration))
+            {
+                const int size = 20;
+                if (sellerPage < 1 || sellerPage > 100000) return BadRequest();
+                product.ShowSellerPreview = true;
+                var offers = MarketplaceOffers.Available(_context).Where(o => o.ProductId == id);
+                var rows = offers.OrderBy(o => o.Price).ThenBy(o => o.ListingId)
+                    .Skip((sellerPage - 1) * size).Take(size + 1).ToList();
+                product.SellerPage = sellerPage;
+                product.HasMoreSellers = rows.Count > size;
+                product.SellerOffers = rows.Take(size).ToList();
+                product.LowestSellerPrice = sellerPage == 1 ? product.SellerOffers.FirstOrDefault()?.Price
+                    : offers.Select(o => (decimal?)o.Price).Min();
+                product.SelectedSellerListingId = product.SellerOffers.Any(o => o.ListingId == listingId)
+                    ? listingId : product.SellerOffers.FirstOrDefault()?.ListingId;
             }
             return View(product);
         }

@@ -55,6 +55,12 @@
         public decimal? DiscountAmount { get; set; }
         public decimal? DiscPer { get; set; }
         public bool IsWeekendDeal { get; set; }
+        public bool ShowSellerPreview { get; set; }
+        public decimal? LowestSellerPrice { get; set; }
+        public int SellerPage { get; set; } = 1;
+        public bool HasMoreSellers { get; set; }
+        public int? SelectedSellerListingId { get; set; }
+        public List<MarketplaceOffer> SellerOffers { get; set; } = new();
 
     }
 }

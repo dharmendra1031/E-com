@@ -1,0 +1,42 @@
+@using System.Globalization
+@model EcommerceWebApplication.Models.ViewModels.SingleProductVM
+@{ var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; }
+<section id="sellerOffers" class="store-detail-panel mt-3">
+    <h2 class="h5 fw-bold">@(ar ? "عروض البائعين — معاينة" : "Seller offers — preview")</h2>
+    <p class="small text-secondary">@(ar ? "للمقارنة فقط. الشراء من البائعين غير متاح بعد، وزر السلة أعلاه يخص المتجر الحالي." : "Comparison only. Seller purchases are not enabled yet; the cart button above belongs to the current store.")</p>
+    @if (Model.LowestSellerPrice.HasValue)
+    {
+        <p>@(ar ? "أقل سعر للبائعين" : "Lowest available seller price") <strong dir="ltr">KD @Model.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</strong></p>
+    }
+    @if (Model.SellerOffers.Count == 0)
+    {
+        <p>@(ar ? "لا توجد عروض متاحة في هذه الصفحة" : "No available seller offers on this page.")</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>@(ar ? "البائع" : "Seller")</th><th>@(ar ? "السعر" : "Price")</th><th>@(ar ? "الكمية المتاحة" : "Available")</th><th>@(ar ? "اختيار للمقارنة" : "Compare")</th></tr></thead>
+                <tbody>
+                @foreach (var offer in Model.SellerOffers)
+                {
+                    var selected = offer.ListingId == Model.SelectedSellerListingId;
+                    <tr class="@(selected ? "table-active" : "")">
+                        <td>@(ar && !string.IsNullOrWhiteSpace(offer.VendorNameArb) ? offer.VendorNameArb : offer.VendorName)</td>
+                        <td dir="ltr">KD @offer.Price.ToString("F3", CultureInfo.InvariantCulture)</td>
+                        <td>@offer.AvailableQuantity</td>
+                        <td>
+                            @if (selected) { <strong>@(ar ? "محدد" : "Selected")</strong> }
+                            else { <a class="btn btn-sm btn-outline-primary" asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@Model.SellerPage" asp-route-listingId="@offer.ListingId" asp-fragment="sellerOffers">@(ar ? "اختيار" : "Select")</a> }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+    <nav aria-label="@(ar ? "صفحات البائعين" : "Seller pages")">
+        @if (Model.SellerPage > 1) { <a asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@(Model.SellerPage - 1)" asp-fragment="sellerOffers" class="btn btn-sm btn-outline-secondary">@(ar ? "السابق" : "Previous")</a> }
+        @if (Model.HasMoreSellers) { <a asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@(Model.SellerPage + 1)" asp-fragment="sellerOffers" class="btn btn-sm btn-outline-secondary">@(ar ? "التالي" : "Next")</a> }
+    </nav>
+</section>

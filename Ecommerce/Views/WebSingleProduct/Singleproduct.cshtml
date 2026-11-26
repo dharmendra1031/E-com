@@ -67,6 +67,10 @@
                     }
                     else { <span class="text-secondary">@(ar ? "لا توجد تقييمات" : "No reviews yet")</span> }
                 </a>
+                @if (Model.ShowSellerPreview)
+                {
+                    <p class="small text-secondary mb-0">@(ar ? "سعر المتجر الحالي" : "Current store price")</p>
+                }
                 <div class="fw-semibold @(maxQty > 0 ? "text-success" : "text-danger")">@(maxQty > 0 ? (ar ? "متوفر" : "In stock") : (ar ? "غير متوفر" : "Out of stock"))</div>
                 <div class="store-detail-price">
                     @if (Model.IsWeekendDeal && Model.OfferPrice.HasValue)
@@ -98,6 +102,10 @@
             </div>
         </div>
     </div>
+    @if (Model.ShowSellerPreview)
+    {
+        <partial name="_SellerOffers" model="Model" />
+    }
     @if (!string.IsNullOrWhiteSpace(Model.Description))
     {
         <section class="store-detail-panel mt-3"><h2 class="h5 fw-bold">@(ar ? "الوصف" : "Description")</h2><div class="store-description">@Model.Description</div></section>
