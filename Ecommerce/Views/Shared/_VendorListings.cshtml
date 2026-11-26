@@ -1,4 +1,5 @@
 @model EcommerceWebApplication.Models.ViewModels.VendorListingsPage
+@inject Microsoft.Extensions.Configuration.IConfiguration InventoryConfiguration
 @{
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
     string T(string en, string arabic) => ar ? arabic : en;
@@ -25,6 +26,10 @@
     <tr><td>@(ar ? row.ProductNameArb : row.ProductName) @if (!row.ProductActive) { <span> (@T("Product inactive","المنتج غير نشط"))</span> }</td>
         <td>@row.SellerSku</td><td>@row.Price.ToString("F3")</td><td>@Status(row.Status)</td>
         <td>
+        @if (!Model.IsAdmin && InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            <a asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@row.ListingId" class="btn btn-sm btn-default">@T("Stock","المخزون")</a>
+        }
         @if (Model.CanEdit && row.ProductActive)
         {
             <a asp-action="EditListing" asp-route-id="@Model.VendorId" asp-route-listingId="@row.ListingId" class="btn btn-sm btn-primary">@T("Edit","تعديل")</a>

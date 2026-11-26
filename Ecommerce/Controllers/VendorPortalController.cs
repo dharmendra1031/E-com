@@ -16,7 +16,7 @@ namespace EcommerceWebApplication.Controllers;
 [Route("vendor-portal")]
 [Authorize(Policy = VendorPortalAuth.Policy)]
 [AutoValidateAntiforgeryToken]
-public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess access) : Controller
+public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess access, IConfiguration configuration) : Controller
 {
     [AllowAnonymous]
     [HttpGet("login")]
@@ -191,6 +191,63 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             return View(form);
         }
         return RedirectToAction(nameof(Listings), new { id });
+    }
+
+    private bool InventoryEnabled => access.Enabled && configuration.GetValue("Marketplace:VendorInventoryEnabled", false);
+
+    [HttpGet("store/{id:int}/listing/{listingId:int}/stock")]
+    public async Task<IActionResult> Stock(int id, int listingId, int page = 1, CancellationToken ct = default)
+    {
+        if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
+        var member = await StoreMembership(id, userId).Select(m => m.User.Role!.RoleName).SingleOrDefaultAsync(ct);
+        if (member == null) return NotFound();
+        var productName = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id &&
+            l.VendorListingId == listingId).Select(l => l.Product.Name).SingleOrDefaultAsync(ct);
+        if (productName == null) return NotFound();
+        var balances = await db.Database.SqlQuery<ListingStockPage>($"""
+            SELECT {id} AS VendorId, {listingId} AS ListingId, {productName} AS ProductName,
+                   COALESCE(b.OnHandQuantity, CONVERT(bigint,0)) AS OnHand,
+                   COALESCE(b.ReservedQuantity, CONVERT(bigint,0)) AS Reserved,
+                   COALESCE(b.AvailableQuantity, CONVERT(bigint,0)) AS Available,
+                   CONVERT(bit, CASE WHEN b.VendorListingId IS NULL THEN 0 ELSE 1 END) AS HasBalance,
+                   CONVERT(bit,0) AS CanEdit, 1 AS Page, CONVERT(bit,0) AS HasNext
+            FROM dbo.VendorListings l LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId = l.VendorListingId
+            WHERE l.VendorId = {id} AND l.VendorListingId = {listingId}
+            """).SingleOrDefaultAsync(ct);
+        if (balances == null) return NotFound();
+        const int size = 25;
+        page = Math.Clamp(page, 1, 100000);
+        var rows = await db.Database.SqlQuery<StockMovementRow>($"""
+            SELECT t.InventoryTransactionId, t.OnHandDelta, t.ReservedDelta, t.SourceType, t.Reason, t.CreatedAtUtc
+            FROM dbo.InventoryTransactions t JOIN dbo.VendorListings l ON l.VendorListingId = t.VendorListingId
+            WHERE l.VendorId = {id} AND l.VendorListingId = {listingId}
+            """).OrderByDescending(t => t.InventoryTransactionId).Skip((page - 1) * size).Take(size + 1).ToListAsync(ct);
+        balances.Page = page;
+        balances.HasNext = rows.Count > size;
+        balances.Movements = rows.Take(size).ToList();
+        balances.CanEdit = member is VendorRoles.Owner or VendorRoles.Manager;
+        balances.Adjustment = new StockAdjustmentForm { RequestId = Guid.NewGuid() };
+        return View(balances);
+    }
+
+    [HttpPost("store/{id:int}/listing/{listingId:int}/stock")]
+    public async Task<IActionResult> Stock(int id, int listingId, StockAdjustmentForm adjustment, CancellationToken ct)
+    {
+        if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
+            !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
+        if (!ModelState.IsValid || adjustment.RequestId == Guid.Empty || adjustment.Delta == 0)
+            return BadRequest("Invalid stock adjustment.");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.PostInventoryAdjustment @VendorId={id}, @VendorListingId={listingId},
+                    @UserId={userId}, @RequestId={adjustment.RequestId}, @Delta={adjustment.Delta}, @Reason={adjustment.Reason}
+                """, ct);
+        }
+        catch (SqlException ex) when (ex.Number == 51312) { return NotFound(); }
+        catch (SqlException ex) when (ex.Number is 51313 or 51314) { return Conflict("Stock or request conflict. Reload and review."); }
+        catch (SqlException ex) when (ex.Number == 51310) { return BadRequest("Invalid stock adjustment."); }
+        return RedirectToAction(nameof(Stock), new { id, listingId });
     }
 
     [HttpPost("logout")]
