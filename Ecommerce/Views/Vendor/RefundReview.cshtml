@@ -1,0 +1,10 @@
+@model List<EcommerceWebApplication.Models.ViewModels.MarketplaceRefundReviewRow>
+@{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;int page=ViewBag.Page;ViewData["Title"]=T("Refund evidence review","مراجعة أدلة الاسترداد");}
+<h2>@ViewData["Title"]</h2>
+<p>@T("Read-only evidence. Returned merchandise value is not the approved refund amount. No refund has been issued by this module.","أدلة للقراءة فقط. قيمة البضائع المرتجعة ليست مبلغ الاسترداد المعتمد. لم تصدر هذه الوحدة أي استرداد.")</p>
+<div class="admin-table-scroll"><table class="table"><thead><tr><th>@T("Return","الإرجاع")</th><th>@T("Order","الطلب")</th><th>@T("Vendor","البائع")</th><th>@T("Product","المنتج")</th><th>@T("Qty","الكمية")</th><th>@T("Merchandise value","قيمة البضائع")</th><th>@T("Invoice","الفاتورة")</th><th>@T("Payment reference","مرجع الدفع")</th></tr></thead><tbody>
+@foreach(var row in Model){<tr><td>#@row.ReturnId</td><td>#@row.OrderId</td><td>@row.VendorName</td><td>@row.ProductName</td><td>@row.Quantity</td><td dir="ltr">KD @row.ReturnedMerchandiseValue.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td><td>@row.InvoiceId</td><td>@row.PaymentId</td></tr>}
+@if(Model.Count==0){<tr><td colspan="8">@T("No matching physical return evidence","لا توجد أدلة إرجاع مطابقة")</td></tr>}
+</tbody></table></div>
+@if(page>1){<a asp-action="RefundReview" asp-route-page="@(page-1)" class="btn btn-default">@T("Previous","السابق")</a>}
+@if(ViewBag.HasNext==true){<a asp-action="RefundReview" asp-route-page="@(page+1)" class="btn btn-default">@T("Next","التالي")</a>}

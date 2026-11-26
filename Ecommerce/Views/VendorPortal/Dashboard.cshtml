@@ -16,5 +16,9 @@
     {
         <a asp-action="Orders" asp-route-id="@Model.VendorId" class="btn btn-default">@(ar ? "الطلبات المدفوعة" : "Paid orders")</a>
     }
+    @if (User.IsInRole("VendorOwner") && OrderConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true)
+    {
+        <a asp-action="FinanceReview" asp-route-id="@Model.VendorId" class="btn btn-default">@(ar?"مراجعة العمولة":"Commission review")</a>
+    }
     <p>@(ar ? "التسويات غير مفعلة بعد." : "Settlements are not enabled yet.")</p>
 </div></div>

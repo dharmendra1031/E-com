@@ -69,6 +69,21 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
+    [ResponseCache(NoStore=true,Location=ResponseCacheLocation.None)]
+    public async Task<IActionResult> RefundReview(int page=1,CancellationToken ct=default)
+    {
+        if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await db.Database.SqlQuery<MarketplaceRefundReviewRow>($"""
+            SELECT ReturnId,OrderItemId,OrderId,VendorId,VendorName,ProductName,Quantity,OriginalUnitPrice,
+                ReturnedMerchandiseValue,InvoiceId,PaymentId,ReceivedAtUtc,ReturnReceiptId
+            FROM dbo.MarketplaceRefundReview
+            """).OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
+
+    [HttpGet]
     public async Task<IActionResult> FinanceReview(int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();

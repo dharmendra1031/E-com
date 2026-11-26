@@ -14,7 +14,7 @@
             <a asp-action="Edit" class="btn btn-primary">@T("Add vendor", "إضافة بائع")</a>
             @if(PaymentReviewConfiguration["Marketplace:PaymentReviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="PaymentReview" class="btn btn-default">@T("Payment review","مراجعة الدفع")</a>}
             @if(PaymentReviewConfiguration["Marketplace:ReturnWorkflowEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="ReturnReview" class="btn btn-default">@T("Returns","الإرجاع")</a>}
-            @if(PaymentReviewConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="FinanceReview" class="btn btn-default">@T("Finance review","المراجعة المالية")</a>}
+            @if(PaymentReviewConfiguration["Marketplace:FinancePreviewEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true){<a asp-action="FinanceReview" class="btn btn-default">@T("Finance review","المراجعة المالية")</a><a asp-action="RefundReview" class="btn btn-default">@T("Refund review","مراجعة الاسترداد")</a>}
         </form>
         <div class="admin-table-scroll">
             <table class="table table-hover">

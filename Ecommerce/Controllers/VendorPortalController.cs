@@ -250,6 +250,27 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         return RedirectToAction(nameof(Stock), new { id, listingId });
     }
 
+    [HttpGet("store/{id:int}/finance")]
+    [ResponseCache(NoStore=true,Location=ResponseCacheLocation.None)]
+    public async Task<IActionResult> FinanceReview(int id,int page=1,CancellationToken ct=default)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:FinancePreviewEnabled",false) ||
+            !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await StoreMembership(id,actor).AnyAsync(m=>m.User.Role!.RoleName==VendorRoles.Owner,ct)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
+            SELECT f.VendorOrderId,f.OrderId,f.VendorId,f.VendorName,f.MerchandiseSubtotal,f.CommissionRatePercent,
+                f.CommissionAmount,f.MerchandiseAfterCommission,f.FulfillmentStatus,f.ReviewState
+            FROM dbo.MarketplaceFinanceReview f WHERE f.VendorId={id}
+                AND EXISTS(SELECT 1 FROM dbo.VendorUsers m JOIN dbo.Users u ON u.UserId=m.UserId
+                    JOIN dbo.[Role] r ON r.RoleId=u.RoleId JOIN dbo.Vendors v ON v.VendorId=m.VendorId
+                    WHERE m.VendorId=f.VendorId AND m.UserId={actor} AND m.IsActive=1 AND u.IsActive=1
+                    AND r.IsActive=1 AND r.RoleName='VendorOwner' AND v.Status='Approved')
+            """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;ViewBag.VendorId=id;
+        return View(rows.Take(25).ToList());
+    }
+
     [HttpGet("store/{id:int}/orders")]
     public async Task<IActionResult> Orders(int id, int page = 1, CancellationToken ct = default)
     {
