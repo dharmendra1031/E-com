@@ -1,0 +1,52 @@
+@model EcommerceWebApplication.Models.ViewModels.PagedResult<Vendor>
+@{
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en, string arabic) => ar ? arabic : en;
+    string StatusText(string status) => status switch { "Approved" => T("Approved", "معتمد"), "Suspended" => T("Suspended", "موقوف"), _ => T("Pending", "قيد المراجعة") };
+}
+<div class="admin-master-register">
+    <div class="card alert">
+        <form method="get" asp-action="Index" class="admin-register-filters">
+            <label for="search">@T("Search vendors", "بحث عن البائعين")</label>
+            <input id="search" name="search" value="@ViewBag.Search" class="form-control" />
+            <button class="btn btn-primary" type="submit">@T("Search", "بحث")</button>
+            <a asp-action="Edit" class="btn btn-primary">@T("Add vendor", "إضافة بائع")</a>
+        </form>
+        <div class="admin-table-scroll">
+            <table class="table table-hover">
+                <thead><tr><th>@T("Code", "الرمز")</th><th>@T("Name", "الاسم")</th><th>@T("Arabic name", "الاسم بالعربية")</th><th>@T("Status", "الحالة")</th><th>@T("Action", "الإجراء")</th></tr></thead>
+                <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="admin-empty-state">@T("No vendors found", "لا يوجد بائعون")</td></tr>
+                }
+                @foreach (var vendor in Model.Items)
+                {
+                    <tr>
+                        <td>@vendor.VendorCode</td><td>@vendor.Name</td><td>@vendor.NameArb</td><td>@StatusText(vendor.Status)</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@vendor.VendorId" class="btn btn-sm btn-primary">@T("Edit", "تعديل")</a>
+                            <form asp-action="ChangeStatus" method="post" class="form-inline">
+                                <input type="hidden" name="id" value="@vendor.VendorId" />
+                                <input type="hidden" name="expectedStatus" value="@vendor.Status" />
+                                <button type="submit" name="status" value="@(vendor.Status == "Approved" ? "Suspended" : "Approved")" class="btn btn-sm btn-default">@(vendor.Status == "Approved" ? T("Suspend", "إيقاف") : T("Approve", "اعتماد"))</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <nav aria-label="@T("Vendor pages", "صفحات البائعين")">
+            @if (Model.PageNumber > 1)
+            {
+                <a class="btn btn-default" asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-page="@(Model.PageNumber - 1)">@T("Previous", "السابق")</a>
+            }
+            <span>@Model.PageNumber / @Math.Max(1, Model.TotalPages)</span>
+            @if (Model.PageNumber < Model.TotalPages)
+            {
+                <a class="btn btn-default" asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-page="@(Model.PageNumber + 1)">@T("Next", "التالي")</a>
+            }
+        </nav>
+    </div>
+</div>

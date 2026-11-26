@@ -1,0 +1,29 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorForm
+@{
+    var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    string T(string en, string arabic) => ar ? arabic : en;
+}
+<div class="card alert">
+    <h3>@(Model.VendorId == 0 ? T("Add vendor", "إضافة بائع") : T("Edit vendor", "تعديل البائع"))</h3>
+    <form asp-action="Edit" method="post">
+        <input asp-for="VendorId" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="form-group">
+            <label asp-for="VendorCode">@T("Vendor code", "رمز البائع")</label>
+            <input asp-for="VendorCode" class="form-control" readonly="@(Model.VendorId != 0)" required maxlength="50" />
+            <span asp-validation-for="VendorCode" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Name">@T("Vendor name", "اسم البائع")</label>
+            <input asp-for="Name" class="form-control" required maxlength="200" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="NameArb">@T("Arabic name", "الاسم بالعربية")</label>
+            <input asp-for="NameArb" class="form-control" dir="rtl" maxlength="200" />
+            <span asp-validation-for="NameArb" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">@T("Save", "حفظ")</button>
+        <a asp-action="Index" class="btn btn-default">@T("Cancel", "إلغاء")</a>
+    </form>
+</div>

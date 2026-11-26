@@ -1,4 +1,8 @@
 -- Disposable database only. Run with sqlcmd -b from scripts/marketplace.
+:ON ERROR EXIT
+IF DB_NAME() <> N'MarketplaceMigrationTest'
+    THROW 51109, 'Use MarketplaceMigrationTest only.', 1;
+GO
 SET NOCOUNT ON;
 IF OBJECT_ID(N'dbo.Products', N'U') IS NOT NULL OR OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL
     THROW 51110, 'Use a new disposable database.', 1;
@@ -15,6 +19,7 @@ IF EXISTS (SELECT 1 FROM dbo.Vendors) OR EXISTS (SELECT 1 FROM dbo.VendorListing
     THROW 51111, 'Migration unexpectedly seeded data.', 1;
 
 INSERT dbo.Vendors (VendorCode, Name) VALUES (N'A', N'Seller A'), (N'B', N'Seller B');
+SET XACT_ABORT OFF;
 DECLARE @A int = (SELECT VendorId FROM dbo.Vendors WHERE VendorCode = N'A');
 DECLARE @B int = (SELECT VendorId FROM dbo.Vendors WHERE VendorCode = N'B');
 INSERT dbo.VendorUsers (VendorId, UserId) VALUES (@A, 1);

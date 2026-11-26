@@ -48,4 +48,9 @@ jobs:
           if [ "$ready" != 1 ]; then docker logs inventory-ci; exit 1; fi
           docker exec inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -Q "CREATE DATABASE InventoryMigrationTest"
           docker cp scripts/inventory/. inventory-ci:/tmp/
-          docker exec -w /tmp inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -d InventoryMigrationTest -i test-schema.sql
+          inventory_result=0
+          docker exec -w /tmp inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -d InventoryMigrationTest -i test-schema.sql || inventory_result=$?
+          docker exec inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -Q "CREATE DATABASE MarketplaceMigrationTest"
+          docker cp scripts/marketplace/. inventory-ci:/tmp/marketplace/
+          docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -d MarketplaceMigrationTest -i test-schema.sql
+          exit "$inventory_result"

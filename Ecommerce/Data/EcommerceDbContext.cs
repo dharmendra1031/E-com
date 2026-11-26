@@ -21,6 +21,7 @@ namespace EcommerceWebApplication.Data
         public DbSet<Role> Roles { get; set; }
         public DbSet<RolePermission> RolePermission { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<Vendor> Vendors { get; set; }
         public DbSet<Customers> Customers { get; set; }
 
         //public DbSet<Driver> Drivers { get; set; }
