@@ -14,7 +14,7 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-   [Authorize]
+   [Authorize(Roles = "Admin")]
     public class ProductsController : Controller
     {
 
@@ -193,6 +193,7 @@ namespace EcommerceWebApplication.Controllers
             return View(viewModel);
         }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DeleteProductImage(int imageId)
         {
             var image = _context.ProductImages.FirstOrDefault(x => x.ImageId == imageId);

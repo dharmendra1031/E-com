@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ManageCustomerController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -162,6 +162,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ToggleUserStatus(int id)
         {
             var user = _context.Customers.FirstOrDefault(u => u.UserId == id && u.IsDeleted == 0);
@@ -203,9 +204,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ChangePassword([FromBody] ChangePasswordModel model)
         {
-            if (string.IsNullOrWhiteSpace(model.NewPassword))
+            if (model == null || string.IsNullOrWhiteSpace(model.NewPassword))
                 return Json(new { success = false, message = "Password is required" });
 
             var user = _context.Customers.FirstOrDefault(x => x.UserId == model.UserId);

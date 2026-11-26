@@ -4,7 +4,6 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.ProductListViewModel>
 @{
     ViewData["Title"] = "Products List";
-    var productJson = System.Text.Json.JsonSerializer.Serialize(Model);
 
 }
 
@@ -273,206 +272,14 @@
 
 </div>
 
-<link href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.css" rel="stylesheet" />
-<link href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid-theme.min.css" rel="stylesheet" />
 
 
 
 @section scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         function deleteproduct(id) {
             return AdminFeedback.remove("/Products/DeleteProduct/" + encodeURIComponent(id));
         }
-    </script>
-    <script>
-
-        //         document.addEventListener("DOMContentLoaded", function () {
-
-        //             // ✅ Product data as JSON
-
-        //             var products = @Html.Raw(productJson);
-
-        //             // ✅ Bind jsGrid
-
-        //             $("#jsGrid").jsGrid({
-
-        //                 width: "100%",
-
-        //                 height: "450px",
-
-        //                 sorting: true,
-
-        //                 paging: true,
-
-        //                 pageSize: 10,
-
-        //                 pageButtonCount: 5,
-
-        //                 data: products,
-
-        //                 fields: [
-
-        //                             {
-
-        //             name: "SNo",
-
-        //               title: "@_localizer["SN"]",
-
-        //             width: 40,
-
-        //             align: "center",
-
-        //             itemTemplate: function (_, item) {
-
-        //                 const index = products.findIndex(p => p.ProductId === item.ProductId);
-
-        //                 return index + 1;
-
-        //             }
-
-        //         },
-
-        //                     { name: "ProductId", title: "@_localizer["ID"]", type: "number", width: 40 },
-
-        //                     { name: "Name", title: "@_localizer["Name"]", type: "text", width: 120 },
-
-        //                     { name: "NameArb", title: "@_localizer["Name (AR)"]", type: "text", width: 120 },
-
-        //                     { name: "CategoryName", title: "@_localizer["Category"]", type: "text", width: 100 },
-
-        //                     { name: "SubCategoryName", title: "@_localizer["Sub-Category"]", type: "text", width: 120 },
-
-        //                     {
-
-        //                         name: "Price",
-
-        //                         title: "@_localizer["Sale Price"]",
-
-        //                         type: "number",
-
-        //                         width: 90,
-
-        //                         itemTemplate: function (value) {
-
-        //                             return `${value.toFixed(3)} KD`;
-
-        //                         }
-
-        //                     },
-
-        //                     { name: "Stock", title: "@_localizer["Stock"]", type: "number", width: 60 },
-
-        //                     {
-
-        //                         name: "IsActive",
-
-        //                         title: "@_localizer["Status"]",
-
-        //                         width: 70,
-
-        //                         itemTemplate: function (value) {
-
-        //                             return value
-
-        //                                 ? "<span class='badge bg-success'>@_localizer["Active"]</span>"
-
-        //                                 : "<span class='badge bg-danger'>@_localizer["Inactive"]</span>";
-
-        //                         }
-
-        //                     },
-
-        //                     {
-
-        //                         name: "CreatedAt",
-
-        //                       title: "@_localizer["Created Date"]",
-
-        //                         width: 100,
-
-        //                         itemTemplate: function (value) {
-
-        //                             const date = new Date(value);
-
-        //                             const day = String(date.getDate()).padStart(2, '0');
-
-        //                             const month = String(date.getMonth() + 1).padStart(2, '0');
-
-        //                             const year = date.getFullYear();
-
-        //                             return `${day}-${month}-${year}`;
-
-        //                         }
-
-        //                     },
-
-        //                     {
-
-        //                         name: "ProductImageBase64",
-
-        //                         title: "@_localizer["Image"]",
-
-        //                         width: 70,
-
-        //                         align: "center",
-
-        //                         itemTemplate: function (val) {
-
-        //                             return val
-
-        //                                 ? `<img src="${val}" style="width:50px;height:50px;border-radius:4px;" />`
-
-        //                                 : "No Image";
-
-        //                         }
-
-        //                     },
-
-        //                     {
-
-        //                       title: "@_localizer["Action"]",
-
-        //                         width: 140,
-
-        //                         align: "center",
-
-        //                         itemTemplate: function (_, item) {
-
-        //                             return `
-        // <a class='btn btn-sm btn-primary' href='/Admin/Products/Edit/${item.ProductId}'>@_localizer["Edit"]</a>
-        // <button class='btn btn-sm btn-danger delete-btn' data-id='${item.ProductId}'>@_localizer["Delete"]</button>
-
-        //                             `;
-
-        //                         }
-
-        //                     }
-
-        //                 ]
-
-        //             });
-
-                    // ✅ Delete event
-
-
-
-                    // ✅ Footer date-time
-
-                    document.getElementById("date-time").innerText = new Date().toLocaleString();
-
-                    // ✅ Refresh button
-
-                    document.querySelector(".page-refresh").addEventListener("click", function (e) {
-
-                        e.preventDefault();
-
-                        location.reload();
-
-                    });
-
-                });
     </script>
 
     <script>

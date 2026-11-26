@@ -18,7 +18,7 @@ using System.Text;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ReportController : Controller
     {
         private readonly EcommerceDbContext _context;

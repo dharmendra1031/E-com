@@ -1,5 +1,6 @@
 ﻿using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,9 +16,12 @@ namespace EcommerceWebApplication.Controllers
     {
         private readonly EcommerceDbContext _context;
 
-        public ManageOrdersController(EcommerceDbContext context)
+        private readonly IConfiguration _configuration;
+
+        public ManageOrdersController(EcommerceDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public IActionResult PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10)
@@ -229,7 +233,7 @@ namespace EcommerceWebApplication.Controllers
             HttpContext.Session.Remove(key);
             var currentUserId = userId;
             return long.TryParse(proof, out var expires) && expires >= DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                && _context.Users.Any(u => u.UserId == currentUserId && u.IsActive && u.Role.RoleName == "Admin");
+                && _context.Users.Any(u => u.UserId == currentUserId && u.IsActive && u.Role.IsActive && u.Role.RoleName == "Admin");
         }
 
         [HttpPost]
@@ -243,9 +247,9 @@ namespace EcommerceWebApplication.Controllers
 
             var key = VerificationKey(userId, model.OrderId, model.Operation);
             HttpContext.Session.Remove(key);
-            // Existing password representation is retained until all login paths are migrated.
-            var user = _context.Users.FirstOrDefault(u => u.UserId == userId && u.IsActive && u.Role.RoleName == "Admin");
-            if (user == null || !string.Equals(user.PasswordHash, model.Password, StringComparison.Ordinal)
+            var user = _context.Users.AsNoTracking().FirstOrDefault(u => u.UserId == userId && u.IsActive && u.Role.IsActive && u.Role.RoleName == "Admin");
+            var allowLegacy = _configuration.GetValue("Authentication:AllowLegacyStaffPasswords", false);
+            if (user == null || !StaffPassword.Verify(user.PasswordHash, model.Password, allowLegacy, out _)
                 || !_context.Orders.Any(o => o.OrderId == model.OrderId))
                 return Json(new { valid = false });
 
