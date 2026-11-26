@@ -1,7 +1,8 @@
 :ON ERROR EXIT
 IF DB_NAME()<>N'MarketplaceMigrationTest' THROW 51720,'Disposable database required.',1;
 GO
-ALTER TABLE dbo.Orders ADD CustomerId int NOT NULL DEFAULT(1), Status int NOT NULL DEFAULT(1),
+ALTER TABLE dbo.Orders ADD CreatedAt datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CustomerId int NOT NULL DEFAULT(1), Status int NOT NULL DEFAULT(1),
     PaymentStatus int NOT NULL DEFAULT(2), TotalAmount decimal(18,3) NOT NULL DEFAULT(0),
     VatAmount decimal(18,3) NOT NULL DEFAULT(0), VatPercent decimal(18,3) NOT NULL DEFAULT(0),
     DiscountAmount decimal(18,3) NULL, DeliveryCharge decimal(18,3) NOT NULL DEFAULT(0);
