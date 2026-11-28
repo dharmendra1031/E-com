@@ -66,6 +66,13 @@ EXEC dbo.BeginMarketplacePayment 92,1;
 EXEC dbo.LinkMarketplaceInvoice 92,98765,@ref92;
 UPDATE dbo.InventoryReservations SET CreatedAtUtc=DATEADD(minute,-2,SYSUTCDATETIME()),
     ExpiresAtUtc=DATEADD(minute,-1,SYSUTCDATETIME()) WHERE OrderId IN (90,91,92);
+IF (SELECT COUNT(*) FROM dbo.MarketplaceLinkedPaymentCandidates WHERE OrderId IN (9,90,91,92,93))<>1
+   OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceLinkedPaymentCandidates WHERE OrderId=92 AND MerchantReference=@ref92 AND ExpectedAmount=101)
+    THROW 51826,'Invalid automatic reconciliation candidates.',1;
+UPDATE dbo.Orders SET TotalAmount=102 WHERE OrderId=92;
+IF EXISTS(SELECT 1 FROM dbo.MarketplaceLinkedPaymentCandidates WHERE OrderId=92)
+    THROW 51827,'Amount mismatch selected for reconciliation.',1;
+UPDATE dbo.Orders SET TotalAmount=101 WHERE OrderId=92;
 EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 90;
 EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 90;
 EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 91;

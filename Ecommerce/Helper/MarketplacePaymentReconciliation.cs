@@ -23,10 +23,12 @@ public static class MarketplacePaymentReconciliation
             """).ToListAsync(ct);
         if (invoices.Count != 1) return false;
         var invoice = invoices[0];
+        ct.ThrowIfCancellationRequested();
         var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest
         {
             KeyType = "InvoiceId", Key = invoice.ToString(CultureInfo.InvariantCulture)
         });
+        ct.ThrowIfCancellationRequested();
         var verifiedId = MarketplacePaymentEvidence.VerifiedPaymentId(response, invoice, reference, amount);
         if (verifiedId == null) return false;
         await ConfirmAsync(db, orderId, reference, invoice, verifiedId, amount, ct);

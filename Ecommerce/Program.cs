@@ -62,8 +62,10 @@ try
     builder.Services.AddScoped<IMFClient, MFClient>();
     builder.Services.AddScoped<VendorPortalAccess>();
     if (SellerCartAccess.CheckoutEnabled(builder.Configuration, builder.Environment) &&
-        builder.Configuration.GetValue("Marketplace:ReservationExpiryWorkerEnabled", false))
-        builder.Services.AddHostedService<MarketplaceReservationExpiryWorker>();
+        (builder.Configuration.GetValue("Marketplace:ReservationExpiryWorkerEnabled", false) ||
+         (MarketplacePaymentReconciliation.SandboxEnabled(builder.Configuration, builder.Environment) &&
+          builder.Configuration.GetValue("Marketplace:PaymentReconciliationWorkerEnabled", false))))
+        builder.Services.AddHostedService<MarketplaceMaintenanceWorker>();
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

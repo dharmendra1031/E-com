@@ -194,3 +194,14 @@ BEGIN
     END CATCH;
 END;
 GO
+
+-- Internal reconciliation candidates only. Never infer a paid or failed state from elapsed time.
+CREATE OR ALTER VIEW dbo.MarketplaceLinkedPaymentCandidates
+AS
+SELECT o.OrderId,p.MerchantReference,p.ExpectedAmount,p.UpdatedAtUtc
+FROM dbo.MarketplacePaymentAttempts p
+JOIN dbo.Orders o ON o.OrderId=p.OrderId AND o.MarketplaceRequestId=p.MerchantReference
+WHERE p.State='Linked' AND p.InvoiceId IS NOT NULL AND p.InvoiceId>0
+  AND p.Currency='KWD' AND p.ExpectedAmount=o.TotalAmount AND o.PaymentStatus=2
+  AND NOT EXISTS(SELECT 1 FROM dbo.Payments x WHERE x.OrderId=o.OrderId);
+GO
