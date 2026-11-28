@@ -1,260 +1,30 @@
-﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-@model EcommerceWebApplication.Models.ColorsModel
+@model EcommerceWebApplication.Helper.StoreTheme
 @{
-    ViewData["Title"] = "Colors";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Theme color","لون الواجهة");
+    var colors = new[] { "#6E7F80", "#837E7C", "#C0C6C7", "#3A5F0B", "#829F82", "#16E2F5", "#12E193", "#C2E5D3", "#81D8D0", "#8E7618", "#F5DEB3", "#5E7D7E", "#1569C7", "#387C44", "#8FB31D", "#AF9B60", "#F3E5AB", "#9F8C76", "#DF73D4", "#E3735E", "#FBBBB9", "#997070", "#064b7c" };
 }
-<style>
-    .color-box {
-        width: 50px;
-        height: 50px;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 2px solid transparent;
-    }
-
-        .color-box.selected {
-            border: 3px solid black;
-        }
-</style>
-
-
-<div class="col-lg-12">
-    <div class="card alert">
-        <div class="card-header">
-            <h4> @_localizer["Colors"]</h4>
-        </div>
-
-        <div class="card-body">
-
-            <!-- 🔸 Color Boxes -->
-            @*        <div class="row mb-5" id="colorBoxes" style="padding:15px;"> *@
-            <div id="colorBoxes" style="padding:15px; display:flex; flex-wrap:wrap; gap:15px;">
-
-                <!-- Existing Colors -->
-                <div class="color-item">
-                    <div class="color-box" data-color="#6E7F80" style="background:#6E7F80;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#837E7C" style="background:#837E7C;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#C0C6C7" style="background:#C0C6C7;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#3A5F0B" style="background:#3A5F0B;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#829F82" style="background:#829F82;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#16E2F5" style="background:#16E2F5;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#12E193" style="background:#12E193;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#C2E5D3" style="background:#C2E5D3;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#81D8D0" style="background:#81D8D0;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#8E7618" style="background:#8E7618;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#F5DEB3" style="background:#F5DEB3;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#5E7D7E" style="background:#5E7D7E;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#1569C7" style="background:#1569C7;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#387C44" style="background:#387C44;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#8FB31D" style="background:#8FB31D;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#AF9B60" style="background:#AF9B60;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#F3E5AB" style="background:#F3E5AB;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#9F8C76" style="background:#9F8C76;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#DF73D4" style="background:#DF73D4;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#E3735E" style="background:#E3735E;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#FBBBB9" style="background:#FBBBB9;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#997070" style="background:#997070;"></div>
-                </div>
-
-                <div class="color-item">
-                    <div class="color-box" data-color="#064b7c" style="background:#064b7c;"></div>
-                </div>
-
-                <!-- 🔸 Add Color -->
-                <div class="color-item">
-                    <div class="color-box d-flex align-items-center justify-content-center"
-                         style="background:#f1f1f1;"
-                         onclick="openPicker()">
-                        <i class="ti-plus"></i>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- 🔸 Hidden Color Picker -->
-            <div class="mt-3" id="pickerDiv" style="display:none;">
-                <input type="color" id="colorPicker" />
-            </div>
-
-            <div class="row mt-4 align-items-center">
-                <form id="colorForm" class="d-flex flex-wrap w-100" method="post">
-                    @Html.AntiForgeryToken()
-
-                    <input type="hidden" asp-for="Id" />
-
-                    <!-- 🔸 Textbox -->
-                    <div class="col-md-4">
-                        <input type="text" id="selectedColor" asp-for="Colorcode"
-                               class="form-control" placeholder="Selected Color Code" />
-
-                        <small id="colorError" style="color:red; display:none;">
-                            @_localizer["Please select a color first"]
-                        </small>
-                    </div>
-
-                    <!-- 🔸 Color Preview Box -->
-                    <div class="col-md-2 d-flex align-items-center">
-                        <div id="previewBox" style="width:40px; height:40px; border:1px solid #ccc; border-radius:5px;"></div>
-                    </div>
-
-                    <!-- 🔸 Button -->
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-success w-100"> @_localizer["Submit"]</button>
-                    </div>
-
-                </form>
-            </div>
-
-        </div>
-    </div>
-</div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-
-    //  open picker
-    function openPicker() {
-        document.getElementById("pickerDiv").style.display = "block";
-    }
-
-    //  preview update function
-    function updatePreview(color) {
-        $("#previewBox").css("background", color);
-    }
-
-    //  FORM SUBMIT
-    $("#colorForm").submit(async function (e) {
-        e.preventDefault();
-        const color = $("#selectedColor").val().trim();
-        if (!/^#[0-9a-f]{6}$/i.test(color)) {
-            AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "أدخل رمز لون صحيحاً." : "Enter a valid six-digit hexadecimal color.");
-            return;
-        }
-        $("#colorError").hide();
-        await AdminFeedback.post('@Url.Action("SaveUpdate","Changecolors")', {
-            method: "POST",
-            body: new URLSearchParams(new FormData(this))
-        });
-    });
-
-    //  PAGE LOAD
-    $(document).ready(function () {
-
-        $.ajax({
-            url: '/Changecolors/GetColor',
-            type: 'GET',
-            success: function (res) {
-                if (res.success && res.color) {
-
-                    $("#selectedColor").val(res.color);
-                    updatePreview(res.color); // 🔥 preview set
-
-                    $(".color-box").each(function () {
-                        if ($(this).data("color") == res.color) {
-                            $(".color-box").removeClass("selected");
-                            $(this).addClass("selected");
-                        }
-                    });
-                }
+<section class="admin-panel theme-settings">
+    <div class="admin-section-heading"><h2>@T("Project theme","لون المشروع")</h2></div>
+    <p>@T("Choose the shared accent color for the customer website, admin panel and vendor portal. Content surfaces stay white and text stays readable.","اختر اللون المشترك لموقع العملاء ولوحة الإدارة وبوابة البائع. تبقى الخلفيات بيضاء والنصوص واضحة.")</p>
+    <form id="themeForm" method="post" asp-action="SaveUpdate" data-feedback="off" data-read-url="@Url.Action("GetColor")">
+        <div class="theme-swatches" aria-label="@T("Preset colors","الألوان الجاهزة")">
+            @foreach(var color in colors)
+            {
+                <button type="button" class="theme-swatch" style="background:@color" data-color="@color" aria-label="@color" aria-pressed="@(color.Equals(Model.Primary,StringComparison.OrdinalIgnoreCase)?"true":"false")"></button>
             }
-        });
-
-    });
-
-
-    // COLOR BOX CLICK (ONLY ONE HANDLER - FINAL)
-    $(document).on("click", ".color-box", function () {
-
-        $(".color-box").removeClass("selected");
-        $(this).addClass("selected");
-
-        let color = $(this).data("color");
-        if (!color) return;
-
-        $("#selectedColor").val(color);
-        updatePreview(color);
-    });
-
-
-    //  COLOR PICKER
-    $("#colorPicker").on("input", function () {
-
-        let color = this.value;
-
-        $("#selectedColor").val(color);
-        updatePreview(color);
-
-        $(".color-box").removeClass("selected");
-    });
-
-
-    //  TEXTBOX MANUAL CHANGE
-    $("#selectedColor").on("input", function () {
-        updatePreview($(this).val());
-    });
-
-</script>
+        </div>
+        <div class="admin-register-filters theme-inputs">
+            <div class="form-group"><label for="colorPicker">@T("Custom color","لون مخصص")</label><input type="color" id="colorPicker" class="form-control" value="@Model.Primary" /></div>
+            <div class="form-group"><label for="selectedColor">@T("Hex color","رمز اللون")</label><input type="text" id="selectedColor" name="Colorcode" class="form-control" value="@Model.Primary" maxlength="7" pattern="#[0-9a-fA-F]{6}" required dir="ltr" /></div>
+            <div class="form-group"><label>@T("Preview","معاينة")</label><div id="themePreview" class="theme-preview" style="background:@Model.Primary;color:@Model.Foreground">@T("Selected color","اللون المحدد")</div></div>
+        </div>
+        <div class="admin-form-actions"><button type="submit" class="btn btn-primary">@T("Save color","حفظ اللون")</button></div>
+        <p id="themeMessage" role="status"></p>
+    </form>
+</section>
+@section Scripts {
+    <script src="~/js/theme-settings.js" asp-append-version="true"></script>
+}

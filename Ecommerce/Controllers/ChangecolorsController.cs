@@ -1,9 +1,9 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
-using EcommerceWebApplication.Data;
+﻿using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Text.RegularExpressions;
+using EcommerceWebApplication.Helper;
+using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
@@ -18,25 +18,25 @@ namespace EcommerceWebApplication.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult Index()
         {
-            return View();
+            return View(StoreTheme.From(_context.colors.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Colorcode).FirstOrDefault()));
         }
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public IActionResult SaveUpdate(ColorsModel model)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.Colorcode) || !Regex.IsMatch(model.Colorcode, @"\A#[0-9a-fA-F]{6}\z"))
+            if (model == null || !StoreTheme.IsValid(model.Colorcode))
                 return Json(new { success = false, message = "Invalid data" });
 
             try
             {
-                var existing = _context.colors.FirstOrDefault();
+                var existing = _context.colors.OrderBy(c => c.Id).FirstOrDefault();
 
                 if (existing == null)
                 {
                     // 🔸 Insert (first time)
                     ColorsModel obj = new ColorsModel();
-                    obj.Colorcode = model.Colorcode;
+                    obj.Colorcode = StoreTheme.From(model.Colorcode).Primary;
 
                     _context.colors.Add(obj);
                     _context.SaveChanges();
@@ -46,7 +46,7 @@ namespace EcommerceWebApplication.Controllers
                 else
                 {
                  
-                    existing.Colorcode = model.Colorcode;
+                    existing.Colorcode = StoreTheme.From(model.Colorcode).Primary;
 
                     _context.SaveChanges();
 
@@ -59,20 +59,12 @@ namespace EcommerceWebApplication.Controllers
             }
         }
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public IActionResult GetColor()
         {
-            var color = _context.colors.FirstOrDefault();
-
-            if (color != null)
-            {
-                return Json(new { success = true, color = color.Colorcode });
-            }
-            else
-            {
-                return Json(new { success = false });
-            }
+            var color = _context.colors.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Colorcode).FirstOrDefault();
+            var theme = StoreTheme.From(color);
+            return Json(new { success = StoreTheme.IsValid(color), color = theme.Primary, theme });
         }
-      
     }
-
 }

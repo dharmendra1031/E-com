@@ -108,22 +108,22 @@
 		/* Top white bar */
 		.top-bar-1 {
 			background-color: #fff;
-			color: #14a2d7;
+			color: var(--theme-link);
 			font-size: 24px;
 			height: 50px;
 		}
 
 		/* Company details bar */
 		/*   .header-top {
-					background-color: #14a2d7;
-					color: #fff;
+					background-color: var(--theme-primary);
+					color: var(--theme-foreground);
 					font-size: 0.875rem;
 					height: 25px;
 				} */
 
 		.header-top {
-			background-color: #14a2d7;
-			color: #fff;
+			background-color: var(--theme-primary);
+			color: var(--theme-foreground);
 			font-size: 17px;
 			min-height: 28px;
 			display: flex;
@@ -132,7 +132,7 @@
 		}
 		/* Main navbar */
 	/* 	.main-header {
-			background-color: #14a2d7;
+			background-color: var(--theme-primary);
 			color: #fff;
 		} */
 
@@ -141,7 +141,7 @@
 
 
 	/* 	header, footer {
-			background-color: #14a2d7;
+			background-color: var(--theme-primary);
 			color: #fff;
 		} */
 
@@ -157,10 +157,10 @@
 		}
 
 		.footer-bottom {
-			background: #064b7c;
+			background: var(--theme-hover);
 			padding: 10px 0;
 			text-align: center;
-			color: #fff;
+			color: var(--theme-hover-foreground);
 		}
 
 		.category-item {
@@ -222,6 +222,7 @@
         }
     </style>
     <link rel="stylesheet" href="~/css/storefront.css" asp-append-version="true" />
+    <partial name="_StoreTheme" />
 </head>
 
 <body dir="@direction" class="storefront">
@@ -232,7 +233,7 @@
 			</div>
 		</div>
 		<div class="header-top py-1 w-100 d-none"
-			 style="background-color:#14a2d7;color:#fff;font-size:0.875rem;margin:0;">
+			 style="background-color:var(--theme-primary);color:var(--theme-foreground);font-size:0.875rem;margin:0;">
 			@*  <div id="topHeaderCompanyDetails">
                 <!-- Company details yahan AJAX se aayegi -->
             </div> *@
@@ -276,7 +277,7 @@
 							<div class="dropdown">
 
 								<!-- TRIGGER -->
-								<a class="store-header-action text-white dropdown-toggle" aria-label="@(lang == "ar" ? "حسابي" : "My account")"
+								<a class="store-header-action  dropdown-toggle" aria-label="@(lang == "ar" ? "حسابي" : "My account")"
 								   href="#"
 								   role="button"
 								   data-bs-toggle="dropdown"
@@ -301,7 +302,7 @@
 						}
 						else
 						{
-							<a asp-controller="UserAccount" asp-action="Login" class="text-white store-header-action" aria-label="@(lang == "ar" ? "تسجيل الدخول" : "Login")">
+							<a asp-controller="UserAccount" asp-action="Login" class=" store-header-action" aria-label="@(lang == "ar" ? "تسجيل الدخول" : "Login")">
 								<i class="bi bi-person" aria-hidden="true"></i><span class="store-action-label">@(lang == "ar" ? "الحساب" : "Account")</span>
 							</a>
 						}
@@ -311,7 +312,7 @@
 
 
 						<!-- Shopping Cart Icon with Badge -->
-						<a href="~/WebCart/Cart" class="text-white position-relative store-header-action" aria-label="@(lang == "ar" ? "سلة التسوق" : "Shopping cart")">
+						<a href="~/WebCart/Cart" class=" position-relative store-header-action" aria-label="@(lang == "ar" ? "سلة التسوق" : "Shopping cart")">
 							<i class="bi bi-cart3" aria-hidden="true"></i><span class="store-action-label">@(lang == "ar" ? "السلة" : "Cart")</span>
 							<span id="cartCount"
 								  class="store-cart-count">
@@ -393,46 +394,46 @@
 						 src="~/Images/download.png"
 						 class="store-footer-logo" alt="Raqmikart" />
 
-					<p class="mb-1 d-flex align-items-center gap-1 text-light">
+					<p class="mb-1 d-flex align-items-center gap-1 ">
 
 						<span id="companyName" title="Company Name" style="font-weight:bold;"></span>
 
 					</p>
 
-					<p class="mb-1 d-flex align-items-center gap-2 text-light">
+					<p class="mb-1 d-flex align-items-center gap-2 ">
 						<i class="bi bi-geo-alt-fill text-"></i>
 						<span id="companyAddress"></span>
 					</p>
 
-					<p class="mb-1 d-flex align-items-center gap-2 text-light">
+					<p class="mb-1 d-flex align-items-center gap-2 ">
 						<i class="bi bi-telephone-fill text-"></i>
 						<span id="companyPhone"></span>
 					</p>
 
-					<p class="mb-3 d-flex align-items-center gap-2 text-light">
+					<p class="mb-3 d-flex align-items-center gap-2 ">
 						<i class="bi bi-envelope-fill text-"></i>
 						<span id="companyEmail"></span>
 					</p>
 
 					<div class="d-flex gap-3">
-						<a id="fbLink" aria-label="Facebook" class="text-white fs-5 d-none"><i class="fab fa-facebook-f"></i></a>
-						<a id="twLink" aria-label="X" class="text-white fs-5 d-none"><i class="fab fa-x-twitter"></i></a>
-						<a id="igLink" aria-label="Instagram" class="text-white fs-5 d-none"><i class="fab fa-instagram"></i></a>
-						<a id="lnLink" aria-label="LinkedIn" class="text-white fs-5 d-none"><i class="fab fa-linkedin-in"></i></a>
+						<a id="fbLink" aria-label="Facebook" class=" fs-5 d-none"><i class="fab fa-facebook-f"></i></a>
+						<a id="twLink" aria-label="X" class=" fs-5 d-none"><i class="fab fa-x-twitter"></i></a>
+						<a id="igLink" aria-label="Instagram" class=" fs-5 d-none"><i class="fab fa-instagram"></i></a>
+						<a id="lnLink" aria-label="LinkedIn" class=" fs-5 d-none"><i class="fab fa-linkedin-in"></i></a>
 					</div>
 
 				</div>
 
 				<!-- COMPANY -->
 				<div>
-					<h6 class="fw-bold mb-3 text-white">@_localizer["Company1"]</h6>
+					<h6 class="fw-bold mb-3 ">@_localizer["Company1"]</h6>
 					<ul class="list-unstyled d-grid gap-2">
-						<li><a href="~/AboutCompany/About" class="text-white text-decoration-none">@_localizer["About"]</a></li>
-						<li><a href="~/WebBlog/WebBlog" class="text-white text-decoration-none">@_localizer["Blog"]</a></li>
-						<li><a href="~/WebCategory/Index" class="text-white text-decoration-none">@_localizer["SHOP"]</a></li>
+						<li><a href="~/AboutCompany/About" class=" text-decoration-none">@_localizer["About"]</a></li>
+						<li><a href="~/WebBlog/WebBlog" class=" text-decoration-none">@_localizer["Blog"]</a></li>
+						<li><a href="~/WebCategory/Index" class=" text-decoration-none">@_localizer["SHOP"]</a></li>
 						
 						<li>
-							<a href="@Url.Action("Contact", "WebContact")" class="text-white text-decoration-none">@_localizer["Contact Us"]</a>
+							<a href="@Url.Action("Contact", "WebContact")" class=" text-decoration-none">@_localizer["Contact Us"]</a>
 						</li>
 
 					</ul>
@@ -461,15 +462,15 @@
 				</div>
 				<!-- SERVICES -->
 				<div>
-					<h6 class="fw-bold mb-3 text-white">@_localizer["Services"]</h6>
+					<h6 class="fw-bold mb-3 ">@_localizer["Services"]</h6>
 					<ul class="list-unstyled d-grid gap-2">
 						<li>
-							<a href="@Url.Action("Login", "UserAccount")" class="text-white text-decoration-none">@_localizer["Login"]</a>
+							<a href="@Url.Action("Login", "UserAccount")" class=" text-decoration-none">@_localizer["Login"]</a>
 						</li>
 
-						<li><a href="~/UserProfile/Profile" class="text-white text-decoration-none">@_localizer["My Account"]</a></li>
-						<li><a href="~/Term_Condition/Index" class="text-white text-decoration-none">@_localizer["Terms & Conditions"]</a></li>
-						<li><a href="~/Wekenddealwiseproducts/Index" class="text-white text-decoration-none">@_localizer["Promotional Offers"]</a></li>
+						<li><a href="~/UserProfile/Profile" class=" text-decoration-none">@_localizer["My Account"]</a></li>
+						<li><a href="~/Term_Condition/Index" class=" text-decoration-none">@_localizer["Terms & Conditions"]</a></li>
+						<li><a href="~/Wekenddealwiseproducts/Index" class=" text-decoration-none">@_localizer["Promotional Offers"]</a></li>
 					</ul>
 				</div>
 
@@ -929,32 +930,7 @@
 
 	</script>
 	
-	<script>
-		$(document).ready(function () {
 
-			loadHeaderColor();
-
-		});
-
-		function loadHeaderColor() {
-
-			$.ajax({
-				url: '/ChangeColors/GetColor',
-				type: 'GET',
-				success: function (res) {
-
-					if (res.success && res.color) {
-
-						// 🎯 header ka color change
-						$(".dynamicmainHeader").css("background-color", res.color);
-					}
-				},
-				error: function () {
-					console.log("Color load failed");
-				}
-			});
-		}
-	</script>
 <script>
     $(document).on("click", ".add-to-cart-btn", function () {
         const button = $(this);

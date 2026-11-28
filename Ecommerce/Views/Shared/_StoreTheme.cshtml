@@ -1,0 +1,18 @@
+@using EcommerceWebApplication.Helper
+@using Microsoft.EntityFrameworkCore
+@inject EcommerceWebApplication.Data.EcommerceDbContext ThemeDb
+@{
+    var saved = await ThemeDb.colors.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Colorcode).FirstOrDefaultAsync();
+    var theme = StoreTheme.From(saved);
+}
+<style id="store-theme">
+    :root {
+        --theme-primary: @theme.Primary;
+        --theme-foreground: @theme.Foreground;
+        --theme-hover: @theme.Hover;
+        --theme-hover-foreground: @theme.HoverForeground;
+        --theme-link: @theme.Link;
+        --theme-tint: @theme.Tint;
+        --theme-rgb: @theme.Rgb;
+    }
+</style>
