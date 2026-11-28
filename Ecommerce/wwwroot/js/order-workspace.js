@@ -65,6 +65,8 @@
             if(request.signal.aborted)return;
             if(response.success!==true||!response.data)throw Error(error);
             const data=response.data;
+            const paymentAction=content.querySelector('[data-operation="payment"]');
+            if(paymentAction)paymentAction.hidden=String(data.paymentType??"").toLowerCase()!=="cod";
             for(const el of content.querySelectorAll("[data-detail]")){
                 let val=data[el.dataset.detail];
                 if(el.dataset.detail==="createdAt"&&val)val=new Date(val).toLocaleDateString(ar?"ar-KW":"en-GB");

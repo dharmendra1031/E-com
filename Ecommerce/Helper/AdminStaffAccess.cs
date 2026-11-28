@@ -74,7 +74,8 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
             .GroupBy(g => g.PageCode!, StringComparer.Ordinal).Where(g => g.Count() == 1)
             .ToDictionary(g => g.Key, g => {
                 var grant = g.Single();
-                return g.Key is Stock or Orders ? AdminPageRights.From(grant.ListPage, false, false, false) :
+                return g.Key == Orders ? AdminPageRights.From(grant.ListPage, false, false, false) :
+                    g.Key == Stock ? AdminPageRights.From(grant.ListPage, false, grant.UpdatePage, false) :
                     AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
             }, StringComparer.Ordinal);
     }

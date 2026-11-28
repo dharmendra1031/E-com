@@ -31,7 +31,8 @@ public sealed class RestrictedAdminFilter(AdminStaffAccess access) : IAsyncAutho
             method == "GET" && action is "ProductList" or "Create" or "Edit" or "GetSubCategories" or "AutoCompleteSql" ||
             method == "POST" && action is "Create" or "Edit" or "DeleteProduct" or "DeleteProductImage") ||
         controller == typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) &&
-            method == "GET" && action is "Index" or "AutoCompleteSql" ||
+            (method == "GET" && action is "Index" or "AutoCompleteSql" or "MarketplaceStock" or "MarketplaceMovements" ||
+             method == "POST" && action == "MarketplaceMovements") ||
         controller == typeof(ManageOrdersController) &&
             method == "GET" && action is "PendingOrder" or "GetOrderDetails" ||
         method == "GET" && (

@@ -8,7 +8,8 @@
 }
 <div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("Index","ProductStock")" data-suggest-url="@Url.Action("AutoCompleteSql","ProductStock")">
     <section class="admin-panel">
-        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2></div>
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2>
+            @if(ViewBag.MarketplaceInventoryEnabled==true){<a asp-action="MarketplaceStock" class="btn btn-primary">@T("Vendor stock","مخزون البائعين")</a>}</div>
         <form id="masterFilters" method="get" asp-action="Index" class="admin-register-filters">
             
             <div class="form-group"><label for="name">@T("Search by name","بحث بالاسم")</label>

@@ -99,3 +99,42 @@ IF (SELECT AvailableQuantity FROM dbo.InventoryBalances WHERE VendorListingId = 
     THROW 51329, 'Incorrect or cross-vendor balance.', 1;
 PRINT 'Listing inventory procedure and constraints passed.';
 GO
+
+-- Test Admin permission through the same transaction, restoring the fixture balances.
+DECLARE @vendor int=(SELECT VendorId FROM dbo.Vendors WHERE VendorCode=N'B');
+DECLARE @listing int=(SELECT VendorListingId FROM dbo.VendorListings WHERE VendorId=@vendor);
+DECLARE @adminRole int,@page int,@req uniqueidentifier=NEWID(),@reduce uniqueidentifier=NEWID();
+INSERT dbo.[Role](RoleName,RoleNameArb,IsActive,CreatedAt,UpdatedAt)
+VALUES(N'AdminStaff',N'اختبار',1,SYSUTCDATETIME(),SYSUTCDATETIME());
+SET @adminRole=SCOPE_IDENTITY();
+INSERT dbo.Users(UserId,RoleId) VALUES(99,@adminRole);
+INSERT dbo.PageMaster(PageNameEng,PageNameArb,CreatedAt,PortalScope,PageCode)
+VALUES(N'Inventory fixture',N'اختبار',SYSUTCDATETIME(),N'Admin',N'admin.stock');
+SET @page=SCOPE_IDENTITY();
+BEGIN TRY
+    EXEC dbo.PostInventoryAdjustment @vendor,@listing,99,@req,1,N'Admin fixture',1;
+    THROW 51330,'Missing admin grant accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51312 THROW;
+END CATCH;
+INSERT dbo.RolePermission(RoleId,PageId,ListPage,UpdatePage) VALUES(@adminRole,@page,1,1);
+EXEC dbo.PostInventoryAdjustment @vendor,@listing,99,@req,1,N'Admin fixture',1;
+EXEC dbo.PostInventoryAdjustment @vendor,@listing,99,@req,1,N'Admin fixture',1;
+IF (SELECT COUNT(*) FROM dbo.InventoryTransactions WHERE RequestId=@req AND CreatedBy=99)<>1
+    THROW 51331,'Admin adjustment audit or idempotency failed.',1;
+EXEC dbo.PostInventoryAdjustment @vendor,@listing,99,@reduce,-1,N'Admin fixture reversal',1;
+UPDATE dbo.RolePermission SET UpdatePage=0 WHERE RoleId=@adminRole AND PageId=@page;
+BEGIN TRY
+    EXEC dbo.PostInventoryAdjustment @vendor,@listing,99,@req,1,N'Admin fixture',1;
+    THROW 51332,'Revoked admin grant accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51312 THROW;
+END CATCH;
+IF (SELECT AvailableQuantity FROM dbo.InventoryBalances WHERE VendorListingId=@listing)<>0
+    THROW 51333,'Admin fixture balance incorrect.',1;
+DELETE dbo.RolePermission WHERE RoleId=@adminRole AND PageId=@page;
+DELETE dbo.PageMaster WHERE PageId=@page;
+PRINT 'Admin adjustment permission and duplicate protection passed.';
+GO

@@ -13,7 +13,8 @@ CREATE OR ALTER PROCEDURE dbo.PostInventoryAdjustment
     @UserId int,
     @RequestId uniqueidentifier,
     @Delta bigint,
-    @Reason nvarchar(200)
+    @Reason nvarchar(200),
+    @AdminPortal bit = 0
 AS
 BEGIN
     SET ANSI_PADDING ON;
@@ -33,7 +34,20 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         -- Recheck authorization in the same transaction; hold membership/role/vendor locks until commit.
-        IF NOT EXISTS (
+        IF @AdminPortal IS NULL THROW 51312,'Portal denied.',1;
+        IF @AdminPortal=1
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM dbo.Users u WITH(HOLDLOCK)
+                JOIN dbo.[Role] r WITH(HOLDLOCK) ON r.RoleId=u.RoleId
+                WHERE u.UserId=@UserId AND u.IsActive=1 AND r.IsActive=1
+                AND (r.RoleName=N'Admin' OR (r.RoleName IN(N'AdminManager',N'AdminStaff')
+                    AND EXISTS(SELECT 1 FROM dbo.RolePermission rp WITH(HOLDLOCK)
+                        JOIN dbo.PageMaster pm WITH(HOLDLOCK) ON pm.PageId=rp.PageId
+                        WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Admin' AND pm.PageCode='admin.stock'
+                          AND rp.ListPage=1 AND rp.UpdatePage=1))))
+                THROW 51312,'Admin inventory permission denied.',1;
+        END
+        ELSE IF NOT EXISTS (
             SELECT 1 FROM dbo.VendorUsers m WITH (HOLDLOCK)
             JOIN dbo.Users u WITH (HOLDLOCK) ON u.UserId = m.UserId
             JOIN dbo.[Role] r WITH (HOLDLOCK) ON r.RoleId = u.RoleId

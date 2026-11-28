@@ -1,0 +1,30 @@
+@model EcommerceWebApplication.Models.ViewModels.MarketplaceStockRegister
+@{
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Vendor inventory","مخزون البائعين");
+}
+<section class="admin-panel">
+    <div class="admin-section-heading"><h2>@ViewData["Title"]</h2><a asp-action="Index" class="btn btn-default">@T("Legacy stock","المخزون السابق")</a></div>
+    <form asp-action="MarketplaceStock" method="get" class="admin-register-filters">
+        <div class="form-group"><label for="vendorId">@T("Vendor ID","رقم البائع")</label><input id="vendorId" name="vendorId" type="number" min="1" value="@Model.VendorId" class="form-control"/></div>
+        <div class="form-group"><label for="search">@T("Vendor, product or SKU","البائع أو المنتج أو الرمز")</label><input id="search" name="search" value="@Model.Search" maxlength="100" class="form-control"/></div>
+        <button class="btn btn-primary" type="submit">@T("Search","بحث")</button>
+        <a asp-action="MarketplaceStock" class="btn btn-default">@T("Clear","مسح")</a>
+    </form>
+    <div class="admin-table-scroll"><table class="table table-hover">
+        <thead><tr><th>@T("Vendor","البائع")</th><th>@T("Product","المنتج")</th><th>SKU</th><th>@T("Listing status","حالة العرض")</th><th>@T("On hand","الفعلي")</th><th>@T("Reserved","المحجوز")</th><th>@T("Available","المتاح")</th><th>@T("Action","الإجراء")</th></tr></thead>
+        <tbody>
+        @if(Model.Rows.Count==0){<tr><td colspan="8">@T("No listings found","لا توجد عروض")</td></tr>}
+        @foreach(var row in Model.Rows)
+        {
+            <tr><td>@row.VendorName</td><td>@(ar && !string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td><bdi>@row.SellerSku</bdi></td><td>@row.ListingStatus</td><td>@row.OnHand</td><td>@row.Reserved</td><td>@row.Available</td><td><a asp-action="MarketplaceMovements" asp-route-id="@row.VendorId" asp-route-listingId="@row.ListingId" class="btn btn-default">@(Model.CanEdit?T("Stock / history","المخزون / السجل"):T("History","السجل"))</a></td></tr>
+        }
+        </tbody>
+    </table></div>
+    <nav class="order-pagination">
+        @if(Model.Page>1){<a asp-action="MarketplaceStock" asp-route-page="@(Model.Page-1)" asp-route-search="@Model.Search" asp-route-vendorId="@Model.VendorId" class="btn btn-default">@T("Previous","السابق")</a>}
+        <span>@Model.Page</span>
+        @if(Model.HasNext){<a asp-action="MarketplaceStock" asp-route-page="@(Model.Page+1)" asp-route-search="@Model.Search" asp-route-vendorId="@Model.VendorId" class="btn btn-default">@T("Next","التالي")</a>}
+    </nav>
+</section>

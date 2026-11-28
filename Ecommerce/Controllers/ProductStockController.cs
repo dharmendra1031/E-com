@@ -5,6 +5,7 @@ using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace EcommerceWebApplication.Controllers.Admin
 {
@@ -13,17 +14,25 @@ namespace EcommerceWebApplication.Controllers.Admin
     {
         private readonly EcommerceDbContext _context;
         private readonly AdminStaffAccess _access;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
+        private bool MarketplaceInventoryEnabled => _environment.IsDevelopment() &&
+            _configuration.GetValue("Marketplace:VendorMasterEnabled", false) &&
+            _configuration.GetValue("Marketplace:VendorInventoryEnabled", false);
 
-        public ProductStockController(EcommerceDbContext context, AdminStaffAccess access)
+        public ProductStockController(EcommerceDbContext context, AdminStaffAccess access, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _context = context;
             _access = access;
+            _configuration = configuration;
+            _environment = environment;
         }
 
         [HttpGet]
         public async Task<IActionResult> Index(string name, string status, int page = 1, int pageSize = 10, bool partial = false)
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Stock, HttpContext.RequestAborted)).View) return Forbid();
+            ViewBag.MarketplaceInventoryEnabled = MarketplaceInventoryEnabled;
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
             var products = (from p in _context.Products
@@ -36,20 +45,20 @@ namespace EcommerceWebApplication.Controllers.Admin
                                 ProductName = isArabic ? p.NameArb : p.Name,
                                 TotalStock = stockGroup.Sum(x => (int?)x.StockQty) ?? 0,
                                 Totalsoldstock = _context.OrderItems
-                                                .Where(o => o.ProductId == p.ProductId)
+                                                .Where(o => o.ProductId == p.ProductId && o.VendorOrderId == null)
                                                 .Sum(o => (int?)o.Quantity) ?? 0,
                                 RemainingQty = (stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
-                                               (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
+                                               (_context.OrderItems.Where(o => o.ProductId == p.ProductId && o.VendorOrderId == null)
                                                .Sum(o => (int?)o.Quantity) ?? 0),
                              
                                 Status = ((stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
                                         (_context.OrderItems
-                                        .Where(o => o.ProductId == p.ProductId)
+                                        .Where(o => o.ProductId == p.ProductId && o.VendorOrderId == null)
                                         .Sum(o => (int?)o.Quantity) ?? 0)) > 10
                                         ? "In"
                                         : ((stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
                                         (_context.OrderItems
-                                       .Where(o => o.ProductId == p.ProductId)
+                                       .Where(o => o.ProductId == p.ProductId && o.VendorOrderId == null)
                                        .Sum(o => (int?)o.Quantity) ?? 0)) > 0
                                         ? "Low"
                                         : "Out"
@@ -113,6 +122,12 @@ namespace EcommerceWebApplication.Controllers.Admin
             if (!ModelState.IsValid || newStock <= 0 || !_context.Products.Any(p => p.ProductId == productId))
                 return Json(new { success = false, message = "Invalid product or stock quantity." });
 
+            using var transaction = _context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
+            var marketplaceSchemaExists = _context.Database.SqlQuery<int>($"""
+                SELECT CASE WHEN OBJECT_ID(N'dbo.VendorListings',N'U') IS NULL THEN 0 ELSE 1 END AS Value
+                """).Single() == 1;
+            if (marketplaceSchemaExists && _context.VendorListings.Any(l => l.ProductId == productId))
+                return Json(new { success = false, message = "Use marketplace stock for listed products." });
             var stock = new ProductStock
             {
                 ProductId = productId,
@@ -123,9 +138,78 @@ namespace EcommerceWebApplication.Controllers.Admin
 
             _context.ProductStocks.Add(stock);
             _context.SaveChanges();
+            transaction.Commit();
 
             return Json(new { success = true, message = "Stock added successfully!" });
         }
+        [HttpGet]
+        public async Task<IActionResult> MarketplaceStock(int? vendorId, string? search, int page = 1, CancellationToken ct = default)
+        {
+            if (!MarketplaceInventoryEnabled) return NotFound();
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Stock, ct);
+            if (!rights.View) return Forbid();
+            page = Math.Clamp(page, 1, 100000);
+            search = search?.Trim() ?? "";
+            if (search.Length > 100) return BadRequest();
+            var balances = _context.Database.SqlQuery<MarketplaceStockRow>($"""
+                SELECT l.VendorListingId AS ListingId,l.VendorId,v.Name AS VendorName,
+                    p.Name AS ProductName,p.NameArb AS ProductNameArb,l.SellerSku,l.Status AS ListingStatus,
+                    COALESCE(b.OnHandQuantity,CONVERT(bigint,0)) AS OnHand,
+                    COALESCE(b.ReservedQuantity,CONVERT(bigint,0)) AS Reserved,
+                    COALESCE(b.AvailableQuantity,CONVERT(bigint,0)) AS Available
+                FROM dbo.VendorListings l JOIN dbo.Vendors v ON v.VendorId=l.VendorId
+                JOIN dbo.Products p ON p.ProductId=l.ProductId
+                LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId=l.VendorListingId
+                """);
+            if (vendorId.HasValue) balances = balances.Where(x => x.VendorId == vendorId);
+            if (search.Length > 0) balances = balances.Where(x => x.ProductName.Contains(search) ||
+                (x.ProductNameArb != null && x.ProductNameArb.Contains(search)) || x.SellerSku.Contains(search) || x.VendorName.Contains(search));
+            var rows = await balances.OrderBy(x => x.VendorId).ThenBy(x => x.ListingId)
+                .Skip((page - 1) * 25).Take(26).ToListAsync(ct);
+            return View(new MarketplaceStockRegister { VendorId = vendorId, Search = search, Page = page,
+                CanEdit = rights.Edit, HasNext = rows.Count > 25, Rows = rows.Take(25).ToList() });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> MarketplaceMovements(int id, int listingId, int page = 1, CancellationToken ct = default)
+        {
+            if (!MarketplaceInventoryEnabled) return NotFound();
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Stock, ct);
+            if (!rights.View) return Forbid();
+            var result = await ListingStockQueries.ReadAsync(_context,id,listingId,page,rights.Edit,ct);
+            if (result == null) return NotFound();
+            ViewData["AdminStock"] = true;
+            return View("~/Views/VendorPortal/Stock.cshtml", result);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarketplaceMovements(int id, int listingId, StockAdjustmentForm adjustment, CancellationToken ct)
+        {
+            if (!MarketplaceInventoryEnabled) return NotFound();
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Stock, ct)).Edit ||
+                !int.TryParse(User.FindFirst("UserId")?.Value,out var actor)) return Forbid();
+            if (!ModelState.IsValid || adjustment.RequestId == Guid.Empty || adjustment.Quantity is < 1 or > 1000000000 ||
+                adjustment.Direction is not ("Add" or "Reduce") || string.IsNullOrWhiteSpace(adjustment.Reason))
+                return BadRequest();
+            var delta = adjustment.Direction == "Add" ? adjustment.Quantity : -adjustment.Quantity;
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                    EXEC dbo.PostInventoryAdjustment @VendorId={id}, @VendorListingId={listingId}, @UserId={actor},
+                        @RequestId={adjustment.RequestId}, @Delta={delta}, @Reason={adjustment.Reason.Trim()}, @AdminPortal=1
+                    """,ct);
+            }
+            catch (SqlException ex) when (ex.Number == 51312) { return Forbid(); }
+            catch (SqlException ex) when (ex.Number is 51310 or 51313 or 51314)
+            {
+                TempData["StockError"] = "Stock not changed. Review quantity and retry. / لم يتغير المخزون. راجع الكمية.";
+                return RedirectToAction(nameof(MarketplaceMovements),new { id,listingId });
+            }
+            TempData["StockSuccess"] = "Stock updated. / تم تحديث المخزون.";
+            return RedirectToAction(nameof(MarketplaceMovements),new { id,listingId });
+        }
+
         [HttpGet]
         public async Task<IActionResult> AutoCompleteSql(string term)
         {

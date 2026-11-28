@@ -137,6 +137,7 @@ namespace EcommerceWebApplication.Controllers
         public IActionResult GetStatusList(int orderId)
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
+            if (order == null || order.MarketplaceRequestId.HasValue) return Conflict();
             var currentStatusId = order?.Status ?? 0;
             var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 
@@ -268,7 +269,8 @@ namespace EcommerceWebApplication.Controllers
             var user = _context.Users.AsNoTracking().FirstOrDefault(u => u.UserId == userId && u.IsActive && u.Role.IsActive && u.Role.RoleName == "Admin");
             var allowLegacy = _configuration.GetValue("Authentication:AllowLegacyStaffPasswords", false);
             if (user == null || !StaffPassword.Verify(user.PasswordHash, model.Password, allowLegacy, out _)
-                || !_context.Orders.Any(o => o.OrderId == model.OrderId))
+                || !_context.Orders.Any(o => o.OrderId == model.OrderId && o.MarketplaceRequestId == null &&
+                    (model.Operation != "payment" || o.PaymentType == "cod")))
                 return Json(new { valid = false });
 
             HttpContext.Session.SetString(key, DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
@@ -282,7 +284,10 @@ namespace EcommerceWebApplication.Controllers
         {
             if (model == null || !ModelState.IsValid || !ConsumeVerification(model.OrderId, "order", out var userId))
                 return Json(new { success = false, message = "Verification required. Reopen the order and verify your password." });
-            var order = _context.Orders.FirstOrDefault(o => o.OrderId == model.OrderId);
+            using var transaction = _context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
+            var order = _context.Orders.IgnoreQueryFilters().FirstOrDefault(o => o.OrderId == model.OrderId);
+            if (order?.MarketplaceRequestId != null)
+                return Conflict(new { success = false, message = "Use marketplace fulfillment to update this order." });
             if (order == null || !_context.OrderStatus.Any(x => x.OrderstatusId == model.CurrentStatus))
                 return Json(new { success = false, message = "Order or status not found." });
             if (order.Status == model.CurrentStatus)
@@ -300,8 +305,8 @@ namespace EcommerceWebApplication.Controllers
                 CreatedAt = DateTime.Now,
                 CreatedBy = userId
             });
-            // EF commits the order and history in one SaveChanges transaction.
             _context.SaveChanges();
+            transaction.Commit();
             return Json(new { success = true, message = "Order status updated successfully." });
         }
 
@@ -310,6 +315,7 @@ namespace EcommerceWebApplication.Controllers
         public IActionResult PaymentstatusList(int orderId)
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
+            if (order == null || order.MarketplaceRequestId.HasValue || !string.Equals(order.PaymentType, "cod", StringComparison.OrdinalIgnoreCase)) return Conflict();
             var paymentstatusId = order?.PaymentStatus ?? 0;
             var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 
@@ -332,7 +338,10 @@ namespace EcommerceWebApplication.Controllers
                 return Json(new { success = false, message = "Verification required. Reopen the order and verify your password." });
             try
             {
-                var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
+                using var transaction = _context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
+                var order = _context.Orders.IgnoreQueryFilters().FirstOrDefault(o => o.OrderId == orderId);
+                if (order?.MarketplaceRequestId != null || !string.Equals(order?.PaymentType, "cod", StringComparison.OrdinalIgnoreCase))
+                    return Json(new { success = false, message = "Online and marketplace payments require gateway verification." });
                 var payments = _context.Payments.Where(p => p.OrderId == orderId).Take(2).ToList();
                 if (order == null || payments.Count != 1 || !_context.PaymentStatus.Any(x => x.PaymentstatusId == PaymentStatus))
                     return Json(new { success = false, message = "Order, payment record or status is invalid. Review the payment records." });
@@ -344,6 +353,7 @@ namespace EcommerceWebApplication.Controllers
                 order.UpdatedAt = DateTime.Now;
                 payment.PaymentStatus = PaymentStatus;
                 _context.SaveChanges();
+                transaction.Commit();
                 return Json(new { success = true, message = "Payment status updated successfully." });
             }
             catch (Exception ex)

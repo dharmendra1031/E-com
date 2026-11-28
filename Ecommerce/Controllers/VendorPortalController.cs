@@ -244,33 +244,9 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
         if (!await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct) ||
             !await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct)) return NotFound();
-        var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
-        var productName = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id &&
-            l.VendorListingId == listingId).Select(l => ar && l.Product.NameArb != "" ? l.Product.NameArb : l.Product.Name).SingleOrDefaultAsync(ct);
-        if (productName == null) return NotFound();
-        var balances = await db.Database.SqlQuery<ListingStockPage>($"""
-            SELECT {id} AS VendorId, {listingId} AS ListingId, {productName} AS ProductName,
-                   COALESCE(b.OnHandQuantity, CONVERT(bigint,0)) AS OnHand,
-                   COALESCE(b.ReservedQuantity, CONVERT(bigint,0)) AS Reserved,
-                   COALESCE(b.AvailableQuantity, CONVERT(bigint,0)) AS Available,
-                   CONVERT(bit, CASE WHEN b.VendorListingId IS NULL THEN 0 ELSE 1 END) AS HasBalance,
-                   CONVERT(bit,0) AS CanEdit, 1 AS Page, CONVERT(bit,0) AS HasNext
-            FROM dbo.VendorListings l LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId = l.VendorListingId
-            WHERE l.VendorId = {id} AND l.VendorListingId = {listingId}
-            """).SingleOrDefaultAsync(ct);
+        var canEdit = await access.CanAsync(id,userId,VendorPermissionPages.Stock,ct,update:true);
+        var balances = await ListingStockQueries.ReadAsync(db,id,listingId,page,canEdit,ct);
         if (balances == null) return NotFound();
-        const int size = 25;
-        page = Math.Clamp(page, 1, 100000);
-        var rows = await db.Database.SqlQuery<StockMovementRow>($"""
-            SELECT t.InventoryTransactionId, t.OnHandDelta, t.ReservedDelta, t.SourceType, t.Reason, t.CreatedAtUtc
-            FROM dbo.InventoryTransactions t JOIN dbo.VendorListings l ON l.VendorListingId = t.VendorListingId
-            WHERE l.VendorId = {id} AND l.VendorListingId = {listingId}
-            """).OrderByDescending(t => t.InventoryTransactionId).Skip((page - 1) * size).Take(size + 1).ToListAsync(ct);
-        balances.Page = page;
-        balances.HasNext = rows.Count > size;
-        balances.Movements = rows.Take(size).ToList();
-        balances.CanEdit = await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct, update: true);
-        balances.Adjustment = new StockAdjustmentForm { RequestId = Guid.NewGuid(), Direction = "Add", Quantity = 1 };
         return View(balances);
     }
 

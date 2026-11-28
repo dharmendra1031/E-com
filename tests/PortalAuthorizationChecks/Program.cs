@@ -199,3 +199,12 @@ foreach (var name in new[] { "SaveOrUpdateTopCategory", "DeleteTopCategory" })
     Check(typeof(CategoryController).GetMethod(name)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
         $"Missing Top Category antiforgery: {name}");
 Console.WriteLine("Top Category and read-only stock/order permission checks passed.");
+
+Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController,"MarketplaceStock","GET") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController,"MarketplaceMovements","GET") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController,"MarketplaceMovements","POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController,"AddStock","POST"),
+    "Marketplace stock boundary failed.");
+Check(stockController.GetMethods().Single(m=>m.Name=="MarketplaceMovements" && m.IsDefined(typeof(HttpPostAttribute)))
+    .IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), "Marketplace adjustment missing antiforgery.");
+Console.WriteLine("Marketplace admin inventory endpoint checks passed.");
