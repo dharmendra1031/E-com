@@ -1,283 +1,113 @@
-﻿@using System.Globalization
-@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
-
+@using System.Globalization
 @model EcommerceWebApplication.Models.CompanyDetails
-
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
     ViewData["Title"] = "Companydetails";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en, string arabic) => ar ? arabic : en;
+    var phone = Model.Phone ?? "";
+    if (!phone.StartsWith("+965")) phone = "+965" + phone;
 }
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="main-content">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card alert">
-                <div class="card-header">
-                    <h4>@(CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعدادات الشركة" : "Company settings")</h4>
+<section class="admin-panel company-settings">
+    <form asp-action="Create" id="NavigationKey" method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+        <section class="company-section">
+            <h2>@T("Company identity", "هوية الشركة")</h2>
+            <div class="company-fields company-fields-2">
+                <div class="form-group">
+                    <label asp-for="CompanyNameArabic">@_localizer["Company Name(AR)"] <span class="text-danger">*</span></label>
+                    <input asp-for="CompanyNameArabic" class="form-control" dir="rtl" lang="ar" maxlength="200" required />
+                    <span asp-validation-for="CompanyNameArabic" class="text-danger"></span>
                 </div>
-
-                <div class="card-body">
-                    <div class="basic-form">
-                        <form asp-action="Create" id="NavigationKey" method="post" enctype="multipart/form-data" onsubmit="return validateEmailSubmit();">
-                            @Html.AntiForgeryToken()
-
-                            <div class="row">
-                                <!-- Company Name (AR)-->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Company Name(AR)"] <span style="color:red">*</span></label>
-                                        <input asp-for="CompanyNameArabic" class="form-control" dir="rtl" lang="ar" />
-                                        <span asp-validation-for="CompanyNameArabic" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <!-- Company Name (EN)-->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Company Name(EN)"] <span style="color:red">*</span></label>
-                                        <input asp-for="CompanyName" class="form-control" dir="ltr" />
-                                        <span asp-validation-for="CompanyName" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-                            </div>
-                            <div class="row">
-                                <!-- Address -->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Address(AR)"]<span style="color:red">*</span></label>
-                                        <input asp-for="AddressArabic" class="form-control" dir="rtl" lang="ar" />
-                                        <span asp-validation-for="AddressArabic" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Address(EN)"] <span style="color:red">*</span></label>
-                                        <input asp-for="Address" class="form-control" dir="ltr" />
-                                        <span asp-validation-for="Address" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="row">
-                                <!-- Email -->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Email"] <span style="color:red">*</span></label>
-                                        <input asp-for="Email" type="text" id="Email" class="form-control" oninput="validateEmailLive()" />
-                                        <span id="emailError" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-
-                                <!-- Phone -->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Phone"] <span style="color:red">*</span></label>
-
-                                        @{
-                                            string phone = Model.Phone ?? "";
-                                            string prefix = "+965";
-                                            string number = "";
-
-                                            if (phone.StartsWith(prefix))
-                                            {
-                                                number = phone.Substring(prefix.Length);
-                                            }
-                                            else
-                                            {
-                                                number = phone;
-                                            }
-                                        }
-
-                                        <div class="row">
-                                            <!-- Prefix input -->
-                                            <div class="col-xs-2" style="padding-right: 1px;">
-                                                <input type="text" id="PhonePrefix" class="form-control" maxlength="5" value="@prefix" readonly />
-                                            </div>
-
-                                            <!-- Phone number input -->
-                                            <div class="col-xs-10" style="padding-left: 1px;">
-                                                <input type="text"
-                                                       id="PhoneNumber"
-                                                       class="form-control"
-                                                       maxlength="8"
-                                                       placeholder="Enter 8-digit number"
-                                                       pattern="\d{8}"
-                                                       title="Phone number must be exactly 8 digits"
-                                                       value="@number" />
-                                            </div>
-                                        </div>
-
-                                        <!-- Hidden field to bind with model.Phone -->
-                                        <input asp-for="Phone" type="hidden" id="Phone" />
-                                        <span asp-validation-for="Phone" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-
-                            </div>
-                            <!-- Logo Upload with Preview -->
-                            <!-- Logo Upload with Preview -->
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Company Logo"]<span style="color:red">*</span></label>
-
-                                        <!-- Always show input -->
-                                        <input type="file" id="logoInput" name="LogoFile" class="form-control" accept="image/*" />
-
-                                        <!-- Always show preview box (filled or empty) -->
-                                        <div class="mt-2">
-                                            <img id="logoPreview"
-                                                 src="@(Model.Logo != null ? $"data:image/png;base64,{Convert.ToBase64String(Model.Logo)}" : "#")"
-                                                 alt="Company Logo"
-                                                 style="@(Model.Logo != null ? "" : "display:none;") max-width:150px; max-height:150px; border:1px solid #ccc; padding:5px; border-radius:5px;" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- VAT -->
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["VAT (%)"] <span style="color:red">*</span></label>
-                                        <input asp-for="Vat" class="form-control" onkeypress="return numericvat(event, this)" maxlength="10" />
-                                        <span asp-validation-for="Vat" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Delivery Charge"] <span style="color:red">*</span></label>
-                                        <input asp-for="DeliveryCharge" class="form-control"
-                                               value="@Model.DeliveryCharge.ToString("F3", CultureInfo.InvariantCulture)"
-                                               onkeypress="return numericvat(event, this)" maxlength="10" />
-                                        <span asp-validation-for="DeliveryCharge" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Quantity Limit"] <span style="color:red">*</span></label>
-                                        <input asp-for="QuantityLimit" class="form-control"
-                                               value="@Model.QuantityLimit.ToString("F3", CultureInfo.InvariantCulture)"
-                                               onkeypress="return numericvat(event, this)" maxlength="10" />
-                                        <span asp-validation-for="QuantityLimit" class="text-danger"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <!-- Facebook -->
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Facebook URL"]<span style="color:red">*</span></label>
-                                        <input asp-for="FacebookUrl" class="form-control" />
-                                        <span asp-validation-for="FacebookUrl" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-                                <!-- Twitter -->
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Twitter URL"]<span style="color:red">*</span></label>
-                                        <input asp-for="TwitterUrl" class="form-control" />
-                                        <span asp-validation-for="TwitterUrl" class="text-danger"></span>
-                                    </div>
-                                </div>
-
-                                <!-- Instagram -->
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Instagram URL"] <span style="color:red">*</span></label>
-                                        <input asp-for="InstagramUrl" class="form-control" placeholder="https://instagram.com/yourpage" />
-                                        <span asp-validation-for="InstagramUrl" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="fw-bold">@_localizer["Linkdin URL"] <span style="color:red">*</span></label>
-                                        <input asp-for="LinkedInUrl" class="form-control" placeholder="https://instagram.com/yourpage" />
-                                        <span asp-validation-for="LinkedInUrl" class="text-danger"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Submit -->
-                            <button type="submit" class="btn btn-primary btn-flat m-t-30">@_localizer["Update"]</button>
-                        </form>
-                    </div>
+                <div class="form-group">
+                    <label asp-for="CompanyName">@_localizer["Company Name(EN)"] <span class="text-danger">*</span></label>
+                    <input asp-for="CompanyName" class="form-control" dir="ltr" lang="en" maxlength="200" required />
+                    <span asp-validation-for="CompanyName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="AddressArabic">@_localizer["Address(AR)"] <span class="text-danger">*</span></label>
+                    <input asp-for="AddressArabic" class="form-control" dir="rtl" lang="ar" maxlength="300" required />
+                    <span asp-validation-for="AddressArabic" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Address">@_localizer["Address(EN)"] <span class="text-danger">*</span></label>
+                    <input asp-for="Address" class="form-control" dir="ltr" lang="en" maxlength="300" required />
+                    <span asp-validation-for="Address" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Email">@_localizer["Email"] <span class="text-danger">*</span></label>
+                    <input asp-for="Email" type="email" class="form-control" dir="ltr" maxlength="100" required />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Phone">@_localizer["Phone"] <span class="text-danger">*</span></label>
+                    <input asp-for="Phone" value="@phone" type="tel" class="form-control" dir="ltr" maxlength="12" pattern="[+]965[0-9]{8}" required title="@T("Enter +965 followed by eight digits.", "أدخل +965 ثم ثمانية أرقام.")" />
+                    <span asp-validation-for="Phone" class="text-danger"></span>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
+        </section>
+        <section class="company-section">
+            <h2>@T("Branding and order settings", "العلامة التجارية وإعدادات الطلب")</h2>
+            <div class="company-fields company-fields-4">
+                <div class="form-group">
+                    <label for="logoInput">@_localizer["Company Logo"]</label>
+                    <div class="company-logo-field">
+                        <img id="logoPreview" src="@(Model.Logo != null ? Url.Action("CompanyLogo", "StoreImage", new { id = Model.CompanyId }) : null)" alt="@T("Company logo", "شعار الشركة")" hidden="@(Model.Logo == null)" />
+                        <input type="file" id="logoInput" name="LogoFile" class="form-control" accept="image/*" />
+                    </div>
+                    <span class="admin-muted">@T("Leave empty to retain the current logo.", "اتركه فارغاً للاحتفاظ بالشعار الحالي.")</span>
+                    @Html.ValidationMessage("LogoFile", new { @class = "text-danger" })
+                </div>
+                <div class="form-group">
+                    <label asp-for="Vat">@_localizer["VAT (%)"] <span class="text-danger">*</span></label>
+                    <input asp-for="Vat" class="form-control" inputmode="decimal" dir="ltr" required />
+                    <span asp-validation-for="Vat" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="DeliveryCharge">@_localizer["Delivery Charge"] <span class="text-danger">*</span></label>
+                    <input asp-for="DeliveryCharge" asp-format="{0:F3}" class="form-control" inputmode="decimal" dir="ltr" required />
+                    <span asp-validation-for="DeliveryCharge" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="QuantityLimit">@_localizer["Quantity Limit"] <span class="text-danger">*</span></label>
+                    <input asp-for="QuantityLimit" type="number" step="1" class="form-control" dir="ltr" required />
+                    <span asp-validation-for="QuantityLimit" class="text-danger"></span>
+                </div>
+            </div>
+        </section>
+        <section class="company-section">
+            <h2>@T("Social links", "روابط التواصل الاجتماعي")</h2>
+            <div class="company-fields company-fields-4">
+                <div class="form-group"><label asp-for="FacebookUrl">@_localizer["Facebook URL"] <span class="text-danger">*</span></label><input asp-for="FacebookUrl" class="form-control" dir="ltr" maxlength="100" /><span asp-validation-for="FacebookUrl" class="text-danger"></span></div>
+                <div class="form-group"><label asp-for="TwitterUrl">@_localizer["Twitter URL"] <span class="text-danger">*</span></label><input asp-for="TwitterUrl" class="form-control" dir="ltr" maxlength="100" /><span asp-validation-for="TwitterUrl" class="text-danger"></span></div>
+                <div class="form-group"><label asp-for="InstagramUrl">@_localizer["Instagram URL"] <span class="text-danger">*</span></label><input asp-for="InstagramUrl" class="form-control" dir="ltr" maxlength="100" /><span asp-validation-for="InstagramUrl" class="text-danger"></span></div>
+                <div class="form-group"><label asp-for="LinkedInUrl">LinkedIn URL <span class="text-danger">*</span></label><input asp-for="LinkedInUrl" class="form-control" dir="ltr" maxlength="100" /><span asp-validation-for="LinkedInUrl" class="text-danger"></span></div>
+            </div>
+        </section>
+        <div class="company-save"><button type="submit" class="btn btn-primary" disabled="@(Model.CompanyId == 0)">@T("Save changes", "حفظ التغييرات")</button></div>
+        @if (Model.CompanyId == 0)
+        {
+            <p role="status" class="text-danger">@T("Company profile not found.", "ملف الشركة غير موجود.")</p>
+        }
+    </form>
+</section>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
     <script>
-        document.getElementById("logoInput").addEventListener("change", function (event) {
-            const file = event.target.files[0];
+        (() => {
+            const input = document.getElementById("logoInput");
             const preview = document.getElementById("logoPreview");
-
-            if (file) {
-                const reader = new FileReader();
-
-                reader.onload = function (e) {
-                    preview.src = e.target.result;
-                    preview.style.display = "block";
-                };
-
-                reader.readAsDataURL(file);
-            } else {
-                preview.src = "#";
-                preview.style.display = "none";
-            }
-        });
-    </script>
-
-    <script>
-        function validateEmailLive() {
-            var email = document.getElementById("Email").value.trim();
-            var errorSpan = document.getElementById("emailError");
-
-            // Basic email format regex
-            var emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
-
-            if (email === "") {
-                errorSpan.textContent = ""; // Don't show error if empty
-                return;
-            }
-
-            if (!emailRegex.test(email)) {
-                errorSpan.textContent = "Please enter a valid email address.";
-            } else {
-                errorSpan.textContent = ""; // Clear error if valid
-            }
-        }
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const form = document.querySelector("form");
-
-            form.addEventListener("submit", function (e) {
-                const prefix = document.getElementById("PhonePrefix").value.trim();
-                const number = document.getElementById("PhoneNumber").value.trim();
-                const fullPhone = prefix + number;
-
-                // Check if number is exactly 8 digits
-                if (!/^\d{8}$/.test(number)) {
-                    e.preventDefault();
-                    AdminFeedback.show("warning", document.documentElement.dir === "rtl" ? "يجب أن يتكون رقم الهاتف من 8 أرقام." : "Phone number must be exactly 8 digits.");
-                    return false;
-                }
-
-                document.getElementById("Phone").value = fullPhone;
+            const saved = preview.getAttribute("src");
+            let temporary;
+            input.addEventListener("change", () => {
+                if (temporary) URL.revokeObjectURL(temporary);
+                temporary = input.files[0] ? URL.createObjectURL(input.files[0]) : null;
+                const source = temporary || saved;
+                if (source) preview.src = source;
+                else preview.removeAttribute("src");
+                preview.hidden = !source;
             });
-
-            // Optional: prevent non-numeric input
-            document.getElementById("PhoneNumber").addEventListener("keypress", function (e) {
-                if (!/\d/.test(e.key)) {
-                    e.preventDefault();
-                }
-            });
-        });
+        })();
     </script>
 }
