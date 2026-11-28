@@ -24,6 +24,8 @@ jobs:
         run: dotnet build Ecommerce/EcommerceWebApplication.csproj --configuration Release --no-restore
       - name: Verify staff password behavior
         run: dotnet run --project tests/StaffPasswordChecks/StaffPasswordChecks.csproj --configuration Release
+      - name: Verify admin and vendor authorization boundaries
+        run: dotnet run --project tests/PortalAuthorizationChecks/PortalAuthorizationChecks.csproj --configuration Release
       - name: List vulnerable dependencies
         run: dotnet list Ecommerce/EcommerceWebApplication.csproj package --vulnerable --include-transitive
 
