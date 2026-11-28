@@ -28,6 +28,23 @@ public static class VendorOrderQueries
         return await query.OrderByDescending(o=>o.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
     }
 
+    public static Task<List<VendorOrderStatusCount>> ReadCountsAsync(EcommerceDbContext db,int vendorId,CancellationToken ct) =>
+        db.Database.SqlQuery<VendorOrderStatusCount>($"""
+            SELECT v.FulfillmentStatus,COUNT(*) AS Total
+            FROM dbo.VendorOrders v JOIN dbo.VerifiedMarketplacePaidOrders p ON p.OrderId=v.OrderId
+            WHERE v.VendorId={vendorId} GROUP BY v.FulfillmentStatus
+            """).ToListAsync(ct);
+
+    public static Task<List<VendorReturnRow>> ReadReturnsAsync(EcommerceDbContext db,int vendorId,int page,CancellationToken ct) =>
+        db.Database.SqlQuery<VendorReturnRow>($"""
+            SELECT q.ReturnId,v.VendorOrderId,i.ProductNameSnapshot AS ProductName,i.ProductNameArbSnapshot AS ProductNameArb,
+                q.Quantity,q.Status,q.RequestedAtUtc
+            FROM dbo.MarketplaceReturnRequests q JOIN dbo.OrderItems i ON i.OrderItemId=q.OrderItemId
+            JOIN dbo.VendorOrders v ON v.VendorOrderId=i.VendorOrderId AND v.OrderId=i.OrderId
+            JOIN dbo.VerifiedMarketplacePaidOrders p ON p.OrderId=v.OrderId
+            WHERE v.VendorId={vendorId}
+            """).OrderByDescending(x=>x.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+
     public static Task<List<VendorFulfillmentHistoryRow>> ReadHistoryAsync(EcommerceDbContext db,int vendorId,int vendorOrderId,CancellationToken ct) =>
         db.Database.SqlQuery<VendorFulfillmentHistoryRow>($"""
             SELECT h.HistoryId,h.PreviousStatus,h.NewStatus,h.ChangedBy,h.ChangedAtUtc

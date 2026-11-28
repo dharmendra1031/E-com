@@ -4,12 +4,12 @@
     if (!adminStock) Layout = "_VendorPortalLayout";
     else Layout = "_Layout";
     var stockAction = adminStock ? "MarketplaceMovements" : "Stock";
-    var backAction = adminStock ? "MarketplaceStock" : "Listings";
+    var backAction = adminStock ? "MarketplaceStock" : "Inventory";
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
     string T(string en, string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Stock","المخزون");
 }
-<div class="@(adminStock ? "admin-section-heading" : "seller-section-heading")"><h2>@Model.ProductName — @ViewData["Title"]</h2><a asp-action="@backAction" asp-route-id="@(adminStock ? (int?)null : Model.VendorId)" asp-route-vendorId="@(adminStock ? Model.VendorId : (int?)null)" class="btn btn-default">@T("Back to listings","العودة إلى العروض")</a></div>
+<div class="@(adminStock ? "admin-section-heading" : "seller-section-heading")"><h2>@Model.ProductName — @ViewData["Title"]</h2><a asp-action="@backAction" asp-route-id="@(adminStock ? (int?)null : Model.VendorId)" asp-route-vendorId="@(adminStock ? Model.VendorId : (int?)null)" class="btn btn-default">@T("Back to inventory","العودة إلى المخزون")</a></div>
 @if (TempData["StockError"] is string error) { <p class="alert alert-danger" role="alert">@error</p> }
 @if (TempData["StockSuccess"] is string success) { <p class="alert alert-success" role="status">@success</p> }
 @if (!Model.HasBalance) { <p>@T("No opening stock posted.","لم يتم تسجيل رصيد افتتاحي.")</p> }

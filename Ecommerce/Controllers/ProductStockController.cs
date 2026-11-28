@@ -151,23 +151,7 @@ namespace EcommerceWebApplication.Controllers.Admin
             page = Math.Clamp(page, 1, 100000);
             search = search?.Trim() ?? "";
             if (search.Length > 100) return BadRequest();
-            var balances = _context.Database.SqlQuery<MarketplaceStockRow>($"""
-                SELECT l.VendorListingId AS ListingId,l.VendorId,v.Name AS VendorName,
-                    p.Name AS ProductName,p.NameArb AS ProductNameArb,l.SellerSku,l.Status AS ListingStatus,
-                    COALESCE(b.OnHandQuantity,CONVERT(bigint,0)) AS OnHand,
-                    COALESCE(b.ReservedQuantity,CONVERT(bigint,0)) AS Reserved,
-                    COALESCE(b.AvailableQuantity,CONVERT(bigint,0)) AS Available
-                FROM dbo.VendorListings l JOIN dbo.Vendors v ON v.VendorId=l.VendorId
-                JOIN dbo.Products p ON p.ProductId=l.ProductId
-                LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId=l.VendorListingId
-                """);
-            if (vendorId.HasValue) balances = balances.Where(x => x.VendorId == vendorId);
-            if (search.Length > 0) balances = balances.Where(x => x.ProductName.Contains(search) ||
-                (x.ProductNameArb != null && x.ProductNameArb.Contains(search)) || x.SellerSku.Contains(search) || x.VendorName.Contains(search));
-            var rows = await balances.OrderBy(x => x.VendorId).ThenBy(x => x.ListingId)
-                .Skip((page - 1) * 25).Take(26).ToListAsync(ct);
-            return View(new MarketplaceStockRegister { VendorId = vendorId, Search = search, Page = page,
-                CanEdit = rights.Edit, HasNext = rows.Count > 25, Rows = rows.Take(25).ToList() });
+            return View(await ListingStockQueries.ReadRegisterAsync(_context,vendorId,search,page,rights.Edit,ct));
         }
 
         [HttpGet]

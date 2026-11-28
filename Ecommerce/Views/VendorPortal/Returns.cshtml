@@ -1,0 +1,12 @@
+@model List<EcommerceWebApplication.Models.ViewModels.VendorReturnRow>
+@{ Layout="_VendorPortalLayout";var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;int page=ViewBag.Page;int id=ViewBag.VendorId;ViewData["Title"]=T("Returns","المرتجعات"); }
+<section class="seller-panel"><h2>@ViewData["Title"]</h2>
+<p>@T("Read-only return status. Approval, inspection and refund remain with Admin.","حالة الإرجاع للقراءة فقط. الاعتماد والفحص والاسترداد من صلاحية الإدارة.")</p>
+<div class="table-responsive"><table class="table table-hover"><thead><tr><th>@T("Return","الإرجاع")</th><th>@T("Order","الطلب")</th><th>@T("Product","المنتج")</th><th>@T("Quantity","الكمية")</th><th>@T("Status","الحالة")</th><th>@T("Date (UTC)","التاريخ")</th></tr></thead><tbody>
+@foreach(var row in Model){<tr><td>#@row.ReturnId</td><td><a asp-action="OrderDetails" asp-route-id="@id" asp-route-vendorOrderId="@row.VendorOrderId">#@row.VendorOrderId</a></td><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.Quantity</td><td>@(row.Status switch {"Pending"=>T("Pending","قيد المراجعة"),"Approved"=>T("Approved","معتمد"),"Rejected"=>T("Rejected","مرفوض"),"Received"=>T("Received","تم الاستلام"),_=>T("Review","مراجعة")})</td><td>@row.RequestedAtUtc.ToString("yyyy-MM-dd")</td></tr>}
+@if(Model.Count==0){<tr><td colspan="6">@T("No return requests","لا توجد طلبات إرجاع")</td></tr>}
+</tbody></table></div>
+<nav class="seller-pagination"><span>@T("Page","صفحة") @page</span>
+@if(page>1){<a asp-action="Returns" asp-route-id="@id" asp-route-page="@(page-1)" class="btn btn-default">@T("Previous","السابق")</a>}
+@if(ViewBag.HasNext==true){<a asp-action="Returns" asp-route-id="@id" asp-route-page="@(page+1)" class="btn btn-default">@T("Next","التالي")</a>}
+</nav></section>

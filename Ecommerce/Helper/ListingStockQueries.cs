@@ -6,6 +6,27 @@ namespace EcommerceWebApplication.Helper;
 
 public static class ListingStockQueries
 {
+    public static async Task<MarketplaceStockRegister> ReadRegisterAsync(EcommerceDbContext db,int? vendorId,string search,int page,bool canEdit,CancellationToken ct)
+    {
+            var balances = db.Database.SqlQuery<MarketplaceStockRow>($"""
+                SELECT l.VendorListingId AS ListingId,l.VendorId,v.Name AS VendorName,
+                    p.Name AS ProductName,p.NameArb AS ProductNameArb,l.SellerSku,l.Status AS ListingStatus,
+                    COALESCE(b.OnHandQuantity,CONVERT(bigint,0)) AS OnHand,
+                    COALESCE(b.ReservedQuantity,CONVERT(bigint,0)) AS Reserved,
+                    COALESCE(b.AvailableQuantity,CONVERT(bigint,0)) AS Available
+                FROM dbo.VendorListings l JOIN dbo.Vendors v ON v.VendorId=l.VendorId
+                JOIN dbo.Products p ON p.ProductId=l.ProductId
+                LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId=l.VendorListingId
+                """);
+            if (vendorId.HasValue) balances = balances.Where(x => x.VendorId == vendorId);
+            if (search.Length > 0) balances = balances.Where(x => x.ProductName.Contains(search) ||
+                (x.ProductNameArb != null && x.ProductNameArb.Contains(search)) || x.SellerSku.Contains(search) || x.VendorName.Contains(search));
+            var rows = await balances.OrderBy(x => x.VendorId).ThenBy(x => x.ListingId)
+                .Skip((page - 1) * 25).Take(26).ToListAsync(ct);
+            return new MarketplaceStockRegister { VendorId = vendorId, Search = search, Page = page,
+                CanEdit = canEdit, HasNext = rows.Count > 25, Rows = rows.Take(25).ToList() };
+    }
+
     public static async Task<ListingStockPage?> ReadAsync(EcommerceDbContext db,int id,int listingId,int page,bool canEdit,CancellationToken ct)
     {
         var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;

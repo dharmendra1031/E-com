@@ -73,9 +73,15 @@
                         }
                         @if(await Can(VendorPermissionPages.Listings))
                         {
-                        <li class="@(action is "Listings" or "Catalog" or "EditListing" or "Stock"?"active":"")">
-                            <a asp-controller="VendorPortal" asp-action="Listings" asp-route-id="@storeId" aria-current="@(action is "Listings" or "Catalog" or "EditListing" or "Stock"?"page":null)"><i class="fa fa-cubes" aria-hidden="true"></i><span>@T("Products & stock","المنتجات والمخزون")</span></a>
+                        <li class="@(action is "Listings" or "Catalog" or "EditListing"?"active":"")">
+                            <a asp-controller="VendorPortal" asp-action="Listings" asp-route-id="@storeId" aria-current="@(action is "Listings" or "Catalog" or "EditListing"?"page":null)"><i class="fa fa-cubes" aria-hidden="true"></i><span>@T("Products","المنتجات")</span></a>
                         </li>
+                        }
+                        @if(Enabled("Marketplace:VendorInventoryEnabled") && await Can(VendorPermissionPages.Listings) && await Can(VendorPermissionPages.Stock))
+                        {
+                            <li class="@(action is "Inventory" or "Stock"?"active":"")">
+                                <a asp-action="Inventory" asp-controller="VendorPortal" asp-route-id="@storeId"><i class="fa fa-cubes" aria-hidden="true"></i><span>@T("Inventory","المخزون")</span></a>
+                            </li>
                         }
                         @if(Enabled("Marketplace:VendorOrdersEnabled") && await Can(VendorPermissionPages.Orders))
                         {
@@ -83,10 +89,17 @@
                                 <a asp-controller="VendorPortal" asp-action="Orders" asp-route-id="@storeId" aria-current="@(action is "Orders" or "OrderDetails"?"page":null)"><i class="fa fa-shopping-bag" aria-hidden="true"></i><span>@T("Orders","الطلبات")</span></a>
                             </li>
                         }
+                        @if(Enabled("Marketplace:VendorOrdersEnabled") && Enabled("Marketplace:ReturnWorkflowEnabled") && await Can(VendorPermissionPages.Orders))
+                        {
+                            <li class="@(action=="Returns"?"active":"")">
+                                <a asp-action="Returns" asp-controller="VendorPortal" asp-route-id="@storeId"><i class="fa fa-undo" aria-hidden="true"></i><span>@T("Returns","المرتجعات")</span></a>
+                            </li>
+                        }
                         @if(Enabled("Marketplace:FinancePreviewEnabled") && await Can(VendorPermissionPages.Finance))
                         {
+                            <li class="label">@T("Finance","المالية")</li>
                             <li class="@(action=="FinanceReview"?"active":"")">
-                                <a asp-controller="VendorPortal" asp-action="FinanceReview" asp-route-id="@storeId" aria-current="@(action=="FinanceReview"?"page":null)"><i class="fa fa-money" aria-hidden="true"></i><span>@T("Finance","المالية")</span></a>
+                                <a asp-controller="VendorPortal" asp-action="FinanceReview" asp-route-id="@storeId" aria-current="@(action=="FinanceReview"?"page":null)"><i class="fa fa-money" aria-hidden="true"></i><span>@T("Commission & settlement","العمولة والتسوية")</span></a>
                             </li>
                         }
                     </ul>

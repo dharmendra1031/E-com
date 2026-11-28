@@ -29,7 +29,9 @@
         }
         @if(ViewBag.ToPack != null)
         {
+            <a class="admin-kpi" asp-action="Orders" asp-route-id="@Model.VendorId"><span class="admin-kpi-label">@T("Verified paid orders","الطلبات المدفوعة المؤكدة")</span><strong>@ViewBag.TotalOrders</strong></a>
             <a class="admin-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span class="admin-kpi-label">@T("Paid orders to pack","طلبات مدفوعة للتجهيز") <i class="fa fa-shopping-bag" aria-hidden="true"></i></span><strong>@ViewBag.ToPack</strong></a>
+            <a class="admin-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="Delivered"><span class="admin-kpi-label">@T("Delivered","تم التوصيل")</span><strong>@ViewBag.DeliveredCount</strong></a>
         }
     </div>
     <div class="seller-dashboard-sections">
@@ -58,10 +60,26 @@
                 <ul class="seller-task-list">
                     <li><a asp-action="Orders" asp-route-id="@Model.VendorId"><span>@T("All verified paid orders","جميع الطلبات المدفوعة المؤكدة")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
                     <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span>@T("Awaiting packing","بانتظار التجهيز")</span><strong>@ViewBag.ToPack</strong></a></li>
-                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="Packed"><span>@T("Packed orders","الطلبات المجهزة")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
-                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="HandedOver"><span>@T("Handed over","تم التسليم للناقل")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="Packed"><span>@T("Packed orders","الطلبات المجهزة")</span><strong>@ViewBag.PackedCount</strong></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="HandedOver"><span>@T("Handed over","تم التسليم للناقل")</span><strong>@ViewBag.HandedOverCount</strong></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="Delivered"><span>@T("Delivered","تم التوصيل")</span><strong>@ViewBag.DeliveredCount</strong></a></li>
+                    @if(ViewBag.CanViewReturns==true){<li><a asp-action="Returns" asp-route-id="@Model.VendorId">@T("Return requests","طلبات الإرجاع")</a></li>}
                 </ul>
             </section>
         }
+        @if(ViewBag.CanViewFinance==true)
+        {
+            <section class="admin-panel"><h2>@T("Finance review","المراجعة المالية")</h2><p>@T("Commission and test settlement records; not actual payouts.","سجلات العمولة والتسوية التجريبية وليست دفعات فعلية.")</p><a class="btn btn-default" asp-action="FinanceReview" asp-route-id="@Model.VendorId">@T("View finance","عرض المالية")</a></section>
+        }
     </div>
+    @if(ViewBag.RecentOrders is List<EcommerceWebApplication.Models.ViewModels.VendorOrderRow> recent)
+    {
+        <section class="admin-panel mt-3">
+            <h2>@T("Recent paid orders","الطلبات المدفوعة الأخيرة")</h2>
+            <div class="table-responsive"><table class="table"><thead><tr><th>@T("Order","الطلب")</th><th>@T("Date","التاريخ")</th><th>@T("Merchandise subtotal","مجموع البضائع")</th><th>@T("Status","الحالة")</th></tr></thead><tbody>
+            @foreach(var row in recent){<tr><td><a asp-action="OrderDetails" asp-route-id="@Model.VendorId" asp-route-vendorOrderId="@row.VendorOrderId">#@row.VendorOrderId</a></td><td>@row.CreatedAt.ToString("yyyy-MM-dd")</td><td dir="ltr">KD @row.MerchandiseSubtotal.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td><td>@(row.FulfillmentStatus switch {"AwaitingPacking"=>T("Awaiting packing","بانتظار التجهيز"),"Packed"=>T("Packed","تم التجهيز"),"HandedOver"=>T("Handed over","تم التسليم للناقل"),"Delivered"=>T("Delivered","تم التوصيل"),_=>T("Review","مراجعة")})</td></tr>}
+            @if(recent.Count==0){<tr><td colspan="4">@T("No verified paid orders","لا توجد طلبات مدفوعة مؤكدة")</td></tr>}
+            </tbody></table></div>
+        </section>
+    }
 </div>

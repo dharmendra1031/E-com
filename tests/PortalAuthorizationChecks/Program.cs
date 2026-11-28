@@ -57,6 +57,12 @@ foreach (var method in vendor.GetMethods(BindingFlags.Public | BindingFlags.Inst
     Check(!method.IsDefined(typeof(AllowAnonymousAttribute), true),
         $"Vendor {method.Name} bypasses authorization.");
 }
+foreach(var name in new[] { "Inventory", "Returns" })
+{
+    var method=vendor.GetMethod(name)!;
+    Check(method.IsDefined(typeof(HttpGetAttribute)) && !method.IsDefined(typeof(AllowAnonymousAttribute)),
+        "Vendor register must be authenticated and read-only.");
+}
 var denied = vendor.GetMethod("Denied")!;
 Check(denied.GetParameters().Length == 0 && denied.IsDefined(typeof(HttpGetAttribute)) &&
     denied.IsDefined(typeof(AllowAnonymousAttribute)), "Vendor denied route must remain a public error response.");

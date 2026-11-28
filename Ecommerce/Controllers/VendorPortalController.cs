@@ -108,11 +108,18 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         }
         if (configuration.GetValue("Marketplace:VendorOrdersEnabled",false) &&
             await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct))
-            ViewBag.ToPack = await db.Database.SqlQuery<int>($"""
-                SELECT COUNT(*) AS Value FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
-                WHERE v.VendorId={id} AND o.PaymentStatus=1 AND v.FulfillmentStatus='AwaitingPacking'
-                    AND EXISTS (SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=o.OrderId)
-                """).SingleAsync(ct);
+        {
+            var counts=await VendorOrderQueries.ReadCountsAsync(db,id,ct);
+            ViewBag.TotalOrders=counts.Sum(x=>x.Total);
+            ViewBag.ToPack=counts.SingleOrDefault(x=>x.FulfillmentStatus=="AwaitingPacking")?.Total ?? 0;
+            ViewBag.PackedCount=counts.SingleOrDefault(x=>x.FulfillmentStatus=="Packed")?.Total ?? 0;
+            ViewBag.HandedOverCount=counts.SingleOrDefault(x=>x.FulfillmentStatus=="HandedOver")?.Total ?? 0;
+            ViewBag.DeliveredCount=counts.SingleOrDefault(x=>x.FulfillmentStatus=="Delivered")?.Total ?? 0;
+            ViewBag.RecentOrders=(await VendorOrderQueries.ReadPageAsync(db,id,null,1,ct)).Take(5).ToList();
+            ViewBag.CanViewReturns=configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false);
+        }
+        ViewBag.CanViewFinance=configuration.GetValue("Marketplace:FinancePreviewEnabled",false) &&
+            await access.CanAsync(id,userId,VendorPermissionPages.Finance,ct);
         return View(store);
     }
 
@@ -237,6 +244,31 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     }
 
     private bool InventoryEnabled => access.Enabled && configuration.GetValue("Marketplace:VendorInventoryEnabled", false);
+
+    [HttpGet("store/{id:int}/inventory")]
+    public async Task<IActionResult> Inventory(int id,string? search,int page=1,CancellationToken ct=default)
+    {
+        if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await access.CanAsync(id,actor,VendorPermissionPages.Listings,ct) ||
+            !await access.CanAsync(id,actor,VendorPermissionPages.Stock,ct)) return NotFound();
+        search=search?.Trim() ?? "";
+        if(search.Length>100) return BadRequest();
+        return View(await ListingStockQueries.ReadRegisterAsync(db,id,search,Math.Clamp(page,1,100000),
+            await access.CanAsync(id,actor,VendorPermissionPages.Stock,ct,update:true),ct));
+    }
+
+    [HttpGet("store/{id:int}/returns")]
+    public async Task<IActionResult> Returns(int id,int page=1,CancellationToken ct=default)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled",false) ||
+            !configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false) ||
+            !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await access.CanAsync(id,actor,VendorPermissionPages.Orders,ct)) return NotFound();
+        page=Math.Clamp(page,1,100000);
+        var rows=await VendorOrderQueries.ReadReturnsAsync(db,id,page,ct);
+        ViewBag.VendorId=id;ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        return View(rows.Take(25).ToList());
+    }
 
     [HttpGet("store/{id:int}/listing/{listingId:int}/stock")]
     public async Task<IActionResult> Stock(int id, int listingId, int page = 1, CancellationToken ct = default)

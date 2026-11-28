@@ -28,3 +28,20 @@ public sealed class VendorFulfillmentHistoryRow
     public int ChangedBy { get; set; }
     public DateTime ChangedAtUtc { get; set; }
 }
+
+public sealed class VendorOrderStatusCount
+{
+    public string FulfillmentStatus { get; set; } = "";
+    public int Total { get; set; }
+}
+
+public sealed class VendorReturnRow
+{
+    public int ReturnId { get; set; }
+    public int VendorOrderId { get; set; }
+    public string ProductName { get; set; } = "";
+    public string? ProductNameArb { get; set; }
+    public int Quantity { get; set; }
+    public string Status { get; set; } = "";
+    public DateTime RequestedAtUtc { get; set; }
+}
