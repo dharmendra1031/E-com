@@ -20,24 +20,31 @@ namespace EcommerceWebApplication.Controllers
         }
        
         [HttpGet]
-        public IActionResult CustomerList(int? status, string startDate, string endDate, int? customerId, string name, string mobile, int page = 1, int pageSize = 10)
+        public IActionResult CustomerList(int? status, string? startDate, string? endDate, int? customerId, string? name, string? mobile, int page = 1, int pageSize = 10, bool partial = false)
         {
-            var usersQuery = _context.Customers.Where(u => u.RoleId == 2 && u.IsDeleted == 0).AsQueryable();
+            var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var usersQuery = _context.Customers.AsNoTracking().Where(u => u.RoleId == 2 && u.IsDeleted == 0);
   
             if (status.HasValue)
                 usersQuery = status.Value == 1 ? usersQuery.Where(u => u.IsActive) : usersQuery.Where(u => !u.IsActive);
 
        
-            if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+            var formats = new[] { "yyyy-MM-dd", "dd-MM-yyyy" };
+            bool hasStart = !string.IsNullOrWhiteSpace(startDate), hasEnd = !string.IsNullOrWhiteSpace(endDate);
+            DateTime from = default, to = default;
+            if ((hasStart && !DateTime.TryParseExact(startDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out from)) ||
+                (hasEnd && !DateTime.TryParseExact(endDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out to)) ||
+                (hasStart && hasEnd && from > to))
+                return BadRequest(ar ? "نطاق التاريخ غير صالح." : "Invalid date range.");
+            if (hasStart) usersQuery = usersQuery.Where(u => u.CreatedAt >= from);
+            if (hasEnd && to < DateTime.MaxValue.Date)
             {
-                if (DateTime.TryParseExact(startDate, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedStartDate) &&
-                    DateTime.TryParseExact(endDate, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedEndDate))
-                {
-                    parsedEndDate = parsedEndDate.Date.AddDays(1).AddTicks(-1);
-                    usersQuery = usersQuery.Where(u => u.CreatedAt >= parsedStartDate && u.CreatedAt <= parsedEndDate);
-                }
+                var endExclusive = to.AddDays(1);
+                usersQuery = usersQuery.Where(u => u.CreatedAt < endExclusive);
             }
-        
+            startDate = hasStart ? from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null;
+            endDate = hasEnd ? to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null;
+
             if (customerId.HasValue)
                 usersQuery = usersQuery.Where(u => u.UserId == customerId.Value);
 
@@ -59,7 +66,7 @@ namespace EcommerceWebApplication.Controllers
             var pagedData = usersQuery.Skip((page - 1) * pageSize).Take(pageSize).Select(u => new CustomerGridViewModel
             {
                 UserId = u.UserId,
-                FullName = u.FullName,
+                FullName = ar && u.FullNameArb != null && u.FullNameArb != "" ? u.FullNameArb : u.FullName,
                 Email = u.Email,
                 Phone = u.Phone,
                 IsActive = u.IsActive,
@@ -80,108 +87,99 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.FilterCustomerId = customerId;
             ViewBag.FilterName = name;
             ViewBag.FilterMobile = mobile;
-            return View(pagedModel);
+            return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
-        public IActionResult GetCustomerDetails(int id)
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public IActionResult GetCustomerDetails(int id, int page = 1)
         {
-            var customer = _context.Customers.FirstOrDefault(u => u.UserId == id && u.IsDeleted == 0);
-
-            if (customer == null)
-                return Json(new { customer = (object)null });
-
-            // ✅ Customer ke addresses
-            //var userAddresses = _context.UserAddresses
-            //    .Where(u => u.UserId == id)
-            //    .ToList();
-
-            //var addressList = userAddresses.Any()
-            //    ? userAddresses.Select(a => new
-            //    {
-            //        title = a.Title,
-            //        addressHouseNo = a.HouseNo,
-            //        addressStreet = a.Street,
-            //        addressBlock = a.Block,
-            //        addressArea = a.Area,
-            //        addressGovernorate = a.Governorate
-            //    }).ToList()
-            //    : null;
-
-            var addressList = (from ua in _context.UserAddresses
-                               join b in _context.Block on ua.Block equals b.Id.ToString()
-                               join a in _context.Area on ua.Area equals a.Id.ToString()
-                               where ua.UserId == id
-                               select new
-                               {
-                                   title = ua.Title,
-                                   addressHouseNo = ua.HouseNo,
-                                   addressStreet = ua.Street,
-                                   addressBlock = b.BlockName, 
-                                   addressArea = a.AreaName,     
-                                   addressFloor = ua.Floor,
-                                   addressLandmark = ua.Landmark
-                               }).ToList();
-            // ✅ Orders + Products
-            var orderItems = (from ot in _context.OrderItems
-                              join o in _context.Orders on ot.OrderId equals o.OrderId
-                              join p in _context.Products on ot.ProductId equals p.ProductId
-                              where o.CustomerId == id
-                              select new
-                              {
-                                  orderId = o.OrderId,
-                                  productName = p.Name,
-                                  quantity = ot.Quantity,
-                                  price = ot.Price,
-                                  totalPrice = ot.Quantity * ot.Price
-                              }).ToList();
-
-            // ✅ Profile Image
-            string customerImageBase64 = null;
-            if (customer.ProfileImage != null)
-            {
-                customerImageBase64 = "data:image/png;base64," + Convert.ToBase64String(customer.ProfileImage);
-            }
-
-            // ✅ Final return
-            return Json(new
-            {
-                customer = new
+            var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var customer = _context.Customers.AsNoTracking()
+                .Where(u => u.UserId == id && u.RoleId == 2 && u.IsDeleted == 0)
+                .Select(u => new
                 {
-                    fullName = customer.FullName,
-                    email = customer.Email,
-                    phone = customer.Phone,
-                    status = customer.IsActive,
-                    customerImage = customerImageBase64,
-                    customerId = customer.UserId,
-                    registrationDate = customer.CreatedAt.ToString("dd-MM-yyyy")
-                },
-                addresses = addressList,
-                orderItems = orderItems
-            });
+                    customerId = u.UserId,
+                    fullName = ar && u.FullNameArb != null && u.FullNameArb != "" ? u.FullNameArb : u.FullName,
+                    email = u.Email, phone = u.Phone, status = u.IsActive,
+                    registrationDate = u.CreatedAt,
+                    customerImage = u.ProfileImage == null ? null : "data:image/png;base64," + Convert.ToBase64String(u.ProfileImage)
+                }).FirstOrDefault();
+            if (customer == null) return NotFound();
+
+            var addresses = (from ua in _context.UserAddresses.AsNoTracking()
+                             join b in _context.Block on ua.Block equals b.Id.ToString() into blocks
+                             from b in blocks.DefaultIfEmpty()
+                             join a in _context.Area on ua.Area equals a.Id.ToString() into areas
+                             from a in areas.DefaultIfEmpty()
+                             where ua.UserId == id && ua.isdeleted == 0
+                             orderby ua.IsDefault descending, ua.AddressId
+                             select new
+                             {
+                                 title = ua.Title, addressHouseNo = ua.HouseNo, addressStreet = ua.Street,
+                                 addressBlock = b == null ? ua.Block : (ar ? b.BlockNameArb : b.BlockName),
+                                 addressArea = a == null ? ua.Area : (ar ? a.AreaNameArb : a.AreaName),
+                                 addressFloor = ua.Floor, addressLandmark = ua.Landmark, isDefault = ua.IsDefault
+                             }).ToList();
+
+            // Legacy order register only. Marketplace orders remain in their dedicated workflows.
+            var orders = _context.Orders.AsNoTracking().Where(o => o.CustomerId == id && o.MarketplaceRequestId == null);
+            const int pageSize = 10;
+            int total = orders.Count();
+            int pages = Math.Max(1, (int)Math.Ceiling((double)total / pageSize));
+            page = Math.Clamp(page, 1, pages);
+            var orderPage = orders.OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.OrderId)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(o => new { orderId = o.OrderId, date = o.CreatedAt, totalAmount = o.TotalAmount,
+                    status = ar ? o.OrderStatus.OrderStatusNameArb : o.OrderStatus.OrderstatusName,
+                    paymentStatus = _context.PaymentStatus.Where(p => p.PaymentstatusId == o.PaymentStatus)
+                        .Select(p => ar ? p.PaymentStatusNameArb : p.PaymentstatusName).FirstOrDefault() })
+                .ToList();
+            return Json(new { customer, addresses, orders = orderPage, page, pages, total });
         }
 
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public IActionResult GetCustomerOrderItems(int id, int orderId, int page = 1)
+        {
+            if (!_context.Customers.Any(u => u.UserId == id && u.RoleId == 2 && u.IsDeleted == 0) ||
+                !_context.Orders.Any(o => o.OrderId == orderId && o.CustomerId == id && o.MarketplaceRequestId == null))
+                return NotFound();
+            var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+            var query = from ot in _context.OrderItems.AsNoTracking()
+                        join p in _context.Products on ot.ProductId equals p.ProductId
+                        where ot.OrderId == orderId
+                        select new { productId = p.ProductId, productName = ar ? p.NameArb : p.Name,
+                            quantity = ot.Quantity, price = ot.Price, totalPrice = ot.Quantity * ot.Price };
+            const int pageSize = 25;
+            int pages = Math.Max(1, (int)Math.Ceiling((double)query.Count() / pageSize));
+            page = Math.Clamp(page, 1, pages);
+            var items = query.OrderBy(x => x.productId).ThenBy(x => x.price).ThenBy(x => x.quantity)
+                .Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Json(new { items, page, pages });
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult ToggleUserStatus(int id)
+        public IActionResult ToggleUserStatus(int id, bool? active)
         {
-            var user = _context.Customers.FirstOrDefault(u => u.UserId == id && u.IsDeleted == 0);
+            if (!ModelState.IsValid || !active.HasValue)
+                return Json(new { success = false, message = "Invalid customer status." });
+            var user = _context.Customers.FirstOrDefault(u => u.UserId == id && u.RoleId == 2 && u.IsDeleted == 0);
             if (user == null)
-            {
-                return Json(new { success = false, message = "User not found" });
-            }
-            user.IsActive = !user.IsActive;
+                return Json(new { success = false, message = "User not found." });
+            user.IsActive = active.Value;
             _context.SaveChanges();
-
-            return Json(new { success = true });
+            return Json(new { success = true, active = user.IsActive });
         }
+
         [HttpGet]
         public async Task<JsonResult> AutoCompleteSql(string term)
         {
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 
-            IQueryable<Customers> queryable = _context.Customers;
+            IQueryable<Customers> queryable = _context.Customers.AsNoTracking().Where(u => u.RoleId == 2 && u.IsDeleted == 0);
 
             // Detect Arabic characters
             bool isArabic = term.Any(c => c >= 0x0600 && c <= 0x06FF);
@@ -197,7 +195,7 @@ namespace EcommerceWebApplication.Controllers
 
             var suggestions = await queryable
                 .Select(c => isArabic ? c.FullNameArb : c.FullName)
-                .Take(10)
+                .Distinct().OrderBy(n => n).Take(10)
                 .ToListAsync();
 
             return Json(suggestions);

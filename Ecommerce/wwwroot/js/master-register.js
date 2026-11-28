@@ -22,15 +22,20 @@
     }
     form.addEventListener("submit",e=>{
         e.preventDefault();if(busy)return;
+        const from=form.elements.namedItem("startDate"),to=form.elements.namedItem("endDate");
+        if(from?.value&&to?.value&&from.value>to.value){
+            AdminFeedback.show("warning",t("End date must not precede start date.","يجب ألا يسبق تاريخ النهاية تاريخ البداية."));return;
+        }
         const url=new URL(root.dataset.registerUrl,location.origin);
         for(const [key,value] of new FormData(form))if(String(value).trim())url.searchParams.set(key,String(value).trim());
         load(url);
     });
     document.getElementById("clearMasterFilters").addEventListener("click",e=>{
         e.preventDefault();if(busy)return;
-        for(const field of form.querySelectorAll("select,input[type=search]"))field.value="";
+        for(const field of form.querySelectorAll("select,input:not([type=hidden])"))field.value="";
         suggestions.replaceChildren();form.requestSubmit();
     });
+    root.addEventListener("register:refresh",()=>{if(!busy)load(currentUrl);});
     name.addEventListener("input",()=>{
         clearTimeout(timer);suggestRequest?.abort();suggestions.replaceChildren();
         const term=name.value.trim();if(term.length<2)return;

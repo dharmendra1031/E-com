@@ -185,3 +185,8 @@
 .admin-workspace .admin-master-register [hidden] {display:none!important;}
 .admin-workspace .admin-master-register .admin-section-heading h2 {margin:0;font-size:20px;font-weight:700;}
 .admin-workspace .admin-stock-editor {margin-top:12px;max-width:480px;}
+
+.admin-workspace .customer-address {padding-block:8px;border-bottom:1px solid var(--admin-border);overflow-wrap:anywhere;}
+.admin-workspace .customer-address:last-child {border-bottom:0;}
+.admin-workspace .customer-address p {margin:3px 0;}
+.admin-workspace #customerItems {max-width:none;}

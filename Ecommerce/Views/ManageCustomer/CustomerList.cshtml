@@ -1,347 +1,52 @@
-﻿
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.CustomerGridViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    ViewData["Title"] = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "العملاء" : "Customers";
-
-
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en,string arabic) => ar ? arabic : en;
+    ViewData["Title"] = T("Customers","العملاء");
 }
-
-<div id="main-content" class="admin-master-register">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-body" id="NavigationKey">
-
-
-                    <form id="dateFilterForm" class="admin-register-filters admin-customer-filters" onsubmit="submitFilter(event)">
-
-                        <div class="row">
-                            <!-- ID Filter -->
-                           
-                            <div class="form-group" style="margin-right: 20px;">
-                                <label for="customerId" style="margin-right: 5px;">@_localizer["Customer ID"]:</label>
-                                <input type="text" id="customerId" name="customerId"
-                                       class="form-control"
-                                       style="width: 100px; display: inline-block;"
-                                       onkeypress="return numeric(event)"
-                                       value="@ViewBag.FilterCustomerId" />
-                            </div>
-                            <!-- Customer Name Filter -->
-                            <div class="form-group" style="margin-right: 15px; position:relative; display:inline-block;">
-                                <label for="name" style="margin-right: 5px;">@_localizer["Customer Name"]:</label>
-                                <input type="text" id="name" name="name" class="form-control"
-                                       style="width: 220px; display: inline-block;"
-                                       autocomplete="off"
-                                       value="@ViewBag.FilterName" />
-                                <ul id="suggestions"
-                                    style="display:none; position:absolute; background:white; list-style:none; padding:0; margin:0;
-               width:100%; max-height:200px; overflow-y:auto; border:1px solid #ccc; z-index:1000;">
-                                    <!-- Suggestions dynamically appended here -->
-                                </ul>
-                            </div>
-                            <!-- Mobile Filter -->
-                            <div class="form-group" style="margin-right: 15px;">
-                                <label for="mobile" style="margin-right: 5px;">@_localizer["Mobile"]:</label>
-                                <input type="text" id="mobile" name="mobile" class="form-control" onkeypress="return numeric(event)" style="width: 215px; display: inline-block;"
-                                       value="@ViewBag.FilterMobile" />
-                            </div>
-
-                            <!-- From Date -->
-                            <div class="form-group" style="margin-right: 15px;">
-                                <label for="startDate" style="margin-right: 5px;">@_localizer["FromDate"]:</label>
-                                <input type="text" id="startDate" name="startDate" class="form-control datepicker" style="width: 200px; display: inline-block;"
-                                       placeholder="DD-MM-YYYY" value="@ViewBag.FilterStartDate" onkeypress="return numeric(event)" />
-                            </div>
-                        </div>
-                        <div class="row" style="margin-top: 10px;">
-
-                            <!-- To Date -->
-                            <div class="form-group" style="margin-right: 15px;">
-                                <label for="endDate" style="margin-right: 5px;">@_localizer["ToDate"]:</label>
-                                <input type="text" id="endDate" name="endDate" class="form-control datepicker" style="width: 200px; display: inline-block;"
-                                       placeholder="DD-MM-YYYY" value="@ViewBag.FilterEndDate" onkeypress="return numeric(event)" />
-                            </div>
-                            <!-- Status Filter -->
-                            <div class="form-group" style="margin-right: 15px;">
-                                <label for="Customerstatus" style="margin-right: 5px;">@_localizer["Status"]:</label>
-
-                                <select id="Customerstatus" name="status" class="form-control" style="width: 150px; display: inline-block;">
-                                    <option value="" selected="@(ViewBag.FilterStatus == null ? "selected" : "")"></option>
-                                    <option value="1" selected="@(ViewBag.FilterStatus?.ToString() == "1")">@_localizer["Active"]</option>
-                                    <option value="0" selected="@(ViewBag.FilterStatus?.ToString() == "0")">@_localizer["Inactive"]</option>
-                                </select>
-
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="glyphicon glyphicon-filter"></i> @_localizer["Search"]
-                            </button>
-                        </div>
-                        <!-- Buttons -->
-                    </form>
-
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="card alert p-0">
-                                <div class="card-body admin-register-body">
-                                    @{
-                                        int serial = ((Model.PageNumber - 1) * Model.PageSize) + 1;
-                                    }
-                                    <div class="admin-table-scroll"><table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="text-center"> @_localizer["SN"]</th>
-                                                <th class="text-center"> @_localizer["ID"]</th>
-                                                <th class="text-center"> @_localizer["Full Name"]</th>
-                                                <th class="text-center"> @_localizer["Email"]</th>
-                                                <th class="text-center"> @_localizer["Phone"]</th>
-                                                <th class="text-center"> @_localizer["Status"]</th>
-                                                <th class="text-center"> @_localizer["Created Date"]</th>
-                                                <th class="text-center"> @_localizer["Action"]</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                @if (!Model.Items.Any())
-                                {
-                                    <tr><td colspan="8" class="admin-empty-state">@_localizer["No records found"]</td></tr>
-                                }
-                                            @foreach (var item in Model.Items)
-                                            {
-                                                <tr>
-                                                    <td class="text-center">@serial</td>
-                                                    <td class="text-center">@item.UserId</td>
-                                                    <td class="text-center">@item.FullName</td>
-                                                    <td class="text-center"><bdi>@item.Email</bdi></td>
-                                                    <td class="text-center"><bdi>@item.Phone</bdi></td>
-                                                    <td class="text-center">
-                                                        @if (item.IsActive)
-                                                        {
-                                                            <span class="admin-status btn-success">@_localizer["Active"]</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="admin-status btn-danger">@_localizer["Inactive"]</span>
-                                                        }
-                                                    </td>
-                                                 
-                                                    <td class="text-center">@(item.CreatedAt.ToString("dd-MM-yyyy") ?? "")</td>
-
-                                                    <td class="text-center">
-                                                        <div style="display: inline-flex; gap: 3px;">
-                                                            <button class="btn btn-primary" onclick="showCustomerDetails(@item.UserId)">
-                                                                @_localizer["View Details"]
-                                                            </button>
-                                                            <button class="btn btn-warning" onclick="showChangePwdForm(@item.UserId)">
-                                                                @_localizer["Change Password"]
-                                                            </button>
-                                                            <button class="btn btn-@(item.IsActive ? "danger" : "success")"
-                                                                    onclick="toggleUserStatus(@item.UserId, @(item.IsActive.ToString().ToLower()))"
-                                                                    style="width: 75px;">
-                                                                @(item.IsActive? @_localizer["Block"] : @_localizer["Unblock"])
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                serial++;
-                                            }
-                                        </tbody>
-                                    </table></div>
-                                    <!-- ✅ Pagination (Same as UserList) -->
-                                    <div class="text-center">
-                                        <ul class="pagination justify-content-center">
-                                            <!-- First -->
-                                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                                <a class="page-link" asp-action="CustomerList" asp-route-page="1"
-                                                   asp-route-status="@ViewBag.FilterStatus"
-                                                   asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                   asp-route-name="@ViewBag.FilterName"
-                                                   asp-route-mobile="@ViewBag.FilterMobile"
-                                                   asp-route-startDate="@ViewBag.FilterStartDate"
-                                                   asp-route-endDate="@ViewBag.FilterEndDate">
-                                                    @_localizer["First"]
-                                                </a>
-                                            </li>
-
-                                            <!-- Previous -->
-                                            <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                                                <a class="page-link" asp-action="CustomerList" asp-route-page="@(Model.PageNumber - 1)"
-                                                   asp-route-status="@ViewBag.FilterStatus"
-                                                   asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                   asp-route-name="@ViewBag.FilterName"
-                                                   asp-route-mobile="@ViewBag.FilterMobile"
-                                                   asp-route-startDate="@ViewBag.FilterStartDate"
-                                                   asp-route-endDate="@ViewBag.FilterEndDate">
-                                                    @_localizer["Previous"]
-                                                </a>
-                                            </li>
-
-                                            <!-- Page Numbers -->
-                                            @{
-                                                int maxPagesToShow = 10;
-                                                int startPage = Math.Max(1, Model.PageNumber - 2);
-                                                int endPage = Math.Min(Model.TotalPages, startPage + maxPagesToShow - 1);
-                                                if (endPage - startPage + 1 < maxPagesToShow)
-                                                {
-                                                    startPage = Math.Max(1, endPage - maxPagesToShow + 1);
-                                                }
-                                                if (startPage > 1)
-                                                {
-                                                    <li class="page-item">
-                                                        <a class="page-link" asp-action="CustomerList" asp-route-page="1"
-                                                           asp-route-status="@ViewBag.FilterStatus"
-                                                           asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                           asp-route-name="@ViewBag.FilterName"
-                                                           asp-route-mobile="@ViewBag.FilterMobile"
-                                                           asp-route-startDate="@ViewBag.FilterStartDate"
-                                                           asp-route-endDate="@ViewBag.FilterEndDate">1</a>
-                                                    </li>
-                                                    if (startPage > 2)
-                                                    {
-                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    }
-                                                }
-                                                for (int i = startPage; i <= endPage; i++)
-                                                {
-                                                    <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                                                        <a class="page-link" asp-action="CustomerList" asp-route-page="@i"
-                                                           asp-route-status="@ViewBag.FilterStatus"
-                                                           asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                           asp-route-name="@ViewBag.FilterName"
-                                                           asp-route-mobile="@ViewBag.FilterMobile"
-                                                           asp-route-startDate="@ViewBag.FilterStartDate"
-                                                           asp-route-endDate="@ViewBag.FilterEndDate">@i</a>
-                                                    </li>
-                                                }
-                                                if (endPage < Model.TotalPages)
-                                                {
-                                                    if (endPage < Model.TotalPages - 1)
-                                                    {
-                                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                                    }
-                                                    <li class="page-item">
-                                                        <a class="page-link" asp-action="CustomerList" asp-route-page="@Model.TotalPages"
-                                                           asp-route-status="@ViewBag.FilterStatus"
-                                                           asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                           asp-route-name="@ViewBag.FilterName"
-                                                           asp-route-mobile="@ViewBag.FilterMobile"
-                                                           asp-route-startDate="@ViewBag.FilterStartDate"
-                                                           asp-route-endDate="@ViewBag.FilterEndDate">@Model.TotalPages</a>
-                                                    </li>
-                                                }
-                                            }
-
-                                            <!-- Next -->
-                                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                                <a class="page-link" asp-action="CustomerList" asp-route-page="@(Model.PageNumber + 1)"
-                                                   asp-route-status="@ViewBag.FilterStatus"
-                                                   asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                   asp-route-name="@ViewBag.FilterName"
-                                                   asp-route-mobile="@ViewBag.FilterMobile"
-                                                   asp-route-startDate="@ViewBag.FilterStartDate"
-                                                   asp-route-endDate="@ViewBag.FilterEndDate">
-                                                    @_localizer["Next"]
-                                                </a>
-                                            </li>
-
-                                            <!-- Last -->
-                                            <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                                                <a class="page-link" asp-action="CustomerList" asp-route-page="@Model.TotalPages"
-                                                   asp-route-status="@ViewBag.FilterStatus"
-                                                   asp-route-customerId="@ViewBag.FilterCustomerId"
-                                                   asp-route-name="@ViewBag.FilterName"
-                                                   asp-route-mobile="@ViewBag.FilterMobile"
-                                                   asp-route-startDate="@ViewBag.FilterStartDate"
-                                                   asp-route-endDate="@ViewBag.FilterEndDate">
-                                                    @_localizer["Last"]
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("CustomerList","ManageCustomer")" data-suggest-url="@Url.Action("AutoCompleteSql","ManageCustomer")">
+    <section class="admin-panel" id="customerRegister">
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2></div>
+        <form id="masterFilters" method="get" asp-action="CustomerList" class="admin-register-filters">
+            <div class="form-group"><label for="customerId">@T("Customer ID","رقم العميل")</label><input type="number" min="1" name="customerId" id="customerId" class="form-control" value="@ViewBag.FilterCustomerId" /></div>
+            <div class="form-group"><label for="name">@T("Customer name","اسم العميل")</label><input type="search" name="name" id="name" class="form-control" list="masterSuggestions" autocomplete="off" value="@ViewBag.FilterName" /><datalist id="masterSuggestions"></datalist></div>
+            <div class="form-group"><label for="mobile">@T("Mobile","الهاتف")</label><input type="tel" name="mobile" id="mobile" class="form-control" value="@ViewBag.FilterMobile" /></div>
+            <div class="form-group"><label for="startDate">@T("From date","من تاريخ")</label><input type="date" name="startDate" id="startDate" class="form-control" value="@ViewBag.FilterStartDate" /></div>
+            <div class="form-group"><label for="endDate">@T("To date","إلى تاريخ")</label><input type="date" name="endDate" id="endDate" class="form-control" value="@ViewBag.FilterEndDate" /></div>
+            <div class="form-group"><label for="status">@T("Status","الحالة")</label><select id="status" name="status" class="form-control"><option value="">@T("All","الكل")</option><option value="1" selected="@(ViewBag.FilterStatus==1)">@T("Active","نشط")</option><option value="0" selected="@(ViewBag.FilterStatus==0)">@T("Blocked","محظور")</option></select></div>
+            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+            <button type="submit" class="btn btn-primary">@T("Search","بحث")</button>
+            <a asp-action="CustomerList" id="clearMasterFilters" class="btn btn-default">@T("Clear","مسح")</a>
+        </form>
+        <p id="masterMessage" role="status" class="admin-muted"></p>
+        <div id="masterResults"><partial name="_RegisterRows" model="Model" /></div>
+    </section>
+    <section class="admin-panel" id="customerDetail" hidden data-details-url="@Url.Action("GetCustomerDetails","ManageCustomer")" data-items-url="@Url.Action("GetCustomerOrderItems","ManageCustomer")" data-status-url="@Url.Action("ToggleUserStatus","ManageCustomer")">
+        <div class="admin-section-heading"><h2 id="customerHeading" tabindex="-1">@T("Customer details","تفاصيل العميل")</h2><button type="button" id="backCustomers" class="btn btn-default">@T("Back to customers","العودة إلى العملاء")</button></div>
+        <p id="customerMessage" role="status"></p>
+        <button type="button" id="retryCustomer" class="btn btn-default" hidden>@T("Retry","إعادة المحاولة")</button>
+        <div id="customerContent" hidden>
+            <div class="order-detail-grid">
+                <section><h3>@T("Profile","الملف الشخصي")</h3>
+                    <img id="customerImage" class="admin-product-thumb" alt="" hidden />
+                    <dl><dt>@T("ID","الرقم")</dt><dd data-customer="customerId"></dd><dt>@T("Name","الاسم")</dt><dd data-customer="fullName"></dd><dt>@T("Email","البريد الإلكتروني")</dt><dd data-customer="email"></dd><dt>@T("Phone","الهاتف")</dt><dd data-customer="phone"></dd><dt>@T("Registered","تاريخ التسجيل")</dt><dd data-customer="registrationDate"></dd><dt>@T("Status","الحالة")</dt><dd data-customer="status"></dd></dl>
+                    <div class="order-actions"><button type="button" class="btn btn-default" id="customerPassword">@T("Change password","تغيير كلمة المرور")</button><button type="button" class="btn btn-default" id="customerStatus"></button></div>
+                </section>
+                <section><h3>@T("Saved addresses","العناوين المحفوظة")</h3><div id="customerAddresses"></div></section>
             </div>
+            <div class="admin-section-heading"><h3>@T("Store orders","طلبات المتجر")</h3><span id="customerOrderCount"></span></div>
+            <div class="admin-table-scroll"><table class="table table-hover"><thead><tr><th>@T("Order","الطلب")</th><th>@T("Date","التاريخ")</th><th>@T("Status","الحالة")</th><th>@T("Payment","الدفع")</th><th>@T("Total","الإجمالي")</th><th>@T("Action","الإجراء")</th></tr></thead><tbody id="customerOrders"></tbody></table></div>
+            <nav class="order-pagination" aria-label="@T("Order pages","صفحات الطلبات")"><button type="button" id="customerPrev" class="btn btn-default">@T("Previous","السابق")</button><span id="customerPage"></span><button type="button" id="customerNext" class="btn btn-default">@T("Next","التالي")</button></nav>
+            <section id="customerItems" class="admin-stock-editor" hidden>
+                <div class="admin-section-heading"><h3>@T("Order products","منتجات الطلب") <bdi id="customerOrderId"></bdi></h3><button type="button" id="closeCustomerItems" class="btn btn-default">@T("Close","إغلاق")</button></div>
+                <p id="customerItemsMessage" role="status"></p>
+                <div class="admin-table-scroll"><table class="table"><thead><tr><th>@T("Product","المنتج")</th><th>@T("Quantity","الكمية")</th><th>@T("Price","السعر")</th><th>@T("Total","الإجمالي")</th></tr></thead><tbody id="customerItemRows"></tbody></table></div>
+                <nav class="order-pagination"><button type="button" id="itemsPrev" class="btn btn-default">@T("Previous","السابق")</button><span id="itemsPage"></span><button type="button" id="itemsNext" class="btn btn-default">@T("Next","التالي")</button></nav>
+            </section>
         </div>
-    </div>
-
-   
+    </section>
 </div>
-
-
-<!-- ✅ Customer Details & Orders Modal -->
-<div class="modal fade" id="customerDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
-
-            <!-- 🔹 Header same as Order Details -->
-            <div class="modal-header" style="background-color: #337ab7; color: white; padding: 10px;">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"
-                        style="color:#fff; font-size: 28px; font-weight: bold; opacity: 1;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title">@_localizer["Customer Details"]</h4>
-            </div>
-
-            <div class="modal-body px-4 py-3" style="max-height: 80vh; overflow-y: auto;">
-
-                <!-- Customer Info Row -->
-                <div class="row mb-3">
-                    <!-- Left Side -->
-                    <div class="col-md-5">
-                        <p class="mb-1"><strong>@_localizer["Customer ID"]:</strong> <span id="modalCustomerId"></span></p>
-                        <p class="mb-1"><strong>@_localizer["Name"]:</strong> <span id="modalCustomerName"></span></p>
-                        <p class="mb-1"><strong>@_localizer["Email"]:</strong> <span id="modalCustomerEmail"></span></p>
-                        <p class="mb-1"><strong>@_localizer["Phone"]:</strong> <span id="modalCustomerPhone"></span></p>
-                    </div>
-
-                    <!-- Right Side -->
-                    <div class="col-md-5">
-                        <p class="mb-1"><strong>@_localizer["Status"]:</strong> <span id="status"></span></p>
-                        <p class="mb-1"><strong>@_localizer["Registration Date"]:</strong> <span id="modalCustomerRegDate"></span></p>
-                        <p class="mb-1"><strong>@_localizer["Address"]:</strong><br> <span id="modalCustomerAddress"></span></p>
-                    </div>
-
-                    <!-- Customer Image -->
-                    <div class="col-md-2 text-center">
-                        <div style="border:1px solid #ccc; padding:5px; width:120px; height:120px; margin:auto;">
-                            <img id="modalCustomerImage" src="/images/default-user.png"
-                                 alt="Customer Image"
-                                 style="width:100%; height:100%; object-fit:cover;" />
-                        </div>
-                        <label class="mt-2" style="font-weight:bold; color:#000;">@_localizer["Customer Image"]</label>
-                    </div>
-                </div>
-
-                <!-- 🔹 Order List Table -->
-                <h5 class="mt-3"><strong>@_localizer["Order List"]</strong></h5>
-                <div class="table-responsive">
-                    <div style="height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                        <table class="table table-bordered table-sm align-middle text-center">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="text-align:center;">@_localizer["Order ID"]</th>
-                                    <th style="text-align:center;">@_localizer["Product"]</th>
-                                    <th style="text-align:center;">@_localizer["Qty"]</th>
-                                    <th style="text-align:center;">@_localizer["Price"]</th>
-                                    <th style="text-align:center;">@_localizer["Total"]</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orderItemsBody">
-                                <!-- JS will populate -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade" id="changePasswordModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -402,233 +107,15 @@
     </div>
 </div>
 
-<!-- ✅ CSS -->
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker3.min.css" />
-
-<!-- ✅ Scripts Section -->
-@section scripts {
-  
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"></script>
-
+@section Scripts {
+    <script src="~/js/master-register.js" asp-append-version="true"></script>
+    <script src="~/js/customer-workspace.js" asp-append-version="true"></script>
     <script>
-        $(function () {
-            $('#startDate').datepicker({
-                format: 'dd-mm-yyyy',
-                autoclose: true,
-                todayHighlight: true,
-                clearBtn: true
-            }).on('changeDate', function (e) {
-                $('#endDate').datepicker('setStartDate', e.date);
-            });
-
-            $('#endDate').datepicker({
-                format: 'dd-mm-yyyy',
-                autoclose: true,
-                todayHighlight: true,
-                clearBtn: true
-            });
-
-            const fromVal = $('#startDate').val();
-            if (fromVal) {
-                const parts = fromVal.split("-");
-                if (parts.length === 3) {
-                    const formattedDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                    $('#endDate').datepicker('setStartDate', formattedDate);
-                }
-            }
-        });
-
         function togglePassword(id) {
             const input = document.getElementById(id);
             input.type = input.type === "password" ? "text" : "password";
         }
-    </script>
-    <script>
-           function submitFilter(event) {
-            event.preventDefault();
-
-            const Customerstatus = document.getElementById('Customerstatus').value;
-            const startDate = document.getElementById("startDate").value;
-            const endDate = document.getElementById("endDate").value;
-            const customerId = document.getElementById("customerId").value;
-            const name = document.getElementById("name").value;
-            const mobile = document.getElementById("mobile").value;
-
-            let query = "/ManageCustomer/CustomerList";
-            let params = [];
-
-            if (startDate && endDate) {
-                params.push(`startDate=${encodeURIComponent(startDate)}`);
-                params.push(`endDate=${encodeURIComponent(endDate)}`);
-            }
-
-            if (Customerstatus) {
-                params.push(`status=${encodeURIComponent(Customerstatus)}`);
-            }
-
-            if (customerId) {
-                params.push(`customerId=${encodeURIComponent(customerId)}`);
-            }
-
-            if (name) {
-                params.push(`name=${encodeURIComponent(name)}`);
-            }
-
-            if (mobile) {
-                params.push(`mobile=${encodeURIComponent(mobile)}`);
-            }
-
-            if (params.length > 0) {
-                query += "?" + params.join("&");
-            }
-
-            window.location.href = query;
-        }
-
-        function showCustomerDetails(userId) {
-            fetch(`/ManageCustomer/GetCustomerDetails?id=${userId}`)
-                .then(res => {
-                    if (!res.ok) throw new Error("Network response was not ok.");
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data || !data.customer) {
-                        Swal.fire("Info", "No customer data found.", "info");
-                        return;
-                    }
-
-                    const c = data.customer;
-                    const addresses = data.addresses || [];   // ✅ plural use karo
-                    const orders = data.orderItems || [];
-
-                    // ✅ Customer Info
-                    document.getElementById("modalCustomerId").innerText = c.customerId || "-";
-                    document.getElementById("modalCustomerName").innerText = c.fullName || "-";
-                    document.getElementById("modalCustomerEmail").innerText = c.email || "-";
-                    document.getElementById("modalCustomerPhone").innerText = c.phone || "-";
-                    document.getElementById("status").innerText = c.status
-                        ? "@_localizer["Active"]"
-                        : "@_localizer["Inactive"]";
-                    document.getElementById("modalCustomerRegDate").innerText = c.registrationDate || "-";
-
-                    // ✅ Address Combine
-                          let fullAddress = "-";
-
-        if (addresses.length > 0) {
-            fullAddress = addresses.map(addr => {
-                // Fields ko comma se join karo, empty skip karte hue
-                let oneAddress = [
-                    addr.addressArea,
-                    addr.addressBlock,
-                    addr.addressStreet,
-                    addr.addressHouseNo,
-                    addr.addressFloor
-                ]
-                .filter(f => f)            // null/undefined/empty skip
-                .join(", ");                // 👈 comma separated
-
-                return `<b>${addr.title || "Address"}:</b> ${oneAddress}`;
-            }).join("<br/>");               // 👈 multiple addresses alag line me
-        }
-
-        document.getElementById("modalCustomerAddress").innerHTML = fullAddress;
-
-
-                    // ✅ Image
-                    document.getElementById("modalCustomerImage").src = c.customerImage
-                        ? c.customerImage
-                        : "/images/userimage.png";
-
-                    // ✅ Orders Table
-                    let html = '';
-                    if (orders.length > 0) {
-                        orders.forEach(o => {
-                            html += `<tr>
-                                <td style="text-align:center;">${o.orderId}</td>
-                                <td style="text-align:center;">${o.productName}</td>
-                                <td style="text-align:center;">${o.quantity}</td>
-                                <td style="text-align:center;">${o.price ? o.price.toFixed(3) : "-"}</td>
-                                <td style="text-align:center;">${o.totalPrice ? o.totalPrice.toFixed(3) : "-"}</td>
-                            </tr>`;
-                        });
-                    } else {
-                        html = `<tr><td colspan="5" class="text-center">@_localizer["No orders found"]</td></tr>`;
-                    }
-                    document.getElementById("orderItemsBody").innerHTML = html;
-
-                    // ✅ Show Modal
-                    $('#customerDetailsModal').modal('show');
-                })
-                .catch(err => {
-                    console.error("Error fetching customer details:", err);
-                    Swal.fire("Error", "Failed to load customer data.", "error");
-                });
-        }
-        
-        function toggleUserStatus(userId, currentStatus) {
-            const ar = document.documentElement.dir === "rtl";
-            const question = currentStatus
-                ? (ar ? "هل تريد حظر هذا العميل؟" : "Block this customer?")
-                : (ar ? "هل تريد إلغاء حظر هذا العميل؟" : "Unblock this customer?");
-            return AdminFeedback.confirmPost("/ManageCustomer/ToggleUserStatus?id=" + encodeURIComponent(userId),
-                {method:"POST"}, question, () => location.reload());
-        }
-
-        $(document).ready(function () {
-
-            // Fetch suggestions from server
-            function fetchSuggestions(query) {
-                if (!query || query.length < 2) {
-                    $('#suggestions').hide();
-                    return;
-                }
-
-                $.ajax({
-                    url: '/ManageCustomer/AutoCompleteSql', // controller
-                    type: 'GET',
-                    data: { term: query },
-                    success: function (data) {
-                        let $suggestionBox = $('#suggestions');
-                        $suggestionBox.empty();
-
-                        if (data && data.length > 0) {
-                            data.forEach(function(item) {
-                                $('<li></li>')
-                                    .text(item) // server already returns English or Arabic based on input
-                                    .css({ padding:'5px', cursor:'pointer', borderBottom:'1px solid #ddd' })
-                                    .on('click', function() {
-                                        $('#name').val(item); // select the suggested value
-                                        $suggestionBox.hide();
-                                        $('#name').focus(); // keep focus
-                                    })
-                                    .appendTo($suggestionBox);
-                            });
-                            $suggestionBox.show();
-                        } else {
-                            $suggestionBox.hide();
-                        }
-                    }
-                });
-            }
-
-            // Trigger on input
-            $('#name').on('input', function () {
-                fetchSuggestions($(this).val());
-            });
-
-            // Enable arrow key navigation + enter selection
-            enableSuggestionNavigation('#name', '#suggestions');
-
-            // Hide suggestions if click outside
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('#name, #suggestions').length) {
-                    $('#suggestions').hide();
-                }
-            });
-        });
-
         const newPwd = document.getElementById("newPassword");
         const confirmPwd = document.getElementById("confirmPassword");
         const errorMsg = document.getElementById("pwdError");
@@ -700,6 +187,6 @@
                 $("#changePasswordModal").modal("hide");
             });
         }
-    </script>
 
+    </script>
 }
