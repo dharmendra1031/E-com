@@ -120,3 +120,31 @@ Check(!EcommerceWebApplication.Helper.CustomerPassword.Verify("customer-v1:inval
 Check(EcommerceWebApplication.Helper.CustomerPassword.ApiOtpKey("Example@example.com", true) !=
     EcommerceWebApplication.Helper.CustomerPassword.ApiOtpKey("Example@example.com", false), "OTP purposes overlap.");
 Console.WriteLine("Customer password and OTP purpose checks passed.");
+
+var webhook = typeof(MarketplaceWebhookController).GetMethod("Receive")!;
+Check(webhook.IsDefined(typeof(HttpPostAttribute)) && webhook.IsDefined(typeof(AllowAnonymousAttribute)) &&
+    webhook.IsDefined(typeof(IgnoreAntiforgeryTokenAttribute)), "Webhook endpoint metadata incorrect.");
+const string signedBody = """
+    {"Event":{"Code":1,"Name":"PAYMENT_STATUS_CHANGED"},"Data":{"Invoice":{"Id":"6409988","Status":"PAID","ExternalIdentifier":null},"Transaction":{"Status":"SUCCESS","PaymentId":"07076409988323998875"}}}
+    """;
+const string testSecret = "test-webhook-secret";
+const string testSignature = "ATzf+aw3aQq7YxODV8ROn5DMXqCFIQ/vKj3RgrAUvgE=";
+static EcommerceWebApplication.Helper.MarketplaceWebhookSignature.PaymentEvent? CheckSignature(string json, string? signature, string? secret)
+{
+    using var document = System.Text.Json.JsonDocument.Parse(json);
+    return EcommerceWebApplication.Helper.MarketplaceWebhookSignature.Verify(document.RootElement, signature, secret);
+}
+var paymentEvent = CheckSignature(signedBody, testSignature, testSecret);
+Check(paymentEvent is { InvoiceId: 6409988, IsPaid: true, PaymentId: "07076409988323998875" }, "Valid signature rejected.");
+Check(CheckSignature(signedBody, testSignature, "wrong-secret") == null &&
+    CheckSignature(signedBody, null, testSecret) == null &&
+    CheckSignature(signedBody, "invalid", testSecret) == null, "Invalid signature accepted.");
+Check(CheckSignature(signedBody.Replace("6409988","6409989"), testSignature, testSecret) == null &&
+    CheckSignature(signedBody.Replace("SUCCESS","FAILED"), testSignature, testSecret) == null &&
+    CheckSignature(signedBody.Replace("07076409988323998875","07076409988323998876"), testSignature, testSecret) == null &&
+    CheckSignature(signedBody.Replace("null","\"changed\""), testSignature, testSecret) == null,
+    "Tampered signed payment fields accepted.");
+Check(CheckSignature(signedBody.Replace("\"Code\":1","\"Code\":1,\"Code\":1"), testSignature, testSecret) == null &&
+    CheckSignature(signedBody.Replace("PAYMENT_STATUS_CHANGED","REFUND_STATUS_CHANGED"), testSignature, testSecret) == null,
+    "Ambiguous or unsupported webhook accepted.");
+Console.WriteLine("MyFatoorah V2 webhook signature regression checks passed.");
