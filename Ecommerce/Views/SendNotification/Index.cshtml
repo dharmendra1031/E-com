@@ -12,6 +12,7 @@
                     <h4> @_localizer["Send Notification"]</h4>
                 </div>
                 <div class="card-body">
+                    @if(User.IsInRole("Admin")){
                     <form asp-action="SaveNotification" method="post" id="NavigationKey">
                         @Html.AntiForgeryToken()
 
@@ -52,15 +53,25 @@
                             </div>
                         </div>
                     </form>
+                    }
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<section class="admin-panel">
+    <h2>@(System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft?"سجل الإشعارات المحفوظة":"Saved notification history")</h2>
+    <div class="admin-table-scroll"><table class="table"><thead><tr><th>@_localizer["Subject"]</th><th>@_localizer["Created Date"]</th></tr></thead><tbody>
+    @foreach(var entry in (List<EcommerceWebApplication.Models.SendNotificationModel>)ViewBag.History)
+    {<tr><td>@entry.EmailSubject</td><td><bdi>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</bdi></td></tr>}
+    </tbody></table></div>
+    @if(ViewBag.Page>1){<a asp-action="Index" asp-route-page="@((int)ViewBag.Page-1)" class="btn btn-default">@_localizer["Previous"]</a>}
+    @if(ViewBag.HasNext==true){<a asp-action="Index" asp-route-page="@((int)ViewBag.Page+1)" class="btn btn-default">@_localizer["Next"]</a>}
+</section>
 @section Scripts {
     <script>
-        document.getElementById("NavigationKey").addEventListener("submit", function (e) {
+        document.getElementById("NavigationKey")?.addEventListener("submit", function (e) {
             if (!document.getElementById("selectAllUsers").checked ||
                 !document.getElementById("EmailSubject").value.trim() ||
                 !document.getElementById("Body").value.trim()) {

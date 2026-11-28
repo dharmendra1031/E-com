@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -8,18 +9,22 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ContactController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public ContactController(EcommerceDbContext context)
+        public ContactController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
    
-        public IActionResult ContactList(string name, int page = 1, int pageSize = 10)
+        [HttpGet]
+        public async Task<IActionResult> ContactList(string name, int page = 1, int pageSize = 10)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Contact, HttpContext.RequestAborted)).View) return Forbid();
             var query = _context.ContactMessages.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(name))
@@ -27,17 +32,14 @@ namespace EcommerceWebApplication.Controllers
                 query = query.Where(c => c.FullName.Contains(name));
             }
 
-            var contacts = query
-                            .OrderByDescending(c => c.Id)
-                            .AsNoTracking()
-                            .ToList();
-
-            ViewBag.SearchName = name; // To retain input in view
-            int totalItems = contacts.Count;
-            var pagedData = contacts
+            pageSize=Math.Clamp(pageSize,1,100);
+            int totalItems=await query.CountAsync();
+            page=Math.Clamp(page,1,Math.Max(1,(int)Math.Ceiling((double)totalItems/pageSize)));
+            ViewBag.SearchName=name;
+            var pagedData=await query.AsNoTracking().OrderByDescending(c=>c.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList();
+                .ToListAsync();
 
             var pagedModel = new PagedResult<ContactMessage>
             {
@@ -49,8 +51,9 @@ namespace EcommerceWebApplication.Controllers
             return View(pagedModel);
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Contact, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

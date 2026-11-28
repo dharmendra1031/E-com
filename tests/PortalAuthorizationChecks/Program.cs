@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(BannerController), typeof(BlogController), typeof(CouponController), typeof(WekendDealsController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(BannerController), typeof(BlogController), typeof(CouponController), typeof(WekendDealsController), typeof(SendNotificationController), typeof(CompanydetailsController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController), typeof(AdminDashboardController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -44,7 +44,7 @@ foreach (var controller in superAdminControllers) RequireController(controller, 
 foreach (var action in new[] { "Index", "SaveUpdate" })
 {
     var method = typeof(ChangecolorsController).GetMethods().Single(m => m.Name == action);
-    Check(method.GetCustomAttributes<AuthorizeAttribute>(true).Any(a => a.Roles == "Admin") &&
+    Check(method.GetCustomAttributes<AuthorizeAttribute>(true).Any(a => a.Roles == "Admin,AdminManager,AdminStaff") &&
         !method.IsDefined(typeof(AllowAnonymousAttribute), true), $"Color settings {action} is not admin-only.");
 }
 
@@ -183,7 +183,7 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(Categor
 foreach (var name in new[] { "Create", "Edit", "DeleteProduct", "DeleteProductImage" })
     foreach (var action in typeof(ProductsController).GetMethods().Where(m => m.Name == name && m.IsDefined(typeof(HttpPostAttribute))))
         Check(action.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), $"Missing Product antiforgery: {name}");
-Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 14,
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 21,
     "Unexpected catalog permission mapping.");
 Console.WriteLine("Catalog restricted-admin action and antiforgery checks passed.");
 
@@ -293,3 +293,8 @@ foreach(var controller in new[]{typeof(CouponController),typeof(WekendDealsContr
     foreach(var method in controller.GetMethods().Where(m=>m.DeclaringType==controller && m.IsDefined(typeof(HttpPostAttribute))))
         Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,method.Name,"POST") &&
             method.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin"),"Restricted pricing mutation exposed.");
+
+foreach(var (controller,action,verb) in new[]{(typeof(SendNotificationController),"Index","GET"),(typeof(CompanydetailsController),"Index","GET"),(typeof(ContactController),"ContactList","GET"),(typeof(AboutUsController),"UpdateAbout","GET"),(typeof(AboutUsController),"Create","POST"),(typeof(ChangecolorsController),"Index","GET"),(typeof(ChangecolorsController),"SaveUpdate","POST"),(typeof(AdminDashboardController),"Index","GET"),(typeof(ReportController),"ReportPrint","GET"),(typeof(ReportController),"CustomersReport","GET")})
+    Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"Remaining admin route missing.");
+foreach(var (controller,action,verb) in new[]{(typeof(SendNotificationController),"SaveNotification","POST"),(typeof(CompanydetailsController),"Create","POST"),(typeof(ReportController),"OrderInvoicePrint","GET"),(typeof(ReportController),"ReportPrint","POST")})
+    Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"Privileged route exposed.");

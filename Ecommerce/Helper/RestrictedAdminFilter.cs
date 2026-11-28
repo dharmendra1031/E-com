@@ -50,6 +50,13 @@ public sealed class RestrictedAdminFilter(AdminStaffAccess access) : IAsyncAutho
             method == "POST" && action is "CreateOrUpdate" or "Delete") ||
         controller == typeof(CouponController) && method == "GET" && action == "Index" ||
         controller == typeof(WekendDealsController) && method == "GET" && action is "WekendDealsList" or "AutoCompletedeal" ||
+        controller == typeof(SendNotificationController) && method == "GET" && action == "Index" ||
+        controller == typeof(CompanydetailsController) && method == "GET" && action == "Index" ||
+        controller == typeof(ContactController) && method == "GET" && action is "ContactList" or "AutoCompleteSql" ||
+        controller == typeof(AboutUsController) && (method == "GET" && action == "UpdateAbout" || method == "POST" && action == "Create") ||
+        controller == typeof(ChangecolorsController) && (method == "GET" && action is "Index" or "GetColor" || method == "POST" && action == "SaveUpdate") ||
+        controller == typeof(AdminDashboardController) && method == "GET" && action == "Index" ||
+        controller == typeof(ReportController) && method == "GET" && action is "Index" or "CategoryWiseSalereport" or "Customers" or "StockReport" or "ItemReport" or "ReportPrint" or "CategoryReportPrint" or "CustomersReport" or "StockReportPrint" or "ItemfileReport" or "AutoCompleteSql" ||
         method == "GET" && (
             controller == typeof(AccountController) && action is "Logout" or "AccessDenied" ||
             controller == typeof(HomeController) && action == "SetLanguage");

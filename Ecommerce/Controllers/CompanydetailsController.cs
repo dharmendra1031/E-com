@@ -8,17 +8,21 @@ using System.Drawing;
 using System.Drawing.Imaging;
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class CompanydetailsController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public CompanydetailsController(EcommerceDbContext context)
+        public CompanydetailsController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
-        public IActionResult Index()
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Company, HttpContext.RequestAborted)).View) return Forbid();
             var company = _context.CompanyDetails.AsNoTracking().OrderBy(c => c.CompanyId).FirstOrDefault();
             return View(company ?? new CompanyDetails());
         }
@@ -51,8 +55,10 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(CompanyDetails model, IFormFile? LogoFile)
         {
+            if (!int.TryParse(User.FindFirst("UserId")?.Value,out var actor) || actor<=0) return Forbid();
             var existingCompany = await _context.CompanyDetails.OrderBy(c => c.CompanyId).FirstOrDefaultAsync();
             if (existingCompany == null)
             {
@@ -105,7 +111,7 @@ namespace EcommerceWebApplication.Controllers
             existingCompany.QuantityLimit = model.QuantityLimit;
             existingCompany.Logo = model.Logo;
             existingCompany.UpdatedAt = DateTime.Now;
-            existingCompany.UpdatedBy = 1;
+            existingCompany.UpdatedBy = actor;
             existingCompany.Heading = true;
 
             await _context.SaveChangesAsync();

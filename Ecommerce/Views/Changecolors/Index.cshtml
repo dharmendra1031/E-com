@@ -1,5 +1,7 @@
 @model EcommerceWebApplication.Helper.StoreTheme
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var canEdit=(await StaffAccess.RightsAsync(User,EcommerceWebApplication.Helper.AdminStaffAccess.Theme,Context.RequestAborted)).Edit;
     Layout = "~/Views/Shared/_Layout.cshtml";
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
@@ -11,6 +13,7 @@
     <div class="admin-section-heading"><h2>@T("Project theme","لون المشروع")</h2></div>
     <p>@T("Choose the shared accent color for the customer website, admin panel and vendor portal. Content surfaces stay white and text stays readable.","اختر اللون المشترك لموقع العملاء ولوحة الإدارة وبوابة البائع. تبقى الخلفيات بيضاء والنصوص واضحة.")</p>
     <form id="themeForm" method="post" asp-action="SaveUpdate" data-feedback="off" data-read-url="@Url.Action("GetColor")">
+        <fieldset disabled="@(!canEdit)">
         <section class="theme-logo-section" aria-labelledby="logoThemeTitle">
             <h3 id="logoThemeTitle">@T("Match company logo", "مطابقة شعار الشركة")</h3>
             @if (logoUrl != null)
@@ -39,10 +42,12 @@
             <div class="form-group"><label for="selectedColor">@T("Hex color","رمز اللون")</label><input type="text" id="selectedColor" name="Colorcode" class="form-control" value="@Model.Primary" maxlength="7" pattern="#[0-9a-fA-F]{6}" required dir="ltr" /></div>
             <div class="form-group"><label>@T("Preview","معاينة")</label><div id="themePreview" class="theme-preview" style="background:@Model.Primary;color:@Model.Foreground">@T("Selected color","اللون المحدد")</div></div>
         </div>
-        <div class="admin-form-actions"><button type="submit" class="btn btn-primary">@T("Save color","حفظ اللون")</button></div>
+        </fieldset>
+        @if(canEdit){<div class="admin-form-actions"><button type="submit" class="btn btn-primary">@T("Save color","حفظ اللون")</button></div>
         <p id="themeMessage" role="status"></p>
+        }
     </form>
 </section>
 @section Scripts {
-    <script src="~/js/theme-settings.js" asp-append-version="true"></script>
+    @if(canEdit){<script src="~/js/theme-settings.js" asp-append-version="true"></script>}
 }

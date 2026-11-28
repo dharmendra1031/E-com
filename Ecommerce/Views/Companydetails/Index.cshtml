@@ -11,6 +11,7 @@
 }
 <section class="admin-panel company-settings">
     <form asp-action="Create" id="NavigationKey" method="post" enctype="multipart/form-data">
+        <fieldset disabled="@(!User.IsInRole("Admin"))">
         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
         <section class="company-section">
             <h2>@T("Company identity", "هوية الشركة")</h2>
@@ -85,10 +86,12 @@
                 <div class="form-group"><label asp-for="LinkedInUrl">LinkedIn URL <span class="text-danger">*</span></label><input asp-for="LinkedInUrl" class="form-control" dir="ltr" maxlength="100" /><span asp-validation-for="LinkedInUrl" class="text-danger"></span></div>
             </div>
         </section>
-        <div class="company-save"><button type="submit" class="btn btn-primary" disabled="@(Model.CompanyId == 0)">@T("Save changes", "حفظ التغييرات")</button></div>
+        </fieldset>
+        @if(User.IsInRole("Admin")){<div class="company-save"><button type="submit" class="btn btn-primary" disabled="@(Model.CompanyId == 0)">@T("Save changes", "حفظ التغييرات")</button></div>
         @if (Model.CompanyId == 0)
         {
             <p role="status" class="text-danger">@T("Company profile not found.", "ملف الشركة غير موجود.")</p>
+        }
         }
     </form>
 </section>

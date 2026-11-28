@@ -32,12 +32,20 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
     public const string Blog = "admin.blog";
     public const string Coupons = "admin.coupons";
     public const string Deals = "admin.deals";
+    public const string Notifications = "admin.notifications";
+    public const string Company = "admin.company";
+    public const string Contact = "admin.contact";
+    public const string About = "admin.about";
+    public const string Theme = "admin.theme";
+    public const string Reports = "admin.reports";
+    public const string Dashboard = "admin.dashboard";
     public static readonly IReadOnlyList<(string Code, string Controller, string Action)> Pages =
         Array.AsReadOnly(new[] { (Brands, "Brand", "Index"), (Categories, "Category", "Index"),
             (Subcategories, "SubCategory", "List"), (Products, "Products", "ProductList"),
             (TopCategories, "Category", "TopCategory"), (Stock, "ProductStock", "Index"), (Orders, "ManageOrders", "PendingOrder"), (Customers, "ManageCustomer", "CustomerList"),
             (Areas, "Areas", "AreaList"), (Blocks, "Blocks", "BlockList"), (Banners, "Banner", "AddBanner"),
-            (Blog, "Blog", "BlogList"), (Coupons, "Coupon", "Index"), (Deals, "WekendDeals", "WekendDealsList") });
+            (Blog, "Blog", "BlogList"), (Coupons, "Coupon", "Index"), (Deals, "WekendDeals", "WekendDealsList"),
+            (Notifications, "SendNotification", "Index"), (Company, "Companydetails", "Index"), (Contact, "Contact", "ContactList"), (About, "AboutUs", "UpdateAbout"), (Theme, "Changecolors", "Index"), (Reports, "Report", "Index"), (Dashboard, "AdminDashboard", "Index") });
 
     public static bool IsRestricted(string? role) => role is "AdminManager" or "AdminStaff";
     public static bool IsRestricted(ClaimsPrincipal? user) =>
@@ -78,14 +86,15 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
             where u.UserId == id && u.RoleId == roleId && u.Email == email && u.IsActive &&
                 u.Role != null && u.Role.IsActive && u.Role.RoleName == role &&
                 p.PortalScope == "Admin" && p.PageCode != null && codes.Contains(p.PageCode)
-            select new { p.PageCode, rp.ListPage, rp.CreatePage, rp.UpdatePage, rp.DeletePage }).ToListAsync(ct);
+            select new { p.PageCode, rp.ListPage, rp.CreatePage, rp.UpdatePage, rp.DeletePage, rp.ReportView, rp.ReportPrint }).ToListAsync(ct);
         return grants.Where(g => codes.Contains(g.PageCode, StringComparer.Ordinal))
             .GroupBy(g => g.PageCode!, StringComparer.Ordinal).Where(g => g.Count() == 1)
             .ToDictionary(g => g.Key, g => {
                 var grant = g.Single();
-                return g.Key is Customers or Coupons or Deals ? AdminPageRights.From(grant.ListPage, false, false, false) :
-                    g.Key is Areas or Blocks or Banners ? AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, false) :
-                    g.Key is Orders or Stock ? AdminPageRights.From(grant.ListPage, false, grant.UpdatePage, false) :
+                return g.Key == Reports ? AdminPageRights.From(grant.ListPage && grant.ReportView && grant.ReportPrint, false, false, false) :
+                    g.Key is Dashboard or Notifications or Company or Contact or Customers or Coupons or Deals ? AdminPageRights.From(grant.ListPage, false, false, false) :
+                    g.Key is Areas or Blocks or Banners or About ? AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, false) :
+                    g.Key is Orders or Stock or Theme ? AdminPageRights.From(grant.ListPage, false, grant.UpdatePage, false) :
                     AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
             }, StringComparer.Ordinal);
     }

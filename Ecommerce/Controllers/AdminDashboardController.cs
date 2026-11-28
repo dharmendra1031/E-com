@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,24 +9,34 @@ using System.Globalization;
 namespace EcommerceWebApplication.Controllers
 {
   
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 
     public class AdminDashboardController : Controller
     {  
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
         string culture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-        public AdminDashboardController(EcommerceDbContext context)
+        public AdminDashboardController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
        
-        public IActionResult Index()
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
-            // ✅ Double-check role claim
-            if (!User.IsInRole("Admin"))
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Dashboard, HttpContext.RequestAborted)).View) return Forbid();
+            if (AdminStaffAccess.IsRestricted(User))
             {
-                return RedirectToAction("AccessDenied", "Account");
+                var ct=HttpContext.RequestAborted;
+                var masters=new Dictionary<string,int>();
+                if((await _access.RightsAsync(User,AdminStaffAccess.Customers,ct)).View) masters["Customers"]=await _context.Customers.CountAsync(u=>u.RoleId==2 && u.IsDeleted==0,ct);
+                if((await _access.RightsAsync(User,AdminStaffAccess.Products,ct)).View) masters["Products"]=await _context.Products.CountAsync(ct);
+                if((await _access.RightsAsync(User,AdminStaffAccess.Categories,ct)).View) masters["Categories"]=await _context.Categories.CountAsync(ct);
+                if((await _access.RightsAsync(User,AdminStaffAccess.Subcategories,ct)).View) masters["Sub-Categories"]=await _context.SubCategories.CountAsync(ct);
+                if((await _access.RightsAsync(User,AdminStaffAccess.Areas,ct)).View) masters["Areas"]=await _context.Area.CountAsync(ct);
+                return View("RestrictedOverview",masters);
             }
 
             var today = DateTime.Today;

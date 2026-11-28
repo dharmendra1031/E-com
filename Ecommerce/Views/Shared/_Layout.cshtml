@@ -411,6 +411,56 @@
                         {
                     <li class="@activeClass("WekendDeals", "WekendDealsList")"><a href="@Url.Action("WekendDealsList", "WekendDeals")" title="@_localizer["Wekend Deals"]"><i class="ti-tag" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Wekend Deals"]</span></a></li>
                         }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Notifications, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("SendNotification", "Index")"><a href="@Url.Action("Index", "SendNotification")" title="@_localizer["Send Notification"]"><i class="ti-email" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Send Notification"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Company, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Companydetails", "Index")"><a href="@Url.Action("Index", "Companydetails")" title="@_localizer["CompanyDetail"]"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["CompanyDetail"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Contact, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Contact", "ContactList")"><a href="@Url.Action("ContactList", "Contact")" title="@_localizer["Contact Massage"]"><i class="ti-comment" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Contact Massage"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.About, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("AboutUs", "UpdateAbout")"><a href="@Url.Action("UpdateAbout", "AboutUs")" title="@_localizer["About Us"]"><i class="ti-info-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["About Us"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Theme, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Changecolors", "Index")"><a href="@Url.Action("Index", "Changecolors")" title="@_localizer["Change Colors"]"><i class="ti-palette" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Change Colors"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Reports, Context.RequestAborted)).View)
+                        {
+                    <li class="sidebar-sub-toggle @activeMenuClass(new[] { "Report" })">
+                        <a href="javascript:void(0);">
+                            <i class="ti-bar-chart-alt"></i> @_localizer["Reports"]
+                            <span class="sidebar-collapse-icon ti-angle-down"></span>
+                        </a>
+                        <ul class="sidebar-submenu" style="@submenuStyle(new[] { "Report" })">
+                            <li class="@activeClass("Report", "Index")">
+                                <a href="/Report/Index">@_localizer["Daily Sale Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "CategoryWiseSalereport")">
+                                <a href="/Report/CategoryWiseSalereport">@_localizer["Category Sale Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "Customers")">
+                                <a href="/Report/Customers">@_localizer["Customer Report"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "StockReport")">
+                                <a href="/Report/StockReport">@_localizer["StockReport"]</a>
+                            </li>
+                            <li class="@activeClass("Report", "ItemReport")">
+                                <a href="/Report/ItemReport">@_localizer["Item Report"]</a>
+                            </li>
+                        </ul>
+                    </li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Dashboard, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("AdminDashboard", "Index")"><a href="@Url.Action("Index", "AdminDashboard")" title="@_localizer["Dashboard"]"><i class="ti-home" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Dashboard"]</span></a></li>
+                        }
                     }
                     <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>

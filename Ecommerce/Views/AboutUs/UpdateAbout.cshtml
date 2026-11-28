@@ -1,6 +1,9 @@
 ﻿@model EcommerceWebApplication.Models.AboutUs
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights=await StaffAccess.RightsAsync(User,EcommerceWebApplication.Helper.AdminStaffAccess.About,Context.RequestAborted);
+    var canSave=Model.AboutUsId==0?rights.Create:rights.Edit;
     ViewData["Title"] = "UpdateAbout";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -17,6 +20,7 @@
                     <div class="basic-form">
                         <form asp-action="Create" id="NavigationKey" method="post" enctype="multipart/form-data">
                             @Html.AntiForgeryToken()
+                            <fieldset disabled="@(!canSave)">
 
                             <div class="row">
                                 <div class="col-md-6">
@@ -74,7 +78,8 @@
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary  btn-flat m-t-30">@_localizer["Update"]</button>
+                            </fieldset>
+                            @if(canSave){<button type="submit" class="btn btn-primary  btn-flat m-t-30">@_localizer["Update"]</button>}
                         </form>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 ﻿using ClosedXML.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
 using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -18,24 +19,28 @@ using System.Text;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ReportController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
         private readonly IWebHostEnvironment _env;
 
-        public ReportController(EcommerceDbContext context, IWebHostEnvironment env)
+        public ReportController(EcommerceDbContext context, IWebHostEnvironment env, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
             _env = env;
         }
 
 
         #region Daily sale report
 
-        public ActionResult Index()
+        [HttpGet]
+        public async Task<IActionResult> Index()
 
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
 
             var culture = System.Globalization.CultureInfo.CurrentCulture;
 
@@ -69,8 +74,10 @@ namespace EcommerceWebApplication.Controllers
 
         }
 
+        [HttpGet]
         public async Task<IActionResult> ReportPrint(ReportViewModel rptParameters, string format = "PDF")
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
 
@@ -323,9 +330,11 @@ namespace EcommerceWebApplication.Controllers
         #endregion
 
         #region Category Wise Sales 
-        public ActionResult CategoryWiseSalereport()
+        [HttpGet]
+        public async Task<IActionResult> CategoryWiseSalereport()
 
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
 
             var culture = System.Globalization.CultureInfo.CurrentCulture;
 
@@ -349,8 +358,10 @@ namespace EcommerceWebApplication.Controllers
             return View();
 
         }
+        [HttpGet]
         public async Task<IActionResult> CategoryReportPrint(int? categoryId, string format = "PDF")
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
 
@@ -432,7 +443,7 @@ namespace EcommerceWebApplication.Controllers
             new ReportParameter("Address", companyAddress ?? ""),
             new ReportParameter("Phone", phone ?? ""),
             new ReportParameter("Logo", imagePath ?? ""),
-            new ReportParameter("UserName", "Admin")
+            new ReportParameter("UserName", User.Identity?.Name ?? "Admin")
         });
 
 
@@ -566,13 +577,16 @@ namespace EcommerceWebApplication.Controllers
 
 
 
-        public IActionResult Customers()
+        [HttpGet]
+        public async Task<IActionResult> Customers()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             return View();
         }
         [HttpGet]
         public async Task<IActionResult> CustomersReport(DateTime? from, DateTime? to, bool? isActive, string? keyword, string format = "PDF")
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
                 var culture = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
@@ -639,7 +653,7 @@ namespace EcommerceWebApplication.Controllers
                 new ReportParameter("Address", companyAddress ?? ""),
                 new ReportParameter("Phone", phone ?? ""),
                 new ReportParameter("Logo", imagePath ?? ""),
-                new ReportParameter("UserName", "Admin")
+                new ReportParameter("UserName", User.Identity?.Name ?? "Admin")
             });
 
                     var (renderFormat, mime, ext) = format?.ToUpperInvariant() switch
@@ -707,14 +721,18 @@ namespace EcommerceWebApplication.Controllers
         #endregion
 
         #region StockReport
-        public ActionResult StockReport()
+        [HttpGet]
+        public async Task<IActionResult> StockReport()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
             return View();
         }
+        [HttpGet]
         public async Task<IActionResult> StockReportPrint(string? productName, string? status, string? searchCode, string format = "PDF")
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
 
@@ -795,7 +813,7 @@ namespace EcommerceWebApplication.Controllers
             new ReportParameter("Address", companyAddress ?? ""),
             new ReportParameter("Phone", phone ?? ""),
             new ReportParameter("Logo", imagePath ?? ""),
-            new ReportParameter("UserName", "Admin")
+            new ReportParameter("UserName", User.Identity?.Name ?? "Admin")
         });
 
 
@@ -886,8 +904,10 @@ namespace EcommerceWebApplication.Controllers
         #endregion
 
         #region ItemReport
-        public IActionResult ItemReport()
+        [HttpGet]
+        public async Task<IActionResult> ItemReport()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             return View();
         }
 
@@ -896,6 +916,7 @@ namespace EcommerceWebApplication.Controllers
                                           bool showCategory = false, bool showStock = false,
                                           string format = "PDF")
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
                 var culture = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
@@ -962,7 +983,7 @@ namespace EcommerceWebApplication.Controllers
                 new ReportParameter("Address", companyAddress ?? ""),
                 new ReportParameter("Phone", phone ?? ""),
                 new ReportParameter("Logo", imagePath ?? ""),
-                new ReportParameter("UserName", "Admin"),
+                new ReportParameter("UserName", User.Identity?.Name ?? "Admin"),
                 new ReportParameter("ShowCategory", showCategory ? "true" : "false"),
                 new ReportParameter("ShowStock", showStock ? "true" : "false")
             });
@@ -1061,8 +1082,9 @@ namespace EcommerceWebApplication.Controllers
 
         #region Suggetion Product
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 
@@ -1132,6 +1154,7 @@ namespace EcommerceWebApplication.Controllers
 
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> OrderInvoicePrint(int orderId, string format = "PDF")
         {
             if (!User.IsInRole("Admin") &&
@@ -1209,7 +1232,7 @@ namespace EcommerceWebApplication.Controllers
                 new ReportParameter("Address", companyAddress ?? ""),
                 new ReportParameter("Phone", phone ?? ""),
                 new ReportParameter("Logo", imagePath ?? ""),
-                new ReportParameter("UserName", "Admin")
+                new ReportParameter("UserName", User.Identity?.Name ?? "Admin")
             });
 
                     // ✅ Render PDF

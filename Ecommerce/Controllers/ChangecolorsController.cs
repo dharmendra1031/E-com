@@ -10,14 +10,18 @@ namespace EcommerceWebApplication.Controllers
     public class ChangecolorsController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public ChangecolorsController(EcommerceDbContext context)
+        public ChangecolorsController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Theme, HttpContext.RequestAborted)).View) return Forbid();
             var branding = await CompanyBranding.ReadAsync(_context, System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft);
             ViewBag.CompanyLogoUrl = branding.HasLogo
                 ? Url.Action("CompanyLogo", "StoreImage", new { id = branding.CompanyId })
@@ -26,10 +30,11 @@ namespace EcommerceWebApplication.Controllers
             return View(StoreTheme.From(saved));
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         [ValidateAntiForgeryToken]
-        public IActionResult SaveUpdate(ColorsModel model)
+        public async Task<IActionResult> SaveUpdate(ColorsModel model)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Theme, HttpContext.RequestAborted)).Edit) return Forbid();
             if (model == null || !StoreTheme.IsValid(model.Colorcode))
                 return Json(new { success = false, message = "Invalid data" });
 

@@ -1,0 +1,13 @@
+@model Dictionary<string,int>
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;}
+<div class="admin-dashboard">
+    <div class="admin-section-heading"><h2>@(ar?"نظرة عامة":"Overview")</h2></div>
+    <div class="admin-kpi-grid">
+        @foreach(var entry in Model)
+        {
+            <article class="admin-kpi"><span class="admin-kpi-label">@_localizer[entry.Key]</span><strong dir="ltr">@entry.Value</strong></article>
+        }
+    </div>
+    @if(Model.Count==0){<p>@(ar?"استخدم القائمة للوصول إلى الصفحات المسموح بها":"Use the menu to access your permitted pages.")</p>}
+</div>
