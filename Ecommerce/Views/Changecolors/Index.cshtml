@@ -5,7 +5,7 @@
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Theme color","لون الواجهة");
     string? logoUrl = ViewBag.CompanyLogoUrl as string;
-    var colors = new[] { "#6E7F80", "#837E7C", "#C0C6C7", "#3A5F0B", "#829F82", "#16E2F5", "#12E193", "#C2E5D3", "#81D8D0", "#8E7618", "#F5DEB3", "#5E7D7E", "#1569C7", "#387C44", "#8FB31D", "#AF9B60", "#F3E5AB", "#9F8C76", "#DF73D4", "#E3735E", "#FBBBB9", "#997070", "#064b7c" };
+    var colors = new[] { "#6E7F80", "#837E7C", "#C0C6C7", "#3A5F0B", "#829F82", "#16E2F5", "#12E193", "#C2E5D3", "#81D8D0", "#8E7618", "#F5DEB3", "#5E7D7E", "#1569C7", "#387C44", "#8FB31D", "#AF9B60", "#F3E5AB", "#9F8C76", "#DF73D4", "#E3735E", "#FBBBB9", "#997070", "#064b7c", "#190ECE" };
 }
 <section class="admin-panel theme-settings">
     <div class="admin-section-heading"><h2>@T("Project theme","لون المشروع")</h2></div>
@@ -31,7 +31,7 @@
         <div class="theme-swatches" aria-label="@T("Preset colors","الألوان الجاهزة")">
             @foreach(var color in colors)
             {
-                <button type="button" class="theme-swatch" style="background:@color" data-color="@color" aria-label="@color" aria-pressed="@(color.Equals(Model.Primary,StringComparison.OrdinalIgnoreCase)?"true":"false")"></button>
+                <button type="button" class="theme-swatch" style="background:@color" data-color="@color" title="@color" aria-label="@color" aria-pressed="@(color.Equals(Model.Primary,StringComparison.OrdinalIgnoreCase)?"true":"false")"></button>
             }
         </div>
         <div class="admin-register-filters theme-inputs">
