@@ -355,6 +355,18 @@
                     }
                     else
                     {
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Orders, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("ManageOrders", "PendingOrder")"><a href="@Url.Action("PendingOrder", "ManageOrders")" title="@_localizer["Orders"]"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Orders"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Stock, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("ProductStock", "Index")"><a href="@Url.Action("Index", "ProductStock")" title="@_localizer["Manage Stocks"]"><i class="ti-package" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Manage Stocks"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.TopCategories, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Category", "TopCategory")"><a href="@Url.Action("TopCategory", "Category")" title="@_localizer["Top-Categories"]"><i class="ti-star" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Top-Categories"]</span></a></li>
+                        }
                         @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Products, Context.RequestAborted)).View)
                         {
                     <li class="@activeClass("Products", "ProductList")"><a href="@Url.Action("ProductList", "Products")" title="@_localizer["Products"]"><i class="ti-bar-chart-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Products"]</span></a></li>

@@ -51,12 +51,12 @@
     });
     const money=value=>value==null?"—":"KD "+Number(value).toFixed(3);
     function closeEditor(){
-        statusRequest?.abort();editor.hidden=true;editor.reset();select.replaceChildren();operation=null;save.disabled=true;
+        statusRequest?.abort();if(!editor)return;editor.hidden=true;editor.reset();select.replaceChildren();operation=null;save.disabled=true;
     }
     async function openOrder(id,isBlocked){
         detailRequest?.abort();closeEditor();
         const request=new AbortController();detailRequest=request;orderId=id;blocked=isBlocked;
-        register.hidden=true;detail.hidden=false;content.hidden=true;$("retryOrder").hidden=true;$("printOrder").disabled=true;
+        register.hidden=true;detail.hidden=false;content.hidden=true;$("retryOrder").hidden=true;if($("printOrder"))$("printOrder").disabled=true;
         $("detailNumber").textContent="#"+id;
         $("orderDetailMessage").textContent=t("Loading order…","جارٍ تحميل الطلب…");
         $("orderDetailHeading").focus();
@@ -79,7 +79,7 @@
                     const cell=document.createElement("td");cell.textContent=value??"—";row.append(cell);
                 }body.append(row);
             }
-            $("orderStatusActions").hidden=blocked;content.hidden=false;$("printOrder").disabled=false;$("orderDetailMessage").textContent="";
+            if($("orderStatusActions"))$("orderStatusActions").hidden=blocked;content.hidden=false;if($("printOrder"))$("printOrder").disabled=false;$("orderDetailMessage").textContent="";
         }catch(e){if(!request.signal.aborted){$("orderDetailMessage").textContent=error;$("retryOrder").hidden=false;}}
     }
     $("retryOrder").addEventListener("click",()=>openOrder(orderId,blocked));
@@ -88,7 +88,8 @@
         detailRequest?.abort();closeEditor();detail.hidden=true;register.hidden=false;
         if(lastButton?.isConnected)lastButton.focus();
     });
-    $("printOrder").addEventListener("click",()=>window.open("/Report/OrderInvoicePrint?"+new URLSearchParams({OrderId:orderId,format:"PDF"}),"_blank","noopener"));
+    $("printOrder")?.addEventListener("click",()=>window.open("/Report/OrderInvoicePrint?"+new URLSearchParams({OrderId:orderId,format:"PDF"}),"_blank","noopener"));
+    if(!editor)return;
     $("orderStatusActions").addEventListener("click",async event=>{
         const button=event.target.closest("[data-operation]");
         if(!button||busy||blocked)return;

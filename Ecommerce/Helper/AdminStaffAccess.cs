@@ -22,9 +22,13 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
     public const string Categories = "admin.categories";
     public const string Subcategories = "admin.subcategories";
     public const string Products = "admin.products";
+    public const string TopCategories = "admin.topcategories";
+    public const string Stock = "admin.stock";
+    public const string Orders = "admin.orders";
     public static readonly IReadOnlyList<(string Code, string Controller, string Action)> Pages =
         Array.AsReadOnly(new[] { (Brands, "Brand", "Index"), (Categories, "Category", "Index"),
-            (Subcategories, "SubCategory", "List"), (Products, "Products", "ProductList") });
+            (Subcategories, "SubCategory", "List"), (Products, "Products", "ProductList"),
+            (TopCategories, "Category", "TopCategory"), (Stock, "ProductStock", "Index"), (Orders, "ManageOrders", "PendingOrder") });
 
     public static bool IsRestricted(string? role) => role is "AdminManager" or "AdminStaff";
     public static bool IsRestricted(ClaimsPrincipal? user) =>
@@ -70,7 +74,8 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
             .GroupBy(g => g.PageCode!, StringComparer.Ordinal).Where(g => g.Count() == 1)
             .ToDictionary(g => g.Key, g => {
                 var grant = g.Single();
-                return AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
+                return g.Key is Stock or Orders ? AdminPageRights.From(grant.ListPage, false, false, false) :
+                    AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
             }, StringComparer.Ordinal);
     }
 }

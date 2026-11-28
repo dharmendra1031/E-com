@@ -1,5 +1,6 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.OrderItemViewModel>
 @{
+    var restrictedStaff = EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted(User);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Orders","الطلبات");
@@ -37,7 +38,7 @@
     <section id="orderDetail" class="admin-panel" hidden>
         <div class="admin-section-heading">
             <h2 tabindex="-1" id="orderDetailHeading">@T("Order details","تفاصيل الطلب") <bdi id="detailNumber"></bdi></h2>
-            <div class="order-actions"><button type="button" id="printOrder" class="btn btn-primary" disabled>@T("Print invoice","طباعة الفاتورة")</button>
+            <div class="order-actions">@if(!restrictedStaff){<button type="button" id="printOrder" class="btn btn-primary" disabled>@T("Print invoice","طباعة الفاتورة")</button>}
                 <button type="button" id="backToOrders" class="btn btn-default">@T("Back to orders","العودة إلى الطلبات")</button></div>
         </div>
         <p id="orderDetailMessage" role="status"></p>
@@ -56,10 +57,10 @@
                     <dt>@T("Payment method","طريقة الدفع")</dt><dd data-detail="paymentType"></dd>
                     <dt>@T("Payment status","حالة الدفع")</dt><dd data-detail="paymentStatus"></dd>
                     <dt>@T("Coupon","القسيمة")</dt><dd data-detail="couponCode"></dd>
-                </dl><div class="order-actions" id="orderStatusActions">
+                </dl>@if(!restrictedStaff){<div class="order-actions" id="orderStatusActions">
                     <button type="button" data-operation="order" class="btn btn-default">@T("Change order status","تغيير حالة الطلب")</button>
                     <button type="button" data-operation="payment" class="btn btn-default">@T("Change payment status","تغيير حالة الدفع")</button>
-                </div></section>
+                </div>}</section>
                 <section><h3>@T("Delivery address","عنوان التوصيل")</h3><dl>
                     <dt>@T("Area","المنطقة")</dt><dd data-detail="area"></dd>
                     <dt>@T("Block","القطعة")</dt><dd data-detail="block"></dd>
@@ -69,6 +70,8 @@
                     <dt>@T("Landmark","علامة مميزة")</dt><dd data-detail="landmark"></dd>
                 </dl></section>
             </div>
+            @if(!restrictedStaff)
+            {
             <form id="orderStatusForm" method="post" data-feedback="off" class="order-status-editor" hidden>
                 <h3 id="orderStatusHeading"></h3>
                 <p id="orderStatusMessage" role="status"></p>
@@ -77,6 +80,7 @@
                 <div class="form-group"><label for="orderPassword">@T("Confirm with admin password","التأكيد بكلمة مرور المسؤول")</label><input type="password" id="orderPassword" autocomplete="current-password" class="form-control" required /></div>
                 <div class="order-actions"><button type="submit" id="saveOrderStatus" class="btn btn-primary" disabled>@T("Save change","حفظ التغيير")</button><button type="button" id="cancelOrderStatus" class="btn btn-default">@T("Cancel","إلغاء")</button></div>
             </form>
+            }
             <h3>@T("Products","المنتجات")</h3>
             <div class="table-responsive"><table class="table table-hover"><thead><tr><th>#</th><th>@T("Product","المنتج")</th><th>@T("Qty","الكمية")</th><th>@T("Price","السعر")</th><th>@T("Total","الإجمالي")</th></tr></thead><tbody id="orderItemsBody"></tbody></table></div>
             <dl class="order-totals">

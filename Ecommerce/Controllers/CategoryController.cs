@@ -379,9 +379,10 @@ namespace EcommerceWebApplication.Controllers
 
         //Save/Update TopCategory
 
-        [Authorize(Roles = "Admin")]
-        public IActionResult TopCategory()
+        [HttpGet]
+        public async Task<IActionResult> TopCategory()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.TopCategories, HttpContext.RequestAborted)).View) return Forbid();
             var categories = _context.Categories.ToList();
 
             ViewBag.Categories = categories.Select(c => new SelectListItem
@@ -411,9 +412,21 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> SaveOrUpdateTopCategory(TopCategory model, IFormFile TopCategoryImage)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveOrUpdateTopCategory(TopCategory model, IFormFile? TopCategoryImage)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.TopCategories, HttpContext.RequestAborted);
+            if (model.TopCategoryId == 0 ? !rights.Create : !rights.Edit) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
+            if (!ModelState.IsValid || model.TopCategoryId < 0 ||
+                !await _context.Categories.AnyAsync(c => c.CategoryId == model.CategoryId) ||
+                string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.TitleArbic) ||
+                string.IsNullOrWhiteSpace(model.SubTitle) || string.IsNullOrWhiteSpace(model.SubTitleArbic) ||
+                (model.TopCategoryId == 0 && (TopCategoryImage == null || TopCategoryImage.Length == 0)))
+                return BadRequest();
+            model.UpdatedBy = null;
+            model.UpdatedAt = null;
+            if (model.TopCategoryId == 0) model.TopCategoryImage = null;
             if (model.TopCategoryId == 0)
             {
 
@@ -448,7 +461,7 @@ namespace EcommerceWebApplication.Controllers
                     model.TopCategoryImage = finalImage;
                 }
                 model.CreatedAt = DateTime.Now;
-                model.CreatedBy = 1;
+                model.CreatedBy = actor;
 
                 _context.TopCategories.Add(model);
 
@@ -464,7 +477,7 @@ namespace EcommerceWebApplication.Controllers
                 existing.SubTitle = model.SubTitle;
                 existing.SubTitleArbic = model.SubTitleArbic;
                 existing.UpdatedAt = DateTime.Now;
-                existing.UpdatedBy = 1;
+                existing.UpdatedBy = actor;
                 if (TopCategoryImage != null && TopCategoryImage.Length > 0)
                 {
                     using (var originalStream = TopCategoryImage.OpenReadStream())
@@ -484,9 +497,10 @@ namespace EcommerceWebApplication.Controllers
             return RedirectToAction("TopCategory");
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteTopCategory(int TopCategoryId)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.TopCategories, HttpContext.RequestAborted)).Delete) return Forbid();
             var item = await _context.TopCategories.FindAsync(TopCategoryId);
             if (item != null)
             {

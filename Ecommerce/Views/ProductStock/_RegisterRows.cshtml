@@ -1,6 +1,7 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.ProductStockViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var restrictedStaff = EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted(User);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     int serial = (Model.PageNumber-1)*Model.PageSize+1;
@@ -18,11 +19,11 @@
                         <th class="text-center"> @_localizer["Total sold stock"]</th>
                         <th class="text-center"> @_localizer["Remaining Qty"]</th>
                         <th class="text-center"> @_localizer["Status"]</th>
-                        <th class="text-center"> @_localizer["Action"]</th>
+                        @if(!restrictedStaff){<th class="text-center"> @_localizer["Action"]</th>}
                     </tr>
                 </thead>
                 <tbody>
-@if(!Model.Items.Any()){<tr><td colspan="8" class="admin-empty-state">@T("No products found","لا توجد منتجات")</td></tr>}
+@if(!Model.Items.Any()){<tr><td colspan="@(restrictedStaff ? 7 : 8)" class="admin-empty-state">@T("No products found","لا توجد منتجات")</td></tr>}
                     @foreach (var item in Model.Items)
                     {
                         <tr>
@@ -62,12 +63,14 @@
                                 }
                             </td>
 
-                            <td class="text-center">
+                            @if(!restrictedStaff){
+<td class="text-center">
                                 <button class="btn btn-sm btn-primary"
                                         type="button" data-productid="@item.ProductId" data-productname="@item.ProductName" data-remaining="@item.RemainingQty" data-add-stock>
                                     @_localizer["Add"]
                                 </button>
                             </td>
+}
                         </tr>
                         serial++;
                     }

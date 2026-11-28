@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -7,18 +8,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers.Admin
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ProductStockController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public ProductStockController(EcommerceDbContext context)
+        public ProductStockController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
-        public IActionResult Index(string name, string status, int page = 1, int pageSize = 10, bool partial = false)
+        [HttpGet]
+        public async Task<IActionResult> Index(string name, string status, int page = 1, int pageSize = 10, bool partial = false)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Stock, HttpContext.RequestAborted)).View) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
             var products = (from p in _context.Products
@@ -100,6 +105,7 @@ namespace EcommerceWebApplication.Controllers.Admin
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult AddStock(int productId, int newStock)
         {
             if (!int.TryParse(User.FindFirst("UserId")?.Value, out var userId) || !_context.Users.Any(u => u.UserId == userId && u.IsActive))
@@ -121,8 +127,9 @@ namespace EcommerceWebApplication.Controllers.Admin
             return Json(new { success = true, message = "Stock added successfully!" });
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Stock, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

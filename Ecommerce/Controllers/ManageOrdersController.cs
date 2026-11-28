@@ -11,21 +11,25 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ManageOrdersController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
         private readonly IConfiguration _configuration;
 
-        public ManageOrdersController(EcommerceDbContext context, IConfiguration configuration)
+        public ManageOrdersController(EcommerceDbContext context, IConfiguration configuration, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
             _configuration = configuration;
         }
 
-        public IActionResult PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10, bool partial = false)
+        [HttpGet]
+        public async Task<IActionResult> PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10, bool partial = false)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Orders, HttpContext.RequestAborted)).View) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
 
@@ -129,6 +133,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public IActionResult GetStatusList(int orderId)
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
@@ -145,8 +150,10 @@ namespace EcommerceWebApplication.Controllers
 
             return Json(statusList);
         }
-        public IActionResult GetOrderDetails(int id)
+        [HttpGet]
+        public async Task<IActionResult> GetOrderDetails(int id)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Orders, HttpContext.RequestAborted)).View) return Forbid();
             try
             {
                 var culture = System.Globalization.CultureInfo.CurrentCulture;
@@ -248,6 +255,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public JsonResult VerifyPassword([FromBody] PasswordRequest model)
         {
             if (model == null || string.IsNullOrEmpty(model.Password)
@@ -269,6 +277,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult UpdateOrderStatus([FromBody] ChangeStatusRequest model)
         {
             if (model == null || !ModelState.IsValid || !ConsumeVerification(model.OrderId, "order", out var userId))
@@ -297,6 +306,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public IActionResult PaymentstatusList(int orderId)
         {
             var order = _context.Orders.FirstOrDefault(o => o.OrderId == orderId);
@@ -315,6 +325,7 @@ namespace EcommerceWebApplication.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public JsonResult UpdatePaymentStatus(int orderId, int PaymentStatus)
         {
             if (!ModelState.IsValid || !ConsumeVerification(orderId, "payment", out _))
@@ -357,6 +368,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public IActionResult GetInvoice(int orderId)
         {
             try
@@ -455,6 +467,7 @@ namespace EcommerceWebApplication.Controllers
 
 
 
+        [Authorize(Roles = "Admin")]
         public IActionResult LatestOrdersNotification(int? lastOrderId)
         {
             var query = _context.Orders.AsQueryable();

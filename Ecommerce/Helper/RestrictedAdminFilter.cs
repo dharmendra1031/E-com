@@ -22,14 +22,18 @@ public sealed class RestrictedAdminFilter(AdminStaffAccess access) : IAsyncAutho
             method == "GET" && action is "Index" or "CreateBrand" or "AutoCompleteSubCategory" ||
             method == "POST" && action is "CreateBrand" or "Delete") ||
         controller == typeof(CategoryController) && (
-            method == "GET" && action is "Index" or "Create" or "Edit" or "AutoCompleteSql" ||
-            method == "POST" && action is "CreateAsync" or "Edit" or "DeleteCategory") ||
+            method == "GET" && action is "Index" or "Create" or "Edit" or "AutoCompleteSql" or "TopCategory" ||
+            method == "POST" && action is "CreateAsync" or "Edit" or "DeleteCategory" or "SaveOrUpdateTopCategory" or "DeleteTopCategory") ||
         controller == typeof(SubCategoryController) && (
             method == "GET" && action is "List" or "CreateSubCategory" or "Edit" or "AutoCompleteSubCategory" ||
             method == "POST" && action is "CreateSubCategoryAsync" or "Edit" or "DeleteSubCategory") ||
         controller == typeof(ProductsController) && (
             method == "GET" && action is "ProductList" or "Create" or "Edit" or "GetSubCategories" or "AutoCompleteSql" ||
             method == "POST" && action is "Create" or "Edit" or "DeleteProduct" or "DeleteProductImage") ||
+        controller == typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) &&
+            method == "GET" && action is "Index" or "AutoCompleteSql" ||
+        controller == typeof(ManageOrdersController) &&
+            method == "GET" && action is "PendingOrder" or "GetOrderDetails" ||
         method == "GET" && (
             controller == typeof(AccountController) && action is "Logout" or "AccessDenied" ||
             controller == typeof(HomeController) && action == "SetLanguage");

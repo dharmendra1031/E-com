@@ -261,7 +261,6 @@ namespace EcommerceWebApplication.Controllers
         //        product.IsActive = model.IsActive;
         //        product.CoastPrice = model.CoastPrice;
         //        product.UpdatedAt = DateTime.Now;
-                product.UpdatedBy = actor;
 
         //        // ✅ If new images are uploaded → delete old ones and replace
         //        if (NewImages != null && NewImages.Count > 0)
@@ -353,6 +352,7 @@ namespace EcommerceWebApplication.Controllers
                 product.SKUId = model.SKUId;
                 product.IsActive = model.IsActive;
                 product.UpdatedAt = DateTime.Now;
+                product.UpdatedBy = actor;
 
                 await _context.SaveChangesAsync(); // update record first
 

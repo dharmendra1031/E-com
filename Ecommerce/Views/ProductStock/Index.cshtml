@@ -1,6 +1,7 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.ProductStockViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var restrictedStaff = EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted(User);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Inventory","المخزون");
@@ -27,6 +28,8 @@
         <p id="masterMessage" class="admin-muted" role="status"></p>
         <div id="masterResults"><partial name="_RegisterRows" model="Model" /></div>
     </section>
+    @if(!restrictedStaff)
+    {
     <section class="admin-panel admin-stock-editor" id="stockEditor" hidden>
         <h3>@T("Add stock","إضافة مخزون")</h3>
         <p id="stockProduct"></p>
@@ -37,6 +40,7 @@
             <div class="order-actions"><button type="submit" class="btn btn-primary">@T("Save stock","حفظ المخزون")</button><button type="button" id="cancelStock" class="btn btn-default">@T("Cancel","إلغاء")</button></div>
         </form>
     </section>
+    }
 </div>
 @section Scripts {
     <script src="~/js/master-register.js" asp-append-version="true"></script>

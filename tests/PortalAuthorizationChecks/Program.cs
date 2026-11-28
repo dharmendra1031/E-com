@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -176,13 +176,26 @@ var allowedCatalogActions = new[] {
 foreach (var (controller, action, verb) in allowedCatalogActions)
     Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller, action, verb),
         $"Catalog action is not classified: {controller.Name}.{action}.");
-Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "SaveOrUpdateTopCategory", "POST") &&
-    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "TopCategory", "GET") &&
+Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "SaveOrUpdateTopCategory", "POST") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "TopCategory", "GET") &&
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ProductsController), "DeleteProduct", "GET"),
     "Unclassified catalog action was allowed.");
 foreach (var name in new[] { "Create", "Edit", "DeleteProduct", "DeleteProductImage" })
     foreach (var action in typeof(ProductsController).GetMethods().Where(m => m.Name == name && m.IsDefined(typeof(HttpPostAttribute))))
         Check(action.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), $"Missing Product antiforgery: {name}");
-Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 4,
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 7,
     "Unexpected catalog permission mapping.");
 Console.WriteLine("Catalog restricted-admin action and antiforgery checks passed.");
+
+var stockController = typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController);
+Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController, "Index", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockController, "AddStock", "POST") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController), "GetOrderDetails", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController), "UpdateOrderStatus", "POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController), "UpdatePaymentStatus", "POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController), "GetInvoice", "GET"),
+    "Restricted legacy stock or order write boundary failed.");
+foreach (var name in new[] { "SaveOrUpdateTopCategory", "DeleteTopCategory" })
+    Check(typeof(CategoryController).GetMethod(name)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
+        $"Missing Top Category antiforgery: {name}");
+Console.WriteLine("Top Category and read-only stock/order permission checks passed.");
