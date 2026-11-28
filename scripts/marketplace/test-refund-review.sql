@@ -22,3 +22,45 @@ END;
 ROLLBACK;
 PRINT 'Refund evidence inventory posting validation passed.';
 GO
+
+:r 15-refund-attempts.sql
+GO
+:r 15-refund-attempts.sql
+GO
+DECLARE @ret int=(SELECT ReturnId FROM dbo.MarketplaceRefundReview WHERE OrderId=9),@ref uniqueidentifier=NEWID();
+BEGIN TRY
+ EXEC dbo.BeginMarketplaceRefund @ret,2,@ref,10;
+ THROW 52620,'Unauthorized refund accepted.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52601 THROW;
+END CATCH;
+BEGIN TRY
+ EXEC dbo.BeginMarketplaceRefund @ret,3,@ref,102;
+ THROW 52621,'Excess refund accepted.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52602 THROW;
+END CATCH;
+EXEC dbo.BeginMarketplaceRefund @ret,3,@ref,10;
+BEGIN TRY
+ EXEC dbo.BeginMarketplaceRefund @ret,3,@ref,10;
+ THROW 52622,'Duplicate refund accepted.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52603 THROW;
+END CATCH;
+BEGIN TRY
+ EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,11,900001;
+ THROW 52623,'Wrong proof accepted.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52605 THROW;
+END CATCH;
+EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,10,900001;
+EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,10,900001;
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceRefundAttempts WHERE ReturnId=@ret AND Amount=10 AND GatewayRefundId=900001 AND VerifiedBy=3)
+ OR (SELECT COUNT(*) FROM dbo.Payments WHERE OrderId=9)<>1
+ THROW 52624,'Refund evidence or original payment invalid.',1;
+PRINT 'Refund attempt authorization, cap, duplicate and verified proof checks passed.';
+GO

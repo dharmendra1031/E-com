@@ -24,7 +24,7 @@ namespace MF.Service
             _apiUrl = _config[$"ApiUrl"];
             _httpClient = httpClient;
         }
-        public async Task<string> PerformRequest(string requestJSON, string url = "", string endPoint = "")
+        public async Task<string> PerformRequest(string requestJSON, string url = "", string endPoint = "", string idempotencyKey = null)
         {
             if (string.IsNullOrEmpty(url))
                 url = _apiUrl + $"/v2/{endPoint}";
@@ -32,6 +32,8 @@ namespace MF.Service
             var client = _httpClient.CreateClient();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            if (!string.IsNullOrEmpty(idempotencyKey))
+                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
             var responseMessage = await client.PostAsync(url, httpContent).ConfigureAwait(false);
             string response = string.Empty;
             if (!responseMessage.IsSuccessStatusCode)

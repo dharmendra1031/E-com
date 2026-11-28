@@ -225,3 +225,31 @@ Check(EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("AwaitingPack
     !EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("AwaitingPacking","Delivered",true,true),
     "Fulfillment transitions are incorrect.");
 Console.WriteLine("Admin marketplace order authorization and transition checks passed.");
+
+var refundRef=Guid.NewGuid();
+var refundRow=new EcommerceWebApplication.Helper.MarketplaceRefundGateway.RefundEntry {
+    RefundId=99,InvoiceId=12345,ExternalIdentifier=refundRef.ToString("N"),RefundStatus="Refunded",
+    BaseCurrency="KWD",Amount=10,RefundAmount=10
+};
+var refundResponse=new MF.Models.GenericResponse<EcommerceWebApplication.Helper.MarketplaceRefundGateway.RefundData> {
+    IsSuccess=true,Data=new() { RefundStatusResult=new() { refundRow } }
+};
+Check(EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,refundRef,10)==99 &&
+    EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12346,refundRef,10)==null &&
+    EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,Guid.NewGuid(),10)==null &&
+    EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,refundRef,11)==null,
+    "Refund evidence correlation failed.");
+refundRow.RefundStatus="Pending";
+Check(EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,refundRef,10)==null,
+    "Pending refund accepted.");
+refundRow.RefundStatus="Refunded";refundRow.RefundAmount=9;
+Check(EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,refundRef,10)==null,
+    "Incorrect actual refund accepted.");
+refundRow.RefundAmount=10;refundRow.BaseCurrency="USD";
+Check(EcommerceWebApplication.Helper.MarketplaceRefundGateway.VerifiedRefundId(refundResponse,12345,refundRef,10)==null,
+    "Incorrect refund currency accepted.");
+foreach(var action in new[]{"StartSandboxRefund","VerifySandboxRefund"})
+    Check(typeof(VendorController).GetMethod(action)!.IsDefined(typeof(HttpPostAttribute)) &&
+        typeof(VendorController).GetMethod(action)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
+        "Refund endpoint missing POST/CSRF protection.");
+Console.WriteLine("Sandbox refund verification checks passed.");

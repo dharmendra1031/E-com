@@ -71,17 +71,90 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
 
     [HttpGet]
     [ResponseCache(NoStore=true,Location=ResponseCacheLocation.None)]
-    public async Task<IActionResult> RefundReview(int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> RefundReview([FromServices] IWebHostEnvironment environment,int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
         page=Math.Clamp(page,1,100000);
-        var rows=await db.Database.SqlQuery<MarketplaceRefundReviewRow>($"""
-            SELECT ReturnId,OrderItemId,OrderId,VendorId,VendorName,ProductName,Quantity,OriginalUnitPrice,
-                ReturnedMerchandiseValue,InvoiceId,PaymentId,ReceivedAtUtc,ReturnReceiptId
-            FROM dbo.MarketplaceRefundReview
-            """).OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        var rows=await RefundRows().OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        ViewBag.CanRefund=MarketplaceRefundGateway.Enabled(configuration,environment);
         return View(rows.Take(25).ToList());
+    }
+
+    private IQueryable<MarketplaceRefundReviewRow> RefundRows() => db.Database.SqlQuery<MarketplaceRefundReviewRow>($"""
+            SELECT r.ReturnId,r.OrderItemId,r.OrderId,r.VendorId,r.VendorName,r.ProductName,r.Quantity,r.OriginalUnitPrice,
+                r.ReturnedMerchandiseValue,r.InvoiceId,r.PaymentId,r.ReceivedAtUtc,r.ReturnReceiptId,
+                a.MerchantReference AS RefundReference,a.Amount AS RefundAmount,a.GatewayRefundId
+            FROM dbo.MarketplaceRefundReview r LEFT JOIN dbo.MarketplaceRefundAttempts a ON a.ReturnId=r.ReturnId
+            """);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("MarketplacePayment")]
+    public async Task<IActionResult> StartSandboxRefund(int returnId,decimal amount,bool confirmed,
+        [FromServices] IWebHostEnvironment environment,[FromServices] IMFClient gateway,CancellationToken ct)
+    {
+        if(!MarketplaceRefundGateway.Enabled(configuration,environment)) return NotFound();
+        if(!ModelState.IsValid || !confirmed || amount<=0 || decimal.Round(amount,3)!=amount ||
+            !int.TryParse(User.FindFirstValue("UserId"),out var actor)) return BadRequest();
+        var row=await RefundRows().SingleOrDefaultAsync(r=>r.ReturnId==returnId,ct);
+        if(row==null) return NotFound();
+        if(row.RefundReference.HasValue || amount>row.ReturnedMerchandiseValue) return Conflict();
+        var reference=Guid.NewGuid();
+        try
+        {
+            // Require a fresh invoice inquiry and no unrecognized prior refund before sending funds.
+            var existing=await MarketplaceRefundGateway.InquiryAsync(gateway,row.InvoiceId);
+            if(existing?.IsSuccess!=true || existing.Data?.RefundStatusResult==null) return Conflict("Refund inquiry unavailable.");
+            var known=await db.Database.SqlQuery<long>($"""
+                SELECT GatewayRefundId AS Value FROM dbo.MarketplaceRefundAttempts
+                WHERE InvoiceId={row.InvoiceId} AND GatewayRefundId IS NOT NULL
+                """).ToListAsync(ct);
+            if(existing.Data.RefundStatusResult.Any(r=>r==null || r.InvoiceId!=row.InvoiceId || !known.Contains(r.RefundId)))
+                return Conflict("Existing gateway refund requires review.");
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.BeginMarketplaceRefund @ReturnId={returnId},@ActorId={actor},@Reference={reference},@Amount={amount}
+                """,ct);
+            ct.ThrowIfCancellationRequested();
+            await MarketplaceRefundGateway.RequestAsync(gateway,row.InvoiceId,reference,amount);
+            TempData["RefundMessage"]="Refund attempt recorded; verify gateway status. / تم تسجيل المحاولة، تحقق من الحالة.";
+        }
+        catch(Exception) when(!ct.IsCancellationRequested)
+        {
+            TempData["RefundMessage"]="Refund not confirmed. Review existing attempt; do not retry blindly. / الاسترداد غير مؤكد.";
+        }
+        return RedirectToAction(nameof(RefundReview));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("MarketplacePayment")]
+    public async Task<IActionResult> VerifySandboxRefund(int returnId,[FromServices] IWebHostEnvironment environment,
+        [FromServices] IMFClient gateway,CancellationToken ct)
+    {
+        if(!MarketplaceRefundGateway.Enabled(configuration,environment)) return NotFound();
+        if(!int.TryParse(User.FindFirstValue("UserId"),out var actor)) return Forbid();
+        var row=await RefundRows().SingleOrDefaultAsync(r=>r.ReturnId==returnId,ct);
+        if(row?.RefundReference is not Guid reference || row.RefundAmount is not decimal amount) return NotFound();
+        try
+        {
+            var response=await MarketplaceRefundGateway.InquiryAsync(gateway,row.InvoiceId);
+            var verified=MarketplaceRefundGateway.VerifiedRefundId(response,row.InvoiceId,reference,amount);
+            if(verified is long refundId)
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    EXEC dbo.ConfirmMarketplaceRefund @ReturnId={returnId},@ActorId={actor},@Reference={reference},
+                        @InvoiceId={row.InvoiceId},@Amount={amount},@GatewayRefundId={refundId}
+                    """,ct);
+                TempData["RefundMessage"]="Sandbox refund verified. / تم التحقق من الاسترداد التجريبي.";
+            }
+            else TempData["RefundMessage"]="No conclusive refund evidence. / لا يوجد إثبات استرداد مؤكد.";
+        }
+        catch(Exception) when(!ct.IsCancellationRequested)
+        {
+            TempData["RefundMessage"]="Verification unavailable; no status changed. / التحقق غير متاح.";
+        }
+        return RedirectToAction(nameof(RefundReview));
     }
 
     [HttpGet]

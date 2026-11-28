@@ -14,4 +14,7 @@ public class MarketplaceRefundReviewRow
     public string PaymentId { get; set; }="";
     public DateTime ReceivedAtUtc { get; set; }
     public long ReturnReceiptId { get; set; }
+    public Guid? RefundReference { get; set; }
+    public decimal? RefundAmount { get; set; }
+    public long? GatewayRefundId { get; set; }
 }
