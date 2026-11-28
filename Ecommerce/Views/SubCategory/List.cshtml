@@ -1,13 +1,15 @@
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Subcategories, Context.RequestAborted);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Subcategories","الفئات الفرعية");
 }
 <div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("List","SubCategory")" data-suggest-url="@Url.Action("AutoCompleteSubCategory","SubCategory")">
     <section class="admin-panel">
-        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2><a asp-action="CreateSubCategory" class="btn btn-primary">@T("Add subcategory","إضافة فئة فرعية")</a></div>
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2>@if(rights.Create){<a asp-action="CreateSubCategory" class="btn btn-primary">@T("Add subcategory","إضافة فئة فرعية")</a>}</div>
         <form id="masterFilters" method="get" asp-action="List" class="admin-register-filters">
             <div class="form-group"><label for="categoryId">@T("Main category","الفئة الرئيسية")</label>
                 <select id="categoryId" name="categoryId" class="form-control"><option value="">@T("All","الكل")</option>

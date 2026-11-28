@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: controller == typeof(BrandController) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -166,3 +166,23 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandCo
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(AdminDashboardController), "Index", "GET"),
     "Restricted admin action boundary failed.");
 Console.WriteLine("Restricted admin Brand pilot checks passed.");
+
+var allowedCatalogActions = new[] {
+    (typeof(CategoryController), "CreateAsync", "POST"), (typeof(CategoryController), "Edit", "GET"),
+    (typeof(SubCategoryController), "CreateSubCategoryAsync", "POST"), (typeof(SubCategoryController), "DeleteSubCategory", "POST"),
+    (typeof(ProductsController), "ProductList", "GET"), (typeof(ProductsController), "GetSubCategories", "GET"),
+    (typeof(ProductsController), "DeleteProductImage", "POST")
+};
+foreach (var (controller, action, verb) in allowedCatalogActions)
+    Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller, action, verb),
+        $"Catalog action is not classified: {controller.Name}.{action}.");
+Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "SaveOrUpdateTopCategory", "POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(CategoryController), "TopCategory", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ProductsController), "DeleteProduct", "GET"),
+    "Unclassified catalog action was allowed.");
+foreach (var name in new[] { "Create", "Edit", "DeleteProduct", "DeleteProductImage" })
+    foreach (var action in typeof(ProductsController).GetMethods().Where(m => m.Name == name && m.IsDefined(typeof(HttpPostAttribute))))
+        Check(action.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), $"Missing Product antiforgery: {name}");
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 4,
+    "Unexpected catalog permission mapping.");
+Console.WriteLine("Catalog restricted-admin action and antiforgery checks passed.");

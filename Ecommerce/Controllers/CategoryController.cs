@@ -12,19 +12,24 @@ using System.Text;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]  // ✅ Only Admin can manage categories
+    [Authorize(Roles = AdminStaffAccess.Roles)]  // ✅ Only Admin can manage categories
     public class CategoryController : Controller
     {
         private readonly EcommerceDbContext _context;
 
-        public CategoryController(EcommerceDbContext context)
+        private readonly AdminStaffAccess _access;
+
+        public CategoryController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
       
         [HttpGet]
-        public IActionResult Index(string? name, int? status, int page = 1, int pageSize = 10, bool partial = false)
+        public async Task<IActionResult> Index(string? name, int? status, int page = 1, int pageSize = 10, bool partial = false)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
 
@@ -84,8 +89,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
             var category = _context.Categories.FirstOrDefault(c => c.CategoryId == id);
             if (category == null)
                 return NotFound();
@@ -96,8 +103,11 @@ namespace EcommerceWebApplication.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
 
-        public IActionResult Edit(int CategoryId, string CName, string CNameArb, string CDescription, string CDescriptionArbic, bool IsActive, IFormFile? CategoryImage, IFormFile? CategoryIcon)
+        public async Task<IActionResult> Edit(int CategoryId, string CName, string CNameArb, string CDescription, string CDescriptionArbic, bool IsActive, IFormFile? CategoryImage, IFormFile? CategoryIcon)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             try
             {
                 var category = _context.Categories.FirstOrDefault(c => c.CategoryId == CategoryId);
@@ -111,6 +121,7 @@ namespace EcommerceWebApplication.Controllers
                 category.CDescriptionArbic = CDescriptionArbic;
                 category.IsActive = IsActive;
                 category.UpdatedAt = DateTime.Now;
+                category.UpdatedBy = actor;
 
                 // ✅ Handle image upload only if a new file is provided
 
@@ -195,8 +206,10 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteCategory(int id)
+        public async Task<IActionResult> DeleteCategory(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.Delete)) return Forbid();
             try
             {
                 var category = _context.Categories.FirstOrDefault(c => c.CategoryId == id);
@@ -218,8 +231,11 @@ namespace EcommerceWebApplication.Controllers
         }
 
         // ✅ Show Create Form
-        public IActionResult Create()
+        [HttpGet]
+        public async Task<IActionResult> Create()
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
             return View();
         }
 
@@ -228,6 +244,13 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateAsync(Category model, IFormFile categoryImage, IFormFile CategoryIcon)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
+            if (model.CategoryId != 0) return BadRequest();
+            model.SubCategories = null!;
+            model.UpdatedBy = null;
+            model.UpdatedAt = null;
             try
             {
                 //if (categoryImage != null && categoryImage.Length > 0)
@@ -294,7 +317,7 @@ namespace EcommerceWebApplication.Controllers
                 }
 
                 model.CreatedAt = DateTime.Now;
-                model.CreatedBy = 1; 
+                model.CreatedBy = actor; 
 
                 _context.Categories.Add(model);
                 await _context.SaveChangesAsync();
@@ -356,6 +379,7 @@ namespace EcommerceWebApplication.Controllers
 
         //Save/Update TopCategory
 
+        [Authorize(Roles = "Admin")]
         public IActionResult TopCategory()
         {
             var categories = _context.Categories.ToList();
@@ -387,6 +411,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SaveOrUpdateTopCategory(TopCategory model, IFormFile TopCategoryImage)
         {
             if (model.TopCategoryId == 0)
@@ -459,6 +484,7 @@ namespace EcommerceWebApplication.Controllers
             return RedirectToAction("TopCategory");
         }
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTopCategory(int TopCategoryId)
         {
             var item = await _context.TopCategories.FindAsync(TopCategoryId);
@@ -474,8 +500,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Categories, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

@@ -19,34 +19,58 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
     public const string CredentialClaim = "AdminStaffCredentialVersion";
     public const string RoleIdClaim = "AdminStaffRoleId";
     public const string Brands = "admin.brands";
+    public const string Categories = "admin.categories";
+    public const string Subcategories = "admin.subcategories";
+    public const string Products = "admin.products";
+    public static readonly IReadOnlyList<(string Code, string Controller, string Action)> Pages =
+        Array.AsReadOnly(new[] { (Brands, "Brand", "Index"), (Categories, "Category", "Index"),
+            (Subcategories, "SubCategory", "List"), (Products, "Products", "ProductList") });
 
     public static bool IsRestricted(string? role) => role is "AdminManager" or "AdminStaff";
     public static bool IsRestricted(ClaimsPrincipal? user) =>
         user?.Identity?.IsAuthenticated == true && IsRestricted(user.FindFirst(ClaimTypes.Role)?.Value);
     public bool Enabled => environment.IsDevelopment() && configuration.GetValue("Authentication:RestrictedAdminPilotEnabled", false);
 
-    private Task<AdminPageRights>? brandRights;
-    public Task<AdminPageRights> BrandRightsAsync(ClaimsPrincipal user, CancellationToken ct) =>
-        brandRights ??= LoadBrandRightsAsync(user, ct);
-
-    private async Task<AdminPageRights> LoadBrandRightsAsync(ClaimsPrincipal user, CancellationToken ct)
+    private Task<Dictionary<string, AdminPageRights>>? rights;
+    public async Task<AdminPageRights> RightsAsync(ClaimsPrincipal user, string code, CancellationToken ct)
     {
+        if (!Pages.Any(p => p.Code == code)) return AdminPageRights.None;
+        if (user.Identity is { IsAuthenticated: true, AuthenticationType: CookieAuthenticationDefaults.AuthenticationScheme }
+            && user.IsInRole("Admin") && !IsRestricted(user)) return AdminPageRights.Full;
+        var grants = await (rights ??= LoadRightsAsync(user, ct));
+        return grants.GetValueOrDefault(code, AdminPageRights.None);
+    }
+
+    public async Task<(string Controller, string Action)?> FirstPageAsync(ClaimsPrincipal user, CancellationToken ct)
+    {
+        foreach (var page in Pages)
+            if ((await RightsAsync(user, page.Code, ct)).View) return (page.Controller, page.Action);
+        return null;
+    }
+
+    private async Task<Dictionary<string, AdminPageRights>> LoadRightsAsync(ClaimsPrincipal user, CancellationToken ct)
+    {
+        var none = new Dictionary<string, AdminPageRights>(StringComparer.Ordinal);
         if (user.Identity is not { IsAuthenticated: true, AuthenticationType: CookieAuthenticationDefaults.AuthenticationScheme })
-            return AdminPageRights.None;
-        if (user.IsInRole("Admin") && !IsRestricted(user)) return AdminPageRights.Full;
+            return none;
         if (!Enabled || !IsRestricted(user) ||
             !int.TryParse(user.FindFirst("UserId")?.Value, out var id) ||
-            !int.TryParse(user.FindFirst(RoleIdClaim)?.Value, out var roleId)) return AdminPageRights.None;
+            !int.TryParse(user.FindFirst(RoleIdClaim)?.Value, out var roleId)) return none;
         var role = user.FindFirst(ClaimTypes.Role)?.Value;
         var email = user.FindFirst(ClaimTypes.Email)?.Value;
+        var codes = Pages.Select(p => p.Code).ToArray();
         var grants = await (from u in db.Users.AsNoTracking()
             join rp in db.RolePermission.AsNoTracking() on u.RoleId equals rp.RoleId
             join p in db.PageMaster.AsNoTracking() on rp.PageId equals p.PageId
             where u.UserId == id && u.RoleId == roleId && u.Email == email && u.IsActive &&
                 u.Role != null && u.Role.IsActive && u.Role.RoleName == role &&
-                p.PortalScope == "Admin" && p.PageCode == Brands
-            select new { rp.ListPage, rp.CreatePage, rp.UpdatePage, rp.DeletePage }).Take(2).ToListAsync(ct);
-        return grants.Count == 1 ? AdminPageRights.From(grants[0].ListPage, grants[0].CreatePage,
-            grants[0].UpdatePage, grants[0].DeletePage) : AdminPageRights.None;
+                p.PortalScope == "Admin" && p.PageCode != null && codes.Contains(p.PageCode)
+            select new { p.PageCode, rp.ListPage, rp.CreatePage, rp.UpdatePage, rp.DeletePage }).ToListAsync(ct);
+        return grants.Where(g => codes.Contains(g.PageCode, StringComparer.Ordinal))
+            .GroupBy(g => g.PageCode!, StringComparer.Ordinal).Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => {
+                var grant = g.Single();
+                return AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
+            }, StringComparer.Ordinal);
     }
 }

@@ -102,8 +102,9 @@ namespace EcommerceWebApplication.Controllers
                 AllowRefresh = true
             };
 
-            if (restricted && !(await HttpContext.RequestServices.GetRequiredService<AdminStaffAccess>()
-                .BrandRightsAsync(principal, HttpContext.RequestAborted)).View)
+            var destination = restricted ? await HttpContext.RequestServices.GetRequiredService<AdminStaffAccess>()
+                .FirstPageAsync(principal, HttpContext.RequestAborted) : ("AdminDashboard", "Index");
+            if (destination == null)
             {
                 ViewBag.Error = "No available Admin page permissions.";
                 return View(model);
@@ -115,7 +116,7 @@ namespace EcommerceWebApplication.Controllers
                 authProperties
             );
 
-            return RedirectToAction("Index", restricted ? "Brand" : "AdminDashboard");
+            return RedirectToAction(destination.Value.Item2, destination.Value.Item1);
         }
 
 

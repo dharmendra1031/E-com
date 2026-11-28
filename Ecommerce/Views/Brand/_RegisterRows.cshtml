@@ -2,7 +2,7 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BrandViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    var rights = await StaffAccess.BrandRightsAsync(User, Context.RequestAborted);
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, Context.RequestAborted);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     int serial = (Model.PageNumber-1)*Model.PageSize+1;

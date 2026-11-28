@@ -1,6 +1,8 @@
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.SubCategoryListViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Subcategories, Context.RequestAborted);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     int serial = (Model.PageNumber-1)*Model.PageSize+1;
@@ -18,13 +20,13 @@
                         <th class="text-center"> @_localizer["Status"]</th>
                         <th class="text-center"> @_localizer["Created Date"]</th>
                         <th class="text-center"> @_localizer["Image"]</th>
-                        <th class="text-center"> @_localizer["Action"]</th>
+                        @if(rights.Edit || rights.Delete){<th class="text-center"> @_localizer["Action"]</th>}
                     </tr>
                 </thead>
                 <tbody>
             @if (!Model.Items.Any())
             {
-                <tr><td colspan="8" class="admin-empty-state">@_localizer["No records found"]</td></tr>
+                <tr><td colspan="@(rights.Edit || rights.Delete ? 8 : 7)" class="admin-empty-state">@_localizer["No records found"]</td></tr>
             }
                     @foreach (var item in Model.Items)
                     {
@@ -54,14 +56,21 @@
                                     <span class="admin-muted">@T("No image","لا توجد صورة")</span>
                                 }
                             </td>
-                            <td class="text-center">
-                                <a asp-action="Edit" asp-route-id="@item.SubCategoryId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
+                            @if(rights.Edit || rights.Delete)
+{
+<td class="text-center">
+                                @if(rights.Edit){
+<a asp-action="Edit" asp-route-id="@item.SubCategoryId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
                                     <i class="ti-pencil"></i> 
                                 </a>
-                                <button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" data-delete-url="@Url.Action("DeleteSubCategory","SubCategory",new { id=item.SubCategoryId })">
+}
+                                @if(rights.Delete){
+<button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" data-delete-url="@Url.Action("DeleteSubCategory","SubCategory",new { id=item.SubCategoryId })">
                                     <i class="ti-trash"></i> 
                                 </button>
+}
                             </td>
+}
                         </tr>
                         serial++;
                     }

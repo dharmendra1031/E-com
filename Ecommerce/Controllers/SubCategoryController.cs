@@ -12,25 +12,33 @@ using System.Drawing.Imaging;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class SubCategoryController : Controller
     {
         private readonly EcommerceDbContext _context;
 
-        public SubCategoryController(EcommerceDbContext context)
+        private readonly AdminStaffAccess _access;
+
+        public SubCategoryController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
-        public IActionResult CreateSubCategory()
+        [HttpGet]
+        public async Task<IActionResult> CreateSubCategory()
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
             // Load Parent Categories for dropdown
             ViewBag.Categories = new SelectList(_context.Categories.Where(c => c.IsActive == true), "CategoryId", "CName");
             return View();
         }
         [HttpGet]
-        public IActionResult List(string? name, int? status, int? categoryId, int page = 1, int pageSize = 10, bool partial = false)
+        public async Task<IActionResult> List(string? name, int? status, int? categoryId, int page = 1, int pageSize = 10, bool partial = false)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
             var query = _context.SubCategories
@@ -157,8 +165,10 @@ namespace EcommerceWebApplication.Controllers
         //}
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteSubCategory(int id)
+        public async Task<IActionResult> DeleteSubCategory(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.Delete)) return Forbid();
             try
             {
                 var subCat = _context.SubCategories.Find(id);
@@ -184,6 +194,13 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateSubCategoryAsync(SubCategory model, IFormFile subCategoryImage)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
+            if (model.SubCategoryId != 0) return BadRequest();
+            model.ParentCategory = null!;
+            model.UpdatedAt = null;
+            model.UpdatedBy = null;
 
             //if (subCategoryImage != null && subCategoryImage.Length > 0)
             //{
@@ -215,7 +232,7 @@ namespace EcommerceWebApplication.Controllers
                 model.SubCategoryImage = finalImage;
             }
             model.CreatedAt = DateTime.Now;
-            model.CreatedBy = 1;
+            model.CreatedBy = actor;
 
             _context.SubCategories.Add(model);
             await _context.SaveChangesAsync(); // ✅ use async
@@ -233,8 +250,11 @@ namespace EcommerceWebApplication.Controllers
         }
 
         // ✅ GET: Edit SubCategory
-        public IActionResult Edit(int id)
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
             var subCategory = _context.SubCategories.Find(id);
             if (subCategory == null)
                 return NotFound();
@@ -248,8 +268,11 @@ namespace EcommerceWebApplication.Controllers
         // ✅ POST: Edit SubCategory
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(SubCategory model, IFormFile subCategoryImage)
+        public async Task<IActionResult> Edit(SubCategory model, IFormFile subCategoryImage)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             var subCategory = _context.SubCategories.Find(model.SubCategoryId);
             if (subCategory == null)
                 return NotFound();
@@ -262,6 +285,7 @@ namespace EcommerceWebApplication.Controllers
             subCategory.SCDescriptionArb = model.SCDescriptionArb;
             subCategory.IsActive = model.IsActive;
             subCategory.UpdatedAt = DateTime.Now;
+            subCategory.UpdatedBy = actor;
             subCategory.showinnav = model.showinnav;
 
             // ✅ Use your helper to compress the image if uploaded
@@ -313,8 +337,10 @@ namespace EcommerceWebApplication.Controllers
             */
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSubCategory(string term)
+        public async Task<IActionResult> AutoCompleteSubCategory(string term)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Subcategories, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

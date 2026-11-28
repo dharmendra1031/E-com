@@ -14,19 +14,25 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-   [Authorize(Roles = "Admin")]
+   [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ProductsController : Controller
     {
 
         private readonly EcommerceDbContext _context;
 
-        public ProductsController(EcommerceDbContext context)
+        private readonly AdminStaffAccess _access;
+
+        public ProductsController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
        
-        public IActionResult ProductList(string? name, string? category, decimal? price, int? status, int page = 1, int pageSize = 10)
+        [HttpGet]
+        public async Task<IActionResult> ProductList(string? name, string? category, decimal? price, int? status, int page = 1, int pageSize = 10)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
 
@@ -129,8 +135,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
             var product = _context.Products
                 .Include(p => p.ProductImages)
                 .FirstOrDefault(p => p.ProductId == id);
@@ -194,8 +202,10 @@ namespace EcommerceWebApplication.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteProductImage(int imageId)
+        public async Task<IActionResult> DeleteProductImage(int imageId)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
             var image = _context.ProductImages.FirstOrDefault(x => x.ImageId == imageId);
 
             if (image == null)
@@ -251,6 +261,7 @@ namespace EcommerceWebApplication.Controllers
         //        product.IsActive = model.IsActive;
         //        product.CoastPrice = model.CoastPrice;
         //        product.UpdatedAt = DateTime.Now;
+                product.UpdatedBy = actor;
 
         //        // ✅ If new images are uploaded → delete old ones and replace
         //        if (NewImages != null && NewImages.Count > 0)
@@ -301,8 +312,12 @@ namespace EcommerceWebApplication.Controllers
         //    }
         //}
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(EditProductViewModel model, List<IFormFile> NewImages)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Edit)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -629,8 +644,11 @@ namespace EcommerceWebApplication.Controllers
         //}
 
         // ✅ Create GET
-        public IActionResult Create()
+        [HttpGet]
+        public async Task<IActionResult> Create()
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
             // Get only Active Categories
             LoadEditorOptions(0);
             return View(new ProductViewModel { Units = 1 });
@@ -663,8 +681,10 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ AJAX for SubCategories
         [HttpGet]
-        public JsonResult GetSubCategories(int categoryId)
+        public async Task<IActionResult> GetSubCategories(int categoryId)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Create || rights.Edit)) return Forbid();
             var subcategories = _context.SubCategories
                                         .Where(sub => sub.ParentCategoryId == categoryId)
                                         .Select(sub => new { sub.SubCategoryId, sub.SCName })
@@ -673,8 +693,13 @@ namespace EcommerceWebApplication.Controllers
             return Json(subcategories);
         }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProductViewModel model)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Create)) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
+            if (AdminStaffAccess.IsRestricted(User) && model.Stock != 0) return Forbid();
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -730,7 +755,7 @@ namespace EcommerceWebApplication.Controllers
                     Units = model.Units,
                     ProductsModel = model.ProductsModel,
                     CreatedAt = DateTime.Now,
-                    CreatedBy = 1 
+                    CreatedBy = actor 
                 };
 
                 _context.Products.Add(product);
@@ -742,7 +767,7 @@ namespace EcommerceWebApplication.Controllers
                     ProductId = product.ProductId,
                     StockQty = model.Stock,
                     CreatedAt = DateTime.Now,
-                    CreatedBy = 1 
+                    CreatedBy = actor 
                 };
 
                 _context.ProductStocks.Add(stockEntry);
@@ -878,8 +903,11 @@ namespace EcommerceWebApplication.Controllers
         
 
         [HttpPost]
-        public IActionResult DeleteProduct(int id)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteProduct(int id)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.Delete)) return Forbid();
             try
             {
                 var product = _context.Products
@@ -936,8 +964,10 @@ namespace EcommerceWebApplication.Controllers
             }
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            var rights = await _access.RightsAsync(User, AdminStaffAccess.Products, HttpContext.RequestAborted);
+            if (!(rights.View)) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

@@ -353,9 +353,24 @@
                     <li class="@activeClass("RolePermission", "RoleIndex")"><a href="@Url.Action("RoleIndex", "RolePermission")" title="@_localizer["Role Permission"]"><i class="ti-lock" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Role Permission"]</span></a></li>
                     }
                     }
-                    else if ((await StaffAccess.BrandRightsAsync(User, Context.RequestAborted)).View)
+                    else
                     {
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Products, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Products", "ProductList")"><a href="@Url.Action("ProductList", "Products")" title="@_localizer["Products"]"><i class="ti-bar-chart-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Products"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Categories, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Category", "Index")"><a href="@Url.Action("Index", "Category")" title="@_localizer["Category"]"><i class="ti-layout-grid2" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Category"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Subcategories, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("SubCategory", "List")"><a href="@Url.Action("List", "SubCategory")" title="@_localizer["Sub-Category"]"><i class="ti-bookmark-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Sub-Category"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, Context.RequestAborted)).View)
+                        {
                     <li class="@activeClass("Brand", "Index")"><a href="@Url.Action("Index", "Brand")" title="@_localizer["Brand"]"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Brand"]</span></a></li>
+                        }
                     }
                     <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>

@@ -26,7 +26,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> Index(string? name, int page = 1, int pageSize = 10, bool partial = false)
         {
-            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).View) return Forbid();
+            if (!(await _access.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, HttpContext.RequestAborted)).View) return Forbid();
             // Check current culture (Arabic or English)
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabicCulture = culture.TextInfo.IsRightToLeft;
@@ -83,7 +83,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> CreateBrand(int? id)
         {
-            var rights = await _access.BrandRightsAsync(User, HttpContext.RequestAborted);
+            var rights = await _access.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, HttpContext.RequestAborted);
             if (id.HasValue ? !rights.Edit : !rights.Create) return Forbid();
             if (id == null)
             {
@@ -103,7 +103,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateBrand(BrandModel model, IFormFile Brandlogo)
         {
-            var rights = await _access.BrandRightsAsync(User, HttpContext.RequestAborted);
+            var rights = await _access.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, HttpContext.RequestAborted);
             if (model.BrandId > 0 ? !rights.Edit : !rights.Create) return Forbid();
             if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             try
@@ -193,7 +193,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).Delete) return Forbid();
+            if (!(await _access.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, HttpContext.RequestAborted)).Delete) return Forbid();
             try
             {
                 var WekendDeals1 = _context.Brand.FirstOrDefault(c => c.BrandId == id);
@@ -216,7 +216,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> AutoCompleteSubCategory(string term)
         {
-            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).View) return Forbid();
+            if (!(await _access.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Brands, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 
