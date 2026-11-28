@@ -3,13 +3,13 @@
     var arabic = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
 }
 
-<section class="store-home-hero mb-4">
+<section class="store-home-hero mb-3">
     <div class="store-hero-copy">
         <h1>@(arabic ? "تقنيات تناسب حياتك" : "Technology for everyday life")</h1>
         <p>@(arabic ? "اكتشف الإلكترونيات والملحقات." : "Explore electronics, networking and accessories.")</p>
         <a href="~/WebCategory/Index" class="btn btn-primary px-4">@(arabic ? "تسوق الآن" : "Shop now")</a>
     </div>
-    <div id="homeBannerCarousel" class="carousel slide" data-bs-interval="false">
+    <div id="homeBannerCarousel" class="carousel slide" data-bs-interval="false" aria-label="@(arabic ? "عروض المتجر" : "Store offers")">
         <div class="carousel-inner rounded-3">
             @if (banners != null && banners.Count > 0)
             {

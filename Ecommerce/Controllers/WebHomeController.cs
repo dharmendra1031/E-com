@@ -178,7 +178,7 @@ namespace EcommerceWebApplication.Controllers
             term = term.Trim();
 
 
-            var products = await _context.Products
+            var products = await _context.Products.AsNoTracking()
                 .Where(p => p.IsActive && (p.Name.Contains(term) || p.NameArb.Contains(term) ||
                     (p.SKUId != null && p.SKUId.Contains(term)) ||
                     (p.ProductsModel != null && p.ProductsModel.Contains(term)) ||
@@ -212,8 +212,8 @@ namespace EcommerceWebApplication.Controllers
                         - (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
                             .Sum(o => (int?)o.Quantity) ?? 0),
 
-                    imageBase64 = p.ProductImages
-                        .OrderBy(img => img.ImageId)
+                    imageBase64 = p.ProductImages.Where(img => img.ImageData != null)
+                        .OrderByDescending(img => img.IsPrimary == true).ThenBy(img => img.ImageId)
                         .Select(img => "/StoreImage/Product/" + img.ImageId)
                         .FirstOrDefault(),
 

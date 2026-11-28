@@ -2,55 +2,14 @@
 @{
     Layout = "~/Views/Shared/_WebLayout.cshtml";
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    var term = ViewBag.SearchTerm as string ?? "";
-    var sort = ViewBag.SortBy as string ?? "newest";
-    bool stock = ViewBag.InStock == true;
-    int page = ViewBag.Page ?? 1;
-    int total = ViewBag.TotalProducts ?? 0;
-    int? next = ViewBag.NextPage;
     ViewData["Title"] = ar ? "نتائج البحث" : "Search results";
 }
-<div class="container-fluid store-wide store-search-page">
+<div class="container-fluid store-wide store-search-page" data-store-search>
     <nav class="store-breadcrumb" aria-label="@(ar ? "مسار التنقل" : "Breadcrumb")">
-        <a href="~/WebHome/Index">@(ar ? "الرئيسية" : "Home")</a><span>/</span><span aria-current="page">@ViewData["Title"]</span>
+        <a href="~/WebHome/Index">@(ar ? "الرئيسية" : "Home")</a><span aria-hidden="true">/</span><span aria-current="page">@ViewData["Title"]</span>
     </nav>
     <h1 class="catalog-title mt-3">@ViewData["Title"]</h1>
-    @if (ViewBag.SellerPreview == true) { <p class="small text-secondary">@(ar ? "معاينة البائعين: الترتيب والتوفر حسب عروض البائعين فقط." : "Seller preview: sorting and availability use seller offers only.")</p> }
-    @if (!string.IsNullOrWhiteSpace(term))
-    {
-        <p class="mt-2 mb-0 text-secondary" dir="auto">@(ar ? "البحث عن:" : "Results for:") <strong class="text-dark">@term</strong></p>
-        <div class="store-search-toolbar">
-            <span class="text-secondary">@(ar ? $"{total} منتج" : $"{total} {(total == 1 ? "product" : "products")}")</span>
-            <form method="get" action="@Url.Action("Search")">
-                <input type="hidden" name="term" value="@term" />
-                <label class="visually-hidden" for="searchSort">@(ar ? "الترتيب" : "Sort by")</label>
-                <select name="sortBy" id="searchSort" class="form-select">
-                    <option value="newest" selected="@(sort == "newest")">@(ar ? "الأحدث" : "Newest")</option>
-                    <option value="low-high" selected="@(sort == "low-high")">@(ar ? "السعر من الأقل إلى الأعلى" : "Price: Low to high")</option>
-                    <option value="high-low" selected="@(sort == "high-low")">@(ar ? "السعر من الأعلى إلى الأقل" : "Price: High to low")</option>
-                </select>
-                <label class="d-flex align-items-center gap-2"><input class="form-check-input m-0" type="checkbox" name="inStock" value="true" checked="@stock" /> @(ar ? "متوفر فقط" : "In stock only")</label>
-                <button type="submit" class="btn btn-outline-primary">@(ar ? "تطبيق" : "Apply")</button>
-            </form>
-        </div>
-        @await Html.PartialAsync("_ProductsPartial", Model)
-        @if (page > 1 || next.HasValue)
-        {
-            <nav class="store-search-pagination" aria-label="@(ar ? "الصفحات" : "Pagination")">
-                @if (page > 1)
-                {
-                    <a class="btn btn-outline-primary" href="@Url.Action("Search", new {term, sortBy=sort, inStock=stock, page=page-1})">@(ar ? "السابق" : "Previous")</a>
-                }
-                <span>@(ar ? "صفحة" : "Page") @(page)</span>
-                @if (next.HasValue)
-                {
-                    <a class="btn btn-outline-primary" href="@Url.Action("Search", new {term, sortBy=sort, inStock=stock, page=next.Value})">@(ar ? "التالي" : "Next")</a>
-                }
-            </nav>
-        }
-    }
-    else
-    {
-        <p class="text-secondary mt-3">@(ar ? "أدخل اسم المنتج أو العلامة التجارية في البحث أعلاه." : "Enter a product name, brand or model in the search above.")</p>
-    }
+    <p id="searchPageMessage" class="small" role="status"></p>
+    <div data-search-results><partial name="_SearchResults" model="Model" /></div>
 </div>
+<script src="~/js/store-search.js" asp-append-version="true" defer></script>

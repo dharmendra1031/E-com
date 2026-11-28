@@ -47,16 +47,16 @@
                                 @if (item.LowestSellerPrice.HasValue)
                                 {
                                     <div class="small">@(ar ? "من سعر البائع" : "Seller preview from")</div>
-                                    <div class="product-price" dir="ltr">KD @item.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</div>
+                                    <div class="product-price"><bdi>KD @item.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</bdi></div>
                                     <small>@item.AvailableSellerCount @(ar ? "بائع" : "seller(s)")</small>
                                 }
                                 else { <small>@(ar ? "لا يوجد سعر بائع متاح" : "No seller price available")</small> }
                             </div>
-                            <a class="btn btn-outline-primary" asp-controller="WebSingleProduct" asp-action="SingleProduct" asp-route-id="@item.ProductId" asp-fragment="sellerOffers">@(ar ? "عرض المنتج" : "View product")</a>
+                            <a class="btn btn-outline-primary store-card-view" asp-controller="WebSingleProduct" asp-action="SingleProduct" asp-route-id="@item.ProductId" asp-fragment="sellerOffers">@(ar ? "عرض المنتج" : "View product")</a>
                         }
                         else
                         {
-                            <div class="product-price" dir="ltr"><span class="currency">KD</span> @item.Price.ToString("F3", CultureInfo.InvariantCulture)</div>
+                            <div class="product-price"><bdi><span class="currency">KD</span> @item.Price.ToString("F3", CultureInfo.InvariantCulture)</bdi></div>
                             <button type="button" class="add-to-cart-btn" data-productid="@item.ProductId" disabled="@(item.Stock <= 0)">
                                 <i class="bi bi-cart-plus" aria-hidden="true"></i><span>@(item.Stock > 0 ? (ar ? "أضف للسلة" : "Add to cart") : (ar ? "غير متوفر" : "Unavailable"))</span>
                             </button>

@@ -33,7 +33,7 @@
 	<!-- Font Awesome -->
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-	<script src="~/js/navigation.js"></script>
+	<script src="~/js/Navigation.js"></script>
 	@if (direction == "rtl")
 	{
 		<link rel="stylesheet" href="@rtlCssHref" />
@@ -773,16 +773,16 @@
                 clearTimeout(timer);
                 request?.abort();
                 const term = input.value.trim();
-                if (!term) { results.replaceChildren(); hide(); return; }
+                if (term.length < 2) { results.replaceChildren(); hide(); return; }
                 message(arabic ? "جارٍ البحث…" : "Searching…");
                 timer = setTimeout(async () => {
                     const current = new AbortController();
                     request = current;
                     try {
                         const response = await fetch("/WebHome/search?" + new URLSearchParams({ term, lang: document.documentElement.lang }), { signal: current.signal });
-                        if (!response.ok) throw new Error("Search failed");
+                        if (!response.ok || response.redirected) throw new Error("Search failed");
                         const data = await response.json();
-                        if (current.signal.aborted) return;
+                        if (current.signal.aborted || input.value.trim() !== term) return;
                         if (!Array.isArray(data) || !data.length) {
                             message(arabic ? "لا توجد منتجات" : "No products found");
                             return;
@@ -821,7 +821,15 @@
                 if (input.value.trim() && results.childElementCount) results.classList.remove("d-none");
             });
             search.addEventListener("keydown", event => {
-                if (event.key === "Escape") { input.focus(); hide(); }
+                if (event.key === "Escape") { clearTimeout(timer); request?.abort(); input.focus(); hide(); return; }
+                if (results.classList.contains("d-none")) return;
+                if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                const links = Array.from(results.querySelectorAll("a"));
+                if (!links.length) return;
+                event.preventDefault();
+                const index = links.indexOf(document.activeElement);
+                const next = event.key === "ArrowDown" ? index + 1 : (index < 0 ? links.length - 1 : index - 1);
+                if (next < 0 || next >= links.length) input.focus(); else links[next].focus();
             });
             document.addEventListener("click", event => { if (!search.contains(event.target)) hide(); });
         })();

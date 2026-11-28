@@ -55,7 +55,7 @@ namespace EcommerceWebApplication.Controllers
             return PartialView("_CategoryPartial", categories);
         }
         [HttpGet]
-        public IActionResult Search(string? term, string sortBy = "newest", int page = 1, bool inStock = false)
+        public IActionResult Search(string? term, string sortBy = "newest", int page = 1, bool inStock = false, bool partial = false)
         {
             ViewBag.SearchTerm = term?.Trim() ?? "";
             ViewBag.SortBy = sortBy;
@@ -64,16 +64,16 @@ namespace EcommerceWebApplication.Controllers
             if (string.IsNullOrWhiteSpace(term))
             {
                 ViewBag.TotalProducts = 0;
-                return View(new List<ProductListViewModel>());
+                return partial ? PartialView("_SearchResults", new List<ProductListViewModel>()) : View(new List<ProductListViewModel>());
             }
-            return CatalogProducts(null, null, sortBy, page, null, null, null, inStock, null, false, term, true);
+            return CatalogProducts(null, null, sortBy, page, null, null, null, inStock, null, false, term, true, partial);
         }
 
         public IActionResult ProductPartial(int? categoryId, int? subCategoryId, string sortBy = "newest", int page = 1, int? brandId = null, decimal? minPrice = null, decimal? maxPrice = null, bool inStock = false, int? minRating = null, bool brandedOnly = false) =>
             CatalogProducts(categoryId, subCategoryId, sortBy, page, brandId, minPrice, maxPrice, inStock, minRating, brandedOnly, null, false);
 
         private IActionResult CatalogProducts(int? categoryId, int? subCategoryId, string sortBy, int page, int? brandId,
-            decimal? minPrice, decimal? maxPrice, bool inStock, int? minRating, bool brandedOnly, string? term, bool searchPage)
+            decimal? minPrice, decimal? maxPrice, bool inStock, int? minRating, bool brandedOnly, string? term, bool searchPage, bool partial = false)
         {
             const int pageSize = 24;
             if (page < 1 || page > int.MaxValue / pageSize) return BadRequest();
@@ -120,7 +120,7 @@ namespace EcommerceWebApplication.Controllers
                 ReviewCount = p.ProductReviews.Count(),
                 Stock = (_context.ProductStocks.Where(s => s.ProductId == p.ProductId).Sum(s => (int?)s.StockQty) ?? 0)
                     - (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0),
-                ProductImageId = p.ProductImages.OrderBy(img => img.ImageId)
+                ProductImageId = p.ProductImages.Where(img => img.ImageData != null).OrderByDescending(img => img.IsPrimary == true).ThenBy(img => img.ImageId)
                     .Select(img => (int?)img.ImageId).FirstOrDefault()
             });
             if (preview)
@@ -156,7 +156,7 @@ namespace EcommerceWebApplication.Controllers
             ViewBag.TotalProducts = cards.Count();
             ViewBag.SellerPreview = preview;
             var items = products.Take(pageSize).ToList();
-            if (searchPage) return View("Search", items);
+            if (searchPage) return partial ? PartialView("_SearchResults", items) : View("Search", items);
             return PartialView("_ProductsPartial", items);
         }
 

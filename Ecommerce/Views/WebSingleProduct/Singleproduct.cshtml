@@ -7,7 +7,7 @@
     var maxQty = Math.Max(0, (int)Model.Stock.GetValueOrDefault());
     var image = Model.Images.FirstOrDefault()?.Base64;
 }
-<div class="container py-3 py-md-4 product-detail">
+<div class="container-fluid store-wide store-detail-page py-3 py-md-4 product-detail">
     <nav class="store-breadcrumb mb-3" aria-label="@(ar ? "مسار التنقل" : "Breadcrumb")">
         <a href="~/WebHome/Index">@(ar ? "الرئيسية" : "Home")</a><span>/</span>
         <a href="@Url.Action("Index", "WebCategory", new { categoryId = Model.CategoryId })">@Model.CategoryName</a><span>/</span>
@@ -35,7 +35,7 @@
                         <div class="store-detail-thumbnails">
                             @for (int i = 0; i < Model.Images.Count; i++)
                             {
-                                <button type="button" class="store-thumbnail" data-image="@Model.Images[i].Base64" aria-pressed="@(i == 0 ? "true" : "false")" aria-label="@(ar ? "الصورة" : "Image") @(i+1)">
+                                <button type="button" class="store-thumbnail" aria-pressed="@(i == 0 ? "true" : "false")" aria-label="@(ar ? "الصورة" : "Image") @(i+1)">
                                     <img src="@Model.Images[i].Base64" alt="" loading="lazy" decoding="async" />
                                 </button>
                             }
@@ -59,7 +59,7 @@
                     @if (!string.IsNullOrEmpty(Model.SKUId)) { <span dir="ltr">SKU: @Model.SKUId</span> }
                     @if (!string.IsNullOrEmpty(Model.Ds_ProdID)) { <span class="ms-2">@(ar ? "رمز المنتج:" : "Product ID:") @Model.Ds_ProdID</span> }
                 </div>
-                <a href="#productReviews" class="text-decoration-none small">
+                <a href="#productReviews" class="text-decoration-none small store-review-link">
                     @if (Model.TotalReviews > 0)
                     {
                         <span class="store-rating" dir="ltr">★ @Model.AverageRating.ToString("F1", CultureInfo.InvariantCulture) / 5</span>
@@ -155,7 +155,7 @@
     const main = document.getElementById("mainImg");
     const modal = document.getElementById("productImageModal");
     document.querySelectorAll(".store-thumbnail").forEach(button => button.addEventListener("click", () => {
-        main.src = button.dataset.image;
+        main.src = button.querySelector("img").getAttribute("src");
         document.querySelectorAll(".store-thumbnail").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
     }));
     modal?.addEventListener("show.bs.modal", () => document.getElementById("zoomImg").src = main.src);
