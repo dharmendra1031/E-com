@@ -26,7 +26,7 @@ static void RequireController(Type controller, string? role = null, string? poli
 Type[] adminControllers =
 {
     typeof(AdminDashboardController), typeof(ManageOrdersController), typeof(ManageCustomerController),
-    typeof(ProductStockController), typeof(ProductsController), typeof(CategoryController),
+    typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController), typeof(ProductsController), typeof(CategoryController),
     typeof(SubCategoryController), typeof(BrandController), typeof(WekendDealsController),
     typeof(CouponController), typeof(BannerController), typeof(SendNotificationController),
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
