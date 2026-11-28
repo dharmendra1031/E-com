@@ -28,3 +28,6 @@ Commission rate and basis, shipping responsibility and allocation, seller KYC, w
 
 ## Stage 1 status
 SQL and fixture authored only; execution against SQL Server and restored data still required. No storefront changes, vendor login, stock cutover or multi-vendor orders yet.
+
+
+See [first-party staging](FIRST_PARTY_STAGING.md) for explicit reviewed catalog mapping before stock cutover.

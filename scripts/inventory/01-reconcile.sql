@@ -7,12 +7,23 @@ IF OBJECT_ID(N'dbo.Products', N'U') IS NULL
    OR OBJECT_ID(N'dbo.Orders', N'U') IS NULL
     THROW 51000, 'Unexpected legacy schema. Verify actual table mappings first.', 1;
 
+-- Marketplace order rows must not be subtracted from the legacy store's receipts.
+-- Keep support for a restored backup from before the marketplace migration.
+IF (COL_LENGTH(N'dbo.Orders',N'MarketplaceRequestId') IS NULL AND COL_LENGTH(N'dbo.OrderItems',N'VendorOrderId') IS NOT NULL)
+   OR (COL_LENGTH(N'dbo.Orders',N'MarketplaceRequestId') IS NOT NULL AND COL_LENGTH(N'dbo.OrderItems',N'VendorOrderId') IS NULL)
+    THROW 51001,'Partial marketplace order schema. Reconcile after verifying definitions.',1;
+CREATE TABLE #LegacySales(ProductId int NULL, OrderRowsQty bigint NULL);
+IF COL_LENGTH(N'dbo.Orders',N'MarketplaceRequestId') IS NOT NULL
+    EXEC sys.sp_executesql N'INSERT #LegacySales SELECT i.ProductId,SUM(CONVERT(bigint,COALESCE(i.Quantity,0)))
+        FROM dbo.OrderItems i JOIN dbo.Orders o ON o.OrderId=i.OrderId
+        WHERE o.MarketplaceRequestId IS NULL AND i.VendorOrderId IS NULL GROUP BY i.ProductId';
+ELSE
+    INSERT #LegacySales SELECT i.ProductId,SUM(CONVERT(bigint,COALESCE(i.Quantity,0)))
+        FROM dbo.OrderItems i JOIN dbo.Orders o ON o.OrderId=i.OrderId GROUP BY i.ProductId;
+
 WITH receipts AS (
     SELECT ProductId, SUM(CONVERT(bigint, COALESCE(StockQty, 0))) AS ReceiptRowsQty
     FROM dbo.ProductStock GROUP BY ProductId
-), sales AS (
-    SELECT ProductId, SUM(CONVERT(bigint, COALESCE(Quantity, 0))) AS OrderRowsQty
-    FROM dbo.OrderItems GROUP BY ProductId
 )
 SELECT p.ProductId, p.Stock AS ProductMasterStock,
        COALESCE(r.ReceiptRowsQty, 0) AS ReceiptRowsQty,
@@ -21,7 +32,7 @@ SELECT p.ProductId, p.Stock AS ProductMasterStock,
 INTO #InventoryDiagnostic
 FROM dbo.Products p
 LEFT JOIN receipts r ON r.ProductId = p.ProductId
-LEFT JOIN sales s ON s.ProductId = p.ProductId;
+LEFT JOIN #LegacySales s ON s.ProductId = p.ProductId;
 
 SELECT COUNT_BIG(*) AS ProductCount,
        COUNT_BIG(CASE WHEN LegacyCalculatedQty < 0 THEN 1 END) AS NegativeCalculatedCount,
@@ -52,3 +63,4 @@ FROM sys.objects o INNER JOIN sys.sql_modules m ON m.object_id = o.object_id
 WHERE m.definition LIKE N'%ProductStock%' OR m.definition LIKE N'%OrderItems%' OR m.definition LIKE N'%InventoryBalance%'
 ORDER BY SchemaName, ObjectName;
 DROP TABLE #InventoryDiagnostic;
+DROP TABLE #LegacySales;
