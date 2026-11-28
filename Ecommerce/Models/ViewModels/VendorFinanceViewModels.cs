@@ -24,4 +24,9 @@ public class MarketplaceFinanceRow
     public decimal ReturnedMerchandiseValue { get; set; }
     public decimal RemainingMerchandiseValue { get; set; }
     public long OpenReturnQuantity { get; set; }
+    public decimal VerifiedRefundValue { get; set; }
+    public decimal? LedgerNet { get; set; }
+    public decimal? LedgerCommissionReversal { get; set; }
+    public bool SettlementEligible { get; set; }
+    public bool LedgerCurrent { get; set; }
 }

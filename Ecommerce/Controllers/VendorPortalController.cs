@@ -292,8 +292,9 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
             SELECT f.VendorOrderId,f.OrderId,f.VendorId,f.VendorName,f.MerchandiseSubtotal,f.CommissionRatePercent,
                 f.CommissionAmount,f.MerchandiseAfterCommission,f.FulfillmentStatus,f.ReviewState,
-                f.ReceivedReturnQuantity,f.ReturnedMerchandiseValue,f.RemainingMerchandiseValue,f.OpenReturnQuantity
-            FROM dbo.MarketplaceFinanceReview f WHERE f.VendorId={id}
+                f.ReceivedReturnQuantity,f.ReturnedMerchandiseValue,f.RemainingMerchandiseValue,f.OpenReturnQuantity,
+                f.VerifiedRefundValue,f.LedgerNet,f.LedgerCommissionReversal,f.SettlementEligible,f.LedgerCurrent
+            FROM dbo.MarketplaceSettlementReview f WHERE f.VendorId={id}
                 AND EXISTS(SELECT 1 FROM dbo.VendorUsers m JOIN dbo.Users u ON u.UserId=m.UserId
                     JOIN dbo.[Role] r ON r.RoleId=u.RoleId JOIN dbo.Vendors v ON v.VendorId=m.VendorId
                     WHERE m.VendorId=f.VendorId AND m.UserId={actor} AND m.IsActive=1 AND u.IsActive=1

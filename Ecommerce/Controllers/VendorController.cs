@@ -158,17 +158,44 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
-    public async Task<IActionResult> FinanceReview(int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> FinanceReview([FromServices] IWebHostEnvironment environment,int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:FinancePreviewEnabled",false)) return NotFound();
         page=Math.Clamp(page,1,100000);
         var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
             SELECT VendorOrderId,OrderId,VendorId,VendorName,MerchandiseSubtotal,CommissionRatePercent,
                 CommissionAmount,MerchandiseAfterCommission,FulfillmentStatus,ReviewState,
-                ReceivedReturnQuantity,ReturnedMerchandiseValue,RemainingMerchandiseValue,OpenReturnQuantity FROM dbo.MarketplaceFinanceReview
+                ReceivedReturnQuantity,ReturnedMerchandiseValue,RemainingMerchandiseValue,OpenReturnQuantity,
+                VerifiedRefundValue,LedgerNet,LedgerCommissionReversal,SettlementEligible,LedgerCurrent FROM dbo.MarketplaceSettlementReview
             """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        ViewBag.CanPostSettlement=SettlementPreviewEnabled(environment);
         return View(rows.Take(25).ToList());
+    }
+
+    private bool SettlementPreviewEnabled(IWebHostEnvironment environment) =>
+        MarketplaceRefundGateway.Enabled(configuration,environment) &&
+        configuration.GetValue("Marketplace:SettlementPreviewEnabled",false);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PostSettlementPreview(int vendorOrderId,int page,
+        [FromServices] IWebHostEnvironment environment,CancellationToken ct)
+    {
+        if(!SettlementPreviewEnabled(environment)) return NotFound();
+        if(!ModelState.IsValid || vendorOrderId<=0 || !int.TryParse(User.FindFirstValue("UserId"),out var actor))
+            return BadRequest();
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"EXEC dbo.PostVendorSettlementPreview @VendorOrderId={vendorOrderId},@ActorId={actor}",ct);
+            TempData["SettlementMessage"]="Sandbox ledger synchronized. No payout issued. / تمت مطابقة السجل التجريبي.";
+        }
+        catch(SqlException ex) when(ex.Number is >=52701 and <=52704)
+        {
+            TempData["SettlementMessage"]="Ledger unchanged. Review eligibility and evidence. / لم يتغير السجل.";
+        }
+        return RedirectToAction(nameof(FinanceReview),new {page});
     }
 
     [HttpGet]

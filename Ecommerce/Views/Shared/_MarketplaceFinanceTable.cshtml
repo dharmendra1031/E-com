@@ -1,13 +1,28 @@
 @model List<EcommerceWebApplication.Models.ViewModels.MarketplaceFinanceRow>
 @{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;string Money(decimal? d)=>d.HasValue?"KD "+d.Value.ToString("F3",System.Globalization.CultureInfo.InvariantCulture):"—";}
+<p>@T("Sandbox ledger uses verified merchandise refunds and the original commission rate. It is not a payable or payout.","السجل التجريبي يستخدم استرداد البضائع المؤكد ونسبة العمولة الأصلية. ليس رصيداً مستحقاً أو دفعة.")</p>
 <p>@T("Merchandise reconciliation only. The original commission remains unchanged. Returned value is physical receipt evidence, not an approved refund or payable balance.","مطابقة البضائع فقط. العمولة الأصلية ثابتة. قيمة المرتجع دليل استلام وليست مبلغ استرداد معتمداً أو رصيداً مستحقاً.")</p>
-<div class="table-responsive"><table class="table"><thead><tr><th>@T("Suborder / vendor","الطلب الفرعي / البائع")</th><th>@T("Original merchandise","البضائع الأصلية")</th><th>@T("Original commission","العمولة الأصلية")</th><th>@T("Received returns","المرتجعات المستلمة")</th><th>@T("Remaining merchandise","البضائع المتبقية")</th><th>@T("Open return qty","كمية الإرجاع المفتوحة")</th><th>@T("Fulfillment","التجهيز")</th><th>@T("Review","المراجعة")</th></tr></thead><tbody>
+<div class="table-responsive"><table class="table"><thead><tr><th>@T("Suborder / vendor","الطلب الفرعي / البائع")</th><th>@T("Original merchandise","البضائع الأصلية")</th><th>@T("Original commission","العمولة الأصلية")</th><th>@T("Received returns","المرتجعات المستلمة")</th><th>@T("Remaining merchandise","البضائع المتبقية")</th><th>@T("Open return qty","كمية الإرجاع المفتوحة")</th><th>@T("Fulfillment","التجهيز")</th><th>@T("Review","المراجعة")</th><th>@T("Sandbox ledger","السجل التجريبي")</th></tr></thead><tbody>
 @foreach(var row in Model)
 {
     <tr><td><bdi>#@row.VendorOrderId</bdi><div>@row.VendorName</div></td><td dir="ltr">@Money(row.MerchandiseSubtotal)</td><td><bdi>@Money(row.CommissionAmount)</bdi>@if(row.CommissionRatePercent.HasValue){<div><bdi>@row.CommissionRatePercent%</bdi></div>}</td>
     <td><bdi>@Money(row.ReturnedMerchandiseValue)</bdi><div>@row.ReceivedReturnQuantity @T("units","وحدات")</div></td><td dir="ltr">@Money(row.RemainingMerchandiseValue)</td><td>@row.OpenReturnQuantity</td>
     <td>@(row.FulfillmentStatus switch {"AwaitingPacking"=>T("Awaiting packing","بانتظار التجهيز"),"Packed"=>T("Packed","تم التجهيز"),"HandedOver"=>T("Handed over","تم التسليم للناقل"),"Delivered"=>T("Delivered","تم التوصيل"),_=>row.FulfillmentStatus})</td>
-    <td>@(row.ReviewState switch {"Missing policy snapshot"=>T("Missing policy snapshot","لا توجد سياسة محفوظة"),"Return review required"=>T("Return review required","يلزم مراجعة الإرجاع"),_=>T("Financial review required","يلزم المراجعة المالية")})</td></tr>
+    <td>@(row.ReviewState switch {"Missing policy snapshot"=>T("Missing policy snapshot","لا توجد سياسة محفوظة"),"Return review required"=>T("Return review required","يلزم مراجعة الإرجاع"),_=>T("Financial review required","يلزم المراجعة المالية")})</td>
+    <td>
+        <div>@T("Verified refunds","الاسترداد المؤكد"): <bdi>@Money(row.VerifiedRefundValue)</bdi></div>
+        <div>@T("Commission reversal","عكس العمولة"): <bdi>@Money(row.LedgerCommissionReversal)</bdi></div>
+        <div>@T("Ledger net","صافي السجل"): <bdi>@Money(row.LedgerNet)</bdi></div>
+        <div>@(!row.SettlementEligible?T("On hold","معلق"):row.LedgerCurrent?T("Synchronized","تمت المطابقة"):T("Ready to synchronize","جاهز للمطابقة"))</div>
+        @if(ViewBag.CanPostSettlement==true && row.SettlementEligible && !row.LedgerCurrent)
+        {
+            <form asp-action="PostSettlementPreview" method="post">
+                <input type="hidden" name="vendorOrderId" value="@row.VendorOrderId"/>
+                <input type="hidden" name="page" value="@ViewBag.Page"/>
+                <button class="btn btn-primary" type="submit">@T("Sync test ledger","مطابقة سجل الاختبار")</button>
+            </form>
+        }
+    </td></tr>
 }
-@if(Model.Count==0){<tr><td colspan="8">@T("No paid seller orders","لا توجد طلبات مدفوعة")</td></tr>}
+@if(Model.Count==0){<tr><td colspan="9">@T("No paid seller orders","لا توجد طلبات مدفوعة")</td></tr>}
 </tbody></table></div>

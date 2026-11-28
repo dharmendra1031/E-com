@@ -253,3 +253,9 @@ foreach(var action in new[]{"StartSandboxRefund","VerifySandboxRefund"})
         typeof(VendorController).GetMethod(action)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
         "Refund endpoint missing POST/CSRF protection.");
 Console.WriteLine("Sandbox refund verification checks passed.");
+
+Check(typeof(VendorController).GetMethod("PostSettlementPreview")!.IsDefined(typeof(HttpPostAttribute)) &&
+    typeof(VendorController).GetMethod("PostSettlementPreview")!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)) &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController),"PostSettlementPreview","POST"),
+    "Settlement preview endpoint authorization boundary failed.");
+Console.WriteLine("Settlement preview authorization checks passed.");
