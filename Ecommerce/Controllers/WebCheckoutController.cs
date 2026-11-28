@@ -67,6 +67,11 @@ namespace EcommerceWebApplication.Controllers
         {
             if (!SellerCheckoutEnabled) return NotFound();
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            if (await _context.CartItems.AnyAsync(c => c.UserId == customerId, ct))
+            {
+                TempData["SellerCartMessage"] = "Remove or review old cart items before checkout. / راجع عناصر السلة القديمة قبل الدفع.";
+                return RedirectToAction("Cart", "WebCart");
+            }
             var rows = await SellerCartAccess.ReadAsync(_context, customerId, ct);
             var charges = await SellerCharges(ct);
             if (!ReadyForSellerQuote(rows) || charges == null)
@@ -106,6 +111,8 @@ namespace EcommerceWebApplication.Controllers
                         !quote.MatchesLines(snapshots)) return Conflict("Request already used with different details.");
                     return RedirectToAction(nameof(SellerReceipt), new { requestId = quote.RequestId });
                 }
+                if (await _context.CartItems.AnyAsync(c => c.UserId == customerId, ct))
+                    return Conflict("Review old cart items before checkout.");
                 if (quote.ExpiresAtUtc <= DateTime.UtcNow) return Conflict("Quote expired. Review checkout again.");
                 if (!await ValidSellerAddress(customerId, addressId, ct)) return BadRequest("Invalid delivery address.");
                 var rows = await SellerCartAccess.ReadAsync(_context, customerId, ct);
@@ -323,6 +330,7 @@ namespace EcommerceWebApplication.Controllers
 
         public IActionResult Index(string Usertype)
         {
+            if (SellerCheckoutEnabled) return RedirectToAction("Cart", "WebCart");
             int? userId = CustomerId;
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
             var cartItemCount = CheckoutCart(userId, deviceId).Count();
@@ -539,6 +547,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto request)
         {
+            if (SellerCheckoutEnabled) return Conflict(new { message = "Use the seller checkout in this test environment." });
             if (request?.Items == null || request.Items.Count == 0 || request.Items.Count > 200 ||
                 request.Items.Any(i => i == null || i.ProductId <= 0 || i.Quantity <= 0) ||
                 request.Items.GroupBy(i => i.ProductId).Any(g => g.Count() > 1))

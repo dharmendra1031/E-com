@@ -1,9 +1,12 @@
 @using System.Globalization
 @model EcommerceWebApplication.Models.ViewModels.SingleProductVM
+@inject Microsoft.Extensions.Configuration.IConfiguration CartConfiguration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment CartEnvironment
 @{
     var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     ViewData["Title"] = Model.Name;
     Layout = "~/Views/Shared/_WebLayout.cshtml";
+    var unified = EcommerceWebApplication.Helper.SellerCartAccess.CheckoutEnabled(CartConfiguration, CartEnvironment);
     var maxQty = Math.Max(0, (int)Model.Stock.GetValueOrDefault());
     var image = Model.Images.FirstOrDefault()?.Base64;
 }
@@ -67,6 +70,8 @@
                     }
                     else { <span class="text-secondary">@(ar ? "لا توجد تقييمات" : "No reviews yet")</span> }
                 </a>
+                @if (!unified)
+                {
                 @if (Model.ShowSellerPreview)
                 {
                     <p class="small text-secondary mb-0">@(ar ? "سعر المتجر الحالي" : "Current store price")</p>
@@ -91,6 +96,18 @@
                         <i class="fa fa-shopping-cart" aria-hidden="true"></i> @(maxQty > 0 ? (ar ? "أضف للسلة" : "Add to cart") : (ar ? "غير متوفر" : "Unavailable"))
                     </button>
                 </div>
+                }
+                else
+                {
+                    <div class="store-detail-price">
+                        @if (Model.LowestSellerPrice.HasValue)
+                        {
+                            <strong dir="ltr">KD @Model.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</strong>
+                            <a class="btn btn-primary" href="#sellerOffers">@(ar ? "اختر البائع" : "Choose seller")</a>
+                        }
+                        else { <span>@(ar ? "لا توجد عروض متاحة" : "No seller offers available")</span> }
+                    </div>
+                }
                 @if (!string.IsNullOrWhiteSpace(Model.Warranty) || !string.IsNullOrWhiteSpace(Model.ProductsModel) || Model.Weight > 0)
                 {
                     <dl class="store-detail-facts mb-0">
@@ -172,8 +189,8 @@
         minus.disabled = quantity <= 1;
         plus.disabled = quantity >= maximum;
     }
-    minus.addEventListener("click", () => setQuantity(quantity - 1));
-    plus.addEventListener("click", () => setQuantity(quantity + 1));
+    minus?.addEventListener("click", () => setQuantity(quantity - 1));
+    plus?.addEventListener("click", () => setQuantity(quantity + 1));
     const more = document.getElementById("moreReviews");
     let page = 2;
     more?.addEventListener("click", async () => {

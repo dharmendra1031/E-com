@@ -17,17 +17,29 @@ namespace EcommerceWebApplication.Controllers
         private readonly EcommerceDbContext _context;
 
         private readonly IConfiguration _configuration;
-        public WebCartController(EcommerceDbContext context, IConfiguration configuration)
+        private readonly IWebHostEnvironment _environment;
+        public WebCartController(EcommerceDbContext context, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _context = context;
             _configuration = configuration;
+            _environment = environment;
         }
         private bool SellerCartEnabled => SellerCartAccess.Enabled(_configuration);
+        private bool UnifiedTestCart => SellerCartAccess.CheckoutEnabled(_configuration, _environment);
 
         public async Task<IActionResult> Cart(CancellationToken ct)
         {
+            ViewBag.UnifiedTestCart = UnifiedTestCart;
             if (SellerCartEnabled && await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is int customerId)
                 ViewBag.SellerCart = await SellerCartAccess.ReadAsync(_context, customerId, ct);
+            if (UnifiedTestCart)
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
+                ViewBag.LegacyRecovery = await _context.CartItems.AnyAsync(c =>
+                    (userId > 0 && c.UserId == userId) ||
+                    (userId == 0 && c.UserId == 0 && c.DeviceId == deviceId), ct);
+            }
             return View();
         }
 
@@ -86,6 +98,8 @@ namespace EcommerceWebApplication.Controllers
         [HttpPost]
         public IActionResult AddOrUpdateCart(int productId, int qty = 1)
         {
+            if (UnifiedTestCart)
+                return Conflict(new { success = false, message = "Select a seller offer for this product." });
             try
             {
                 int userId = 0;
@@ -216,7 +230,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult GetCartCount()
+        public async Task<IActionResult> GetCartCount(CancellationToken ct)
         {
             int userId = HttpContext.Features.Get<ISessionFeature>() != null
                 ? HttpContext.Session.GetInt32("UserId") ?? 0 : 0;
@@ -225,6 +239,8 @@ namespace EcommerceWebApplication.Controllers
                 .Where(c => (userId > 0 && c.UserId == userId) ||
                             (userId == 0 && c.DeviceId == deviceId && c.UserId == 0))
                 .Sum(c => (int?)c.Quantity) ?? 0;
+            if (SellerCartEnabled && await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is int customerId)
+                count += await SellerCartAccess.Lines(_context, customerId).SumAsync(c => (int?)c.Quantity, ct) ?? 0;
             return Ok(new { count });
         }
 

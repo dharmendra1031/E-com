@@ -1,13 +1,15 @@
 @using System.Globalization
 @model EcommerceWebApplication.Models.ViewModels.SingleProductVM
 @inject Microsoft.Extensions.Configuration.IConfiguration SellerCartConfiguration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment SellerCartEnvironment
 @{
     var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-    var cartEnabled = SellerCartConfiguration["Marketplace:SellerCartEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+    var cartEnabled = EcommerceWebApplication.Helper.SellerCartAccess.Enabled(SellerCartConfiguration);
+    var unified = EcommerceWebApplication.Helper.SellerCartAccess.CheckoutEnabled(SellerCartConfiguration, SellerCartEnvironment);
 }
 <section id="sellerOffers" class="store-detail-panel mt-3">
     <h2 class="h5 fw-bold">@(ar ? "عروض البائعين — معاينة" : "Seller offers — preview")</h2>
-    <p class="small text-secondary">@(ar ? "الدفع للبائعين غير متاح بعد، وزر السلة أعلاه يخص المتجر الحالي." : "Seller checkout is not enabled yet; the cart button above belongs to the current store.")</p>
+    <p class="small text-secondary">@(unified ? (ar ? "اختر البائع والكمية. اختبار فقط." : "Choose a seller and quantity. Development test only.") : (ar ? "الدفع للبائعين غير متاح بعد." : "Seller checkout is not enabled yet."))</p>
     @if (Model.LowestSellerPrice.HasValue)
     {
         <p>@(ar ? "أقل سعر للبائعين" : "Lowest available seller price") <strong dir="ltr">KD @Model.LowestSellerPrice.Value.ToString("F3", CultureInfo.InvariantCulture)</strong></p>
@@ -37,6 +39,10 @@
                                     <input type="number" name="quantity" value="1" min="1" max="@Math.Min(offer.AvailableQuantity,1000000)" class="form-control" aria-label="@(ar ? "الكمية" : "Quantity")" required />
                                     <button type="submit" class="btn btn-sm btn-outline-primary">@(ar ? "حفظ في سلة البائع" : "Set cart quantity")</button>
                                 </form>
+                            }
+                            @if (unified && !User.IsInRole("Customer"))
+                            {
+                                <a class="btn btn-outline-primary" asp-controller="UserAccount" asp-action="Login">@(ar ? "تسجيل الدخول للشراء" : "Sign in to buy")</a>
                             }
                             @if (selected) { <strong>@(ar ? "محدد" : "Selected")</strong> }
                             else { <a class="btn btn-sm btn-outline-primary" asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@Model.SellerPage" asp-route-listingId="@offer.ListingId" asp-fragment="sellerOffers">@(ar ? "اختيار" : "Select")</a> }

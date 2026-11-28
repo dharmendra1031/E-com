@@ -2,6 +2,8 @@
     ViewData["Title"] = "Cart";
     Layout = "~/Views/Shared/_WebLayout.cshtml";
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    bool unified = ViewBag.UnifiedTestCart == true;
+    bool recovery = ViewBag.LegacyRecovery == true;
 }
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 <div class="container py-3 py-md-4 customer-cart">
@@ -13,6 +15,16 @@
     {
         <partial name="_SellerCart" model="sellerCart" />
     }
+    @if (unified && ViewBag.SellerCart == null)
+    {
+        <p class="store-cart-panel p-3">@(ar ? "سجل الدخول لاختيار عروض البائعين." : "Sign in to select seller offers.") <a asp-controller="UserAccount" asp-action="Login">@(ar ? "تسجيل الدخول" : "Sign in")</a></p>
+    }
+    @if (!unified || recovery)
+    {
+        @if (unified)
+        {
+            <p class="alert alert-warning">@(ar ? "عناصر السلة القديمة: أزلها وأعد اختيار البائع. لن يتم تعيين البائع تلقائياً." : "Old cart items: remove and reselect a seller. No seller is assigned automatically.")</p>
+        }
     <div class="row g-3 g-lg-4 align-items-start">
         <section class="col-lg-8">
             <div class="store-cart-panel p-3">
@@ -30,11 +42,17 @@
                     <span>@_localizer["Subtotal"]</span><strong id="cartSubtotal" dir="ltr">—</strong>
                 </div>
                 <p class="small text-secondary">@(ar ? "تُحسب رسوم التوصيل والضرائب عند الدفع." : "Delivery and taxes are calculated at checkout.")</p>
-                <button type="button" id="checkoutCart" class="btn btn-primary w-100" disabled>@_localizer["Check out"]</button>
+                @if (!unified)
+                {
+                    <button type="button" id="checkoutCart" class="btn btn-primary w-100" disabled>@_localizer["Check out"]</button>
+                }
             </div>
         </aside>
     </div>
+    }
 </div>
+@if (!unified || recovery)
+{
 <script>
 (() => {
     const ar = document.documentElement.lang === "ar";
@@ -43,12 +61,13 @@
     const checkout = document.getElementById("checkoutCart");
     const message = document.getElementById("cartMessage");
     const retry = document.getElementById("retryCart");
+    const recovery = @(unified ? "true" : "false");
     let busy = false, loaded = false, hasItems = false;
     const failure = ar ? "تعذر تحديث السلة. حاول مرة أخرى." : "Unable to update cart. Please try again.";
     const money = value => "KD " + Number(value).toFixed(3);
 
     function syncControls() {
-        checkout.disabled = busy || !loaded || !hasItems;
+        if (checkout) checkout.disabled = busy || !loaded || !hasItems;
         list.setAttribute("aria-busy", String(busy));
         list.querySelectorAll("button").forEach(button => {
             button.disabled = busy || (button.dataset.action === "minus" && Number(button.closest("[data-quantity]").dataset.quantity) <= 1);
@@ -84,6 +103,7 @@
             const controls = document.createElement("div");
             controls.className = "store-cart-controls";
             for (const [action, label, accessible] of [["minus","−", ar ? "تقليل الكمية" : "Decrease quantity"],["quantity",String(qty),""],["plus","+",ar ? "زيادة الكمية" : "Increase quantity"],["remove","×",ar ? "إزالة المنتج" : "Remove item"]]) {
+                if (recovery && (action === "minus" || action === "plus")) continue;
                 if (action === "quantity") {
                     const value = document.createElement("span");
                     value.textContent = label;
@@ -118,7 +138,11 @@
             list.append(empty);
         }
         subtotal.textContent = money(total);
-        document.getElementById("cartCount").textContent = String(count);
+        if (typeof loadCartCount === "function") loadCartCount();
+        if (recovery && !hasItems) {
+            location.replace(location.pathname);
+            return;
+        }
         loaded = true;
     }
     async function readCart() {
@@ -136,7 +160,7 @@
         finally { busy = false; syncControls(); }
     }
     retry.addEventListener("click", refresh);
-    checkout.addEventListener("click", () => {
+    checkout?.addEventListener("click", () => {
         if (!checkout.disabled) location.href = "/WebCheckout/Index";
     });
     list.addEventListener("click", async event => {
@@ -158,3 +182,5 @@
     refresh();
 })();
 </script>
+
+}
