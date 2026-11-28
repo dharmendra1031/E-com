@@ -39,8 +39,12 @@ BEGIN
             JOIN dbo.[Role] r WITH (HOLDLOCK) ON r.RoleId = u.RoleId
             JOIN dbo.Vendors v WITH (HOLDLOCK) ON v.VendorId = m.VendorId
             WHERE m.VendorId = @VendorId AND m.UserId = @UserId AND m.IsActive = 1
-              AND u.IsActive = 1 AND r.IsActive = 1 AND r.RoleName IN (N'VendorOwner', N'VendorManager')
-              AND v.Status = 'Approved')
+              AND u.IsActive = 1 AND r.IsActive = 1 AND r.RoleName IN (N'VendorOwner', N'VendorManager', N'VendorStaff')
+              AND v.Status = 'Approved'
+              AND EXISTS (SELECT 1 FROM dbo.RolePermission rp WITH(HOLDLOCK) JOIN dbo.PageMaster pm WITH(HOLDLOCK) ON pm.PageId=rp.PageId
+                  WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Vendor' AND pm.PageCode='vendor.stock' AND rp.ListPage=1 AND rp.UpdatePage=1)
+              AND EXISTS (SELECT 1 FROM dbo.RolePermission rp WITH(HOLDLOCK) JOIN dbo.PageMaster pm WITH(HOLDLOCK) ON pm.PageId=rp.PageId
+                  WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Vendor' AND pm.PageCode='vendor.listings' AND rp.ListPage=1))
             THROW 51312, 'Vendor membership or permission denied.', 1;
         IF NOT EXISTS (SELECT 1 FROM dbo.VendorListings WITH (UPDLOCK, HOLDLOCK)
                        WHERE VendorListingId = @VendorListingId AND VendorId = @VendorId)

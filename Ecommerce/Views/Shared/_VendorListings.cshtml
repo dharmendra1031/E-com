@@ -1,5 +1,4 @@
 @model EcommerceWebApplication.Models.ViewModels.VendorListingsPage
-@inject Microsoft.Extensions.Configuration.IConfiguration InventoryConfiguration
 @{
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
     string T(string en, string arabic) => ar ? arabic : en;
@@ -9,7 +8,7 @@
 <h2>@Model.VendorName — @T("Products", "المنتجات")</h2>
 <div class="seller-actions">
 <a asp-action="@(Model.IsAdmin ? "Index" : "Dashboard")" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back","رجوع")</a>
-@if (Model.CanEdit)
+@if (Model.IsAdmin ? Model.CanEdit : Model.CanCreate)
 {
     <a asp-action="Catalog" asp-route-id="@Model.VendorId" class="btn btn-primary">@T("Add from catalog","إضافة من الكتالوج")</a>
 }
@@ -27,7 +26,7 @@
                 <option value="Approved" selected="@(Model.Filter=="Approved")">@T("Approved active","معتمد ونشط")</option>
                 <option value="Pending" selected="@(Model.Filter=="Pending")">@T("Pending","قيد المراجعة")</option>
                 <option value="Inactive" selected="@(Model.Filter=="Inactive")">@T("Inactive","غير نشط")</option>
-                @if(InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true)
+                @if(Model.CanViewStock)
                 {
                     <option value="OutOfStock" selected="@(Model.Filter=="OutOfStock")">@T("Out of stock","نفد المخزون")</option>
                 }
@@ -47,7 +46,7 @@
     <tr><td>@(ar && !string.IsNullOrWhiteSpace(row.ProductNameArb) ? row.ProductNameArb : row.ProductName) @if (!row.ProductActive) { <span> (@T("Product inactive","المنتج غير نشط"))</span> }</td>
         <td><bdi>@row.SellerSku</bdi></td><td><bdi>KD @row.Price.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</bdi></td><td><span class="seller-status" data-status="@row.Status">@Status(row.Status)</span></td>
         <td><div class="seller-actions">
-        @if (!Model.IsAdmin && InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+        @if (!Model.IsAdmin && Model.CanViewStock)
         {
             <a asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@row.ListingId" class="btn btn-sm btn-default">@T("Stock","المخزون")</a>
         }

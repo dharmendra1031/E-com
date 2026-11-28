@@ -75,6 +75,22 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             .Select(m => new VendorPortalStore { VendorId = m.VendorId, Code = m.Vendor.VendorCode,
                 Name = m.Vendor.Name, NameArb = m.Vendor.NameArb }).SingleOrDefaultAsync(ct);
         if (store == null) return NotFound();
+        if (!await access.CanAsync(id, userId, VendorPermissionPages.Dashboard, ct))
+        {
+            if (await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct))
+                return RedirectToAction(nameof(Listings), new { id });
+            if (configuration.GetValue("Marketplace:VendorOrdersEnabled", false) &&
+                await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct))
+                return RedirectToAction(nameof(Orders), new { id });
+            if (configuration.GetValue("Marketplace:FinancePreviewEnabled", false) &&
+                await access.CanAsync(id, userId, VendorPermissionPages.Finance, ct))
+                return RedirectToAction(nameof(FinanceReview), new { id });
+            return Forbid(VendorPortalAuth.Scheme);
+        }
+        ViewBag.CanListProducts = await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct);
+        ViewBag.CanCreateListing = await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct, create: true);
+        if (ViewBag.CanListProducts == true)
+        {
         var products = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id)
             .GroupBy(l => l.VendorId)
             .Select(g => new { Total = g.Count(), Approved = g.Count(l => l.Status == "Approved" && l.Product.IsActive),
@@ -82,14 +98,16 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         ViewBag.ProductCount = products?.Total ?? 0;
         ViewBag.ApprovedCount = products?.Approved ?? 0;
         ViewBag.PendingCount = products?.Pending ?? 0;
-        if (InventoryEnabled)
+        if (InventoryEnabled && await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct))
             ViewBag.OutOfStock = await db.Database.SqlQuery<int>($"""
                 SELECT COUNT(*) AS Value FROM dbo.VendorListings l
                 JOIN dbo.Products p ON p.ProductId=l.ProductId
                 LEFT JOIN dbo.InventoryBalances b ON b.VendorListingId=l.VendorListingId
                 WHERE l.VendorId={id} AND l.Status='Approved' AND p.IsActive=1 AND COALESCE(b.AvailableQuantity,0)=0
                 """).SingleAsync(ct);
-        if (configuration.GetValue("Marketplace:VendorOrdersEnabled",false))
+        }
+        if (configuration.GetValue("Marketplace:VendorOrdersEnabled",false) &&
+            await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct))
             ViewBag.ToPack = await db.Database.SqlQuery<int>($"""
                 SELECT COUNT(*) AS Value FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
                 WHERE v.VendorId={id} AND o.PaymentStatus=1 AND v.FulfillmentStatus='AwaitingPacking'
@@ -98,25 +116,24 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         return View(store);
     }
 
-    private IQueryable<VendorUser> StoreMembership(int id, int userId, bool write = false)
-    {
-        var query = access.Memberships(userId).Where(m => m.VendorId == id);
-        if (write) query = query.Where(m => m.User.Role!.RoleName == VendorRoles.Owner ||
-            m.User.Role.RoleName == VendorRoles.Manager);
-        return query;
-    }
+    private IQueryable<VendorUser> StoreMembership(int id, int userId) =>
+        access.Memberships(userId).Where(m => m.VendorId == id);
 
     [HttpGet("store/{id:int}/listings")]
     public async Task<IActionResult> Listings(int id, string? search, int page = 1, CancellationToken ct = default, string? filter = null, bool partial = false)
     {
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
+        if (!await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct)) return NotFound();
+        var canStock = InventoryEnabled && await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct);
         var store = await StoreMembership(id, userId).Select(m => new { m.Vendor.Name, m.User.Role!.RoleName })
             .SingleOrDefaultAsync(ct);
         if (store == null) return NotFound();
         if (filter is not ("Approved" or "Pending" or "Inactive" or "OutOfStock") ||
-            (filter == "OutOfStock" && !InventoryEnabled)) filter = null;
+            (filter == "OutOfStock" && !canStock)) filter = null;
         var model = await VendorListingQueries.ReadPageAsync(db, id, store.Name, search, page,
-            store.RoleName is VendorRoles.Owner or VendorRoles.Manager, false, ct, filter);
+            await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct, update: true), false, ct, filter);
+        model.CanCreate = await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct, create: true);
+        model.CanViewStock = canStock;
         return partial ? PartialView("_VendorListings", model) : View(model);
     }
 
@@ -124,7 +141,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     public async Task<IActionResult> Catalog(int id, string? search, int page = 1, CancellationToken ct = default, bool partial = false)
     {
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
-            !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct, create: true)) return NotFound();
         const int size = 25;
         page = Math.Clamp(page, 1, 100000);
         search = search?.Trim();
@@ -146,7 +163,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     public async Task<IActionResult> EditListing(int id, int listingId = 0, int productId = 0, CancellationToken ct = default)
     {
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
-            !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct,
+                create: listingId == 0, update: listingId != 0)) return NotFound();
         if (listingId != 0)
         {
             var row = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id && l.VendorListingId == listingId)
@@ -169,7 +187,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId) || form.VendorId != id)
             return NotFound();
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-        if (!await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
+        if (!await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct,
+            create: form.ListingId == 0, update: form.ListingId != 0)) return NotFound();
         var product = await db.Products.AsNoTracking().Where(p => p.ProductId == form.ProductId && p.IsActive)
             .Select(p => new { p.Name }).SingleOrDefaultAsync(ct);
         if (product == null) return NotFound();
@@ -223,8 +242,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     public async Task<IActionResult> Stock(int id, int listingId, int page = 1, CancellationToken ct = default)
     {
         if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
-        var member = await StoreMembership(id, userId).Select(m => m.User.Role!.RoleName).SingleOrDefaultAsync(ct);
-        if (member == null) return NotFound();
+        if (!await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct) ||
+            !await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct)) return NotFound();
         var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
         var productName = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id &&
             l.VendorListingId == listingId).Select(l => ar && l.Product.NameArb != "" ? l.Product.NameArb : l.Product.Name).SingleOrDefaultAsync(ct);
@@ -250,7 +269,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         balances.Page = page;
         balances.HasNext = rows.Count > size;
         balances.Movements = rows.Take(size).ToList();
-        balances.CanEdit = member is VendorRoles.Owner or VendorRoles.Manager;
+        balances.CanEdit = await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct, update: true);
         balances.Adjustment = new StockAdjustmentForm { RequestId = Guid.NewGuid(), Direction = "Add", Quantity = 1 };
         return View(balances);
     }
@@ -259,7 +278,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     public async Task<IActionResult> Stock(int id, int listingId, StockAdjustmentForm adjustment, CancellationToken ct)
     {
         if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
-            !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct) ||
+            !await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct, update: true)) return NotFound();
         if (!ModelState.IsValid || adjustment.RequestId == Guid.Empty ||
             adjustment.Quantity is < 1 or > 1000000000 || adjustment.Direction is not ("Add" or "Reduce") ||
             string.IsNullOrWhiteSpace(adjustment.Reason))
@@ -291,7 +311,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     {
         if (!access.Enabled || !configuration.GetValue("Marketplace:FinancePreviewEnabled",false) ||
             !VendorPortalAuth.TryGetUserId(User,out var actor) ||
-            !await StoreMembership(id,actor).AnyAsync(m=>m.User.Role!.RoleName==VendorRoles.Owner,ct)) return NotFound();
+            !await access.CanAsync(id, actor, VendorPermissionPages.Finance, ct)) return NotFound();
         page=Math.Clamp(page,1,100000);
         var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
             SELECT f.VendorOrderId,f.OrderId,f.VendorId,f.VendorName,f.MerchandiseSubtotal,f.CommissionRatePercent,
@@ -300,7 +320,9 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
                 AND EXISTS(SELECT 1 FROM dbo.VendorUsers m JOIN dbo.Users u ON u.UserId=m.UserId
                     JOIN dbo.[Role] r ON r.RoleId=u.RoleId JOIN dbo.Vendors v ON v.VendorId=m.VendorId
                     WHERE m.VendorId=f.VendorId AND m.UserId={actor} AND m.IsActive=1 AND u.IsActive=1
-                    AND r.IsActive=1 AND r.RoleName='VendorOwner' AND v.Status='Approved')
+                    AND r.IsActive=1 AND r.RoleName='VendorOwner' AND v.Status='Approved'
+                    AND EXISTS(SELECT 1 FROM dbo.RolePermission rp JOIN dbo.PageMaster pm ON pm.PageId=rp.PageId
+                        WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Vendor' AND pm.PageCode='vendor.finance' AND rp.ListPage=1))
             """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;ViewBag.VendorId=id;
         return partial ? PartialView("_FinanceRegister", rows.Take(25).ToList()) : View(rows.Take(25).ToList());
@@ -311,7 +333,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     {
         if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User, out var userId) ||
-            !await StoreMembership(id, userId).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct)) return NotFound();
         page = Math.Clamp(page, 1, 100000);
         if (status is not ("AwaitingPacking" or "Packed" or "HandedOver" or "Delivered")) status = null;
         var query = db.Database.SqlQuery<VendorOrderRow>($"""
@@ -332,7 +354,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     {
         if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User, out var userId) ||
-            !await StoreMembership(id,userId).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct)) return NotFound();
         var rows=await db.Database.SqlQuery<VendorOrderLine>($"""
             SELECT i.ProductNameSnapshot AS ProductName,i.ProductNameArbSnapshot AS ProductNameArb,
                    i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price,v.FulfillmentStatus
@@ -344,7 +366,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if(rows.Count==0) return NotFound();
         ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
         ViewBag.CanAdvance = configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) &&
-            await StoreMembership(id,userId,true).AnyAsync(ct);
+            await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct, update: true);
         return View(rows);
     }
 
@@ -354,7 +376,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
             !configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User,out var actor) ||
-            !await StoreMembership(id,actor,true).AnyAsync(ct)) return NotFound();
+            !await access.CanAsync(id, actor, VendorPermissionPages.Orders, ct, update: true)) return NotFound();
         if (!ModelState.IsValid || !((expectedStatus=="AwaitingPacking" && newStatus=="Packed") ||
             (expectedStatus=="Packed" && newStatus=="HandedOver"))) return BadRequest();
         try

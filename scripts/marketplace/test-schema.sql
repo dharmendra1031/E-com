@@ -9,6 +9,11 @@ IF OBJECT_ID(N'dbo.Products', N'U') IS NOT NULL OR OBJECT_ID(N'dbo.Users', N'U')
 CREATE TABLE dbo.Products (ProductId int NOT NULL PRIMARY KEY);
 CREATE TABLE dbo.Users (UserId int NOT NULL PRIMARY KEY);
 CREATE TABLE dbo.[Role] (RoleId int IDENTITY PRIMARY KEY, RoleName nvarchar(100) NOT NULL, RoleNameArb nvarchar(100) NOT NULL, IsActive bit NOT NULL, CreatedAt datetime2 NOT NULL, UpdatedAt datetime2 NOT NULL);
+CREATE TABLE dbo.PageMaster (PageId int IDENTITY PRIMARY KEY, PageNameEng nvarchar(100), PageNameArb nvarchar(100), CreatedAt datetime2 NOT NULL);
+CREATE TABLE dbo.RolePermission (RolePermissionId int IDENTITY PRIMARY KEY, RoleId int NOT NULL, PageId int NOT NULL,
+    ListPage bit NOT NULL DEFAULT 0, CreatePage bit NOT NULL DEFAULT 0, UpdatePage bit NOT NULL DEFAULT 0,
+    DeletePage bit NOT NULL DEFAULT 0, ReportView bit NOT NULL DEFAULT 0, ReportPrint bit NOT NULL DEFAULT 0);
+INSERT dbo.PageMaster(PageNameEng,PageNameArb,CreatedAt) VALUES(N'Legacy admin page',N'صفحة الإدارة',SYSUTCDATETIME());
 INSERT dbo.Products VALUES (1), (2);
 INSERT dbo.Users VALUES (1);
 GO
@@ -20,6 +25,20 @@ GO
 GO
 :r 02-seed-vendor-roles.sql
 GO
+GO
+:r 14-vendor-permissions.sql
+GO
+:r 14-vendor-permissions.sql
+GO
+IF (SELECT COUNT(*) FROM dbo.PageMaster WHERE PortalScope='Vendor')<>5 OR EXISTS(SELECT 1 FROM dbo.RolePermission)
+    THROW 52120,'Permission migration duplicated pages or granted rights.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.PageMaster WHERE PageNameEng='Legacy admin page' AND PortalScope='Admin')
+    THROW 52121,'Legacy page changed.',1;
+-- Test-only grants. Production requires explicit role configuration.
+INSERT dbo.RolePermission(RoleId,PageId,ListPage,CreatePage,UpdatePage)
+SELECT r.RoleId,p.PageId,1,CASE WHEN p.PageCode='vendor.listings' THEN 1 ELSE 0 END,
+    CASE WHEN p.PageCode IN ('vendor.listings','vendor.stock','vendor.orders') THEN 1 ELSE 0 END
+FROM dbo.[Role] r CROSS JOIN dbo.PageMaster p WHERE r.RoleName='VendorOwner' AND p.PortalScope='Vendor';
 IF (SELECT COUNT(*) FROM dbo.[Role]) <> 3
     THROW 51122, 'Role seed did not create exactly three roles.', 1;
 IF EXISTS (SELECT 1 FROM dbo.Vendors) OR EXISTS (SELECT 1 FROM dbo.VendorListings) OR EXISTS (SELECT 1 FROM dbo.VendorUsers)

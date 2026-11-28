@@ -34,7 +34,10 @@ namespace EcommerceWebApplication.Controllers
 
             var model = new RolePermissionForm { RoleId = roleId ?? 0 };
             if (!roleId.HasValue) return View(model);
-            if (!_context.Roles.Any(r => r.RoleId == roleId.Value)) return NotFound();
+            var selectedRole = _context.Roles.AsNoTracking().SingleOrDefault(r => r.RoleId == roleId.Value);
+            if (selectedRole == null) return NotFound();
+            var scope = VendorPermissionPages.ScopeFor(selectedRole.RoleName);
+            model.PortalScope = scope;
 
             var existing = _context.RolePermission.AsNoTracking()
                 .Where(p => p.RoleId == roleId.Value).ToList();
@@ -44,7 +47,7 @@ namespace EcommerceWebApplication.Controllers
                 return View(model);
             }
             var byPage = existing.ToDictionary(p => p.PageId);
-            model.Rows = _context.PageMaster.AsNoTracking().OrderBy(p => p.PageNameEng).ThenBy(p => p.PageId)
+            model.Rows = _context.PageMaster.AsNoTracking().Where(p => p.PortalScope == scope).OrderBy(p => p.PageNameEng).ThenBy(p => p.PageId)
                 .ToList().Select(p => PermissionRow.From(p, byPage.GetValueOrDefault(p.PageId), arabic)).ToList();
             return View(model);
         }
@@ -103,14 +106,26 @@ namespace EcommerceWebApplication.Controllers
                 return Forbid();
 
             using var transaction = _context.Database.BeginTransaction(IsolationLevel.Serializable);
-            if (!_context.Roles.Any(r => r.RoleId == model.RoleId)) return NotFound();
-            var pageIds = _context.PageMaster.Select(p => p.PageId).ToList();
+            var selectedRole = _context.Roles.SingleOrDefault(r => r.RoleId == model.RoleId);
+            if (selectedRole == null) return NotFound();
+            var scope = VendorPermissionPages.ScopeFor(selectedRole.RoleName);
+            var pages = _context.PageMaster.Where(p => p.PortalScope == scope).ToList();
+            var pageIds = pages.Select(p => p.PageId).ToList();
             if (!ModelState.IsValid || !model.HasExactPages(pageIds))
             {
                 TempData["Error"] = "Invalid or incomplete permission selection. Reload the role and try again.";
                 return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
             }
 
+            if (scope == "Vendor")
+            {
+                var codes = pages.ToDictionary(p => p.PageId, p => p.PageCode);
+                if (model.Rows.Any(row => !row.IsValidVendorGrant(codes[row.PageId], selectedRole.RoleName)))
+                {
+                    TempData["Error"] = "Unsupported vendor permission.";
+                    return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
+                }
+            }
             var existing = _context.RolePermission.Where(p => p.RoleId == model.RoleId).ToList();
             if (existing.GroupBy(p => p.PageId).Any(g => g.Count() > 1) ||
                 existing.Any(p => !pageIds.Contains(p.PageId)))

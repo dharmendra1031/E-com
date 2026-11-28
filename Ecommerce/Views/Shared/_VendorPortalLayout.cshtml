@@ -1,5 +1,8 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration PortalConfiguration
 @inject EcommerceWebApplication.Data.EcommerceDbContext BrandingDb
+@inject EcommerceWebApplication.Helper.VendorPortalAccess PortalAccess
+@using EcommerceWebApplication.Models
+@using EcommerceWebApplication.Helper
 
 @{
     Layout = null;
@@ -9,6 +12,9 @@
     var signedIn = User.Identity?.IsAuthenticated == true && User.Identity.AuthenticationType == EcommerceWebApplication.Helper.VendorPortalAuth.Scheme;
     var hasStore = signedIn && int.TryParse(ViewContext.RouteData.Values["id"]?.ToString(), out _);
     var storeId = ViewContext.RouteData.Values["id"];
+    var vendorId = int.TryParse(storeId?.ToString(), out var parsedId) ? parsedId : 0;
+    var actorId = VendorPortalAuth.TryGetUserId(User, out var parsedUser) ? parsedUser : 0;
+    async Task<bool> Can(string code) => hasStore && await PortalAccess.CanAsync(vendorId, actorId, code, Context.RequestAborted);
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     bool Enabled(string key) => PortalConfiguration[key]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true;
     var returnUrl = Context.Request.PathBase.ToString()+Context.Request.Path.ToString()+Context.Request.QueryString.ToString();
@@ -59,19 +65,25 @@
                 <nav class="nano-content" aria-label="@T("Store navigation","قائمة المتجر")">
                     <ul>
                         <li class="label">@T("Workspace","مساحة العمل")</li>
+                        @if(await Can(VendorPermissionPages.Dashboard))
+                        {
                         <li class="@(action=="Dashboard"?"active":"")">
                             <a asp-controller="VendorPortal" asp-action="Dashboard" asp-route-id="@storeId" aria-current="@(action=="Dashboard"?"page":null)"><i class="fa fa-dashboard" aria-hidden="true"></i><span>@T("Overview","نظرة عامة")</span></a>
                         </li>
+                        }
+                        @if(await Can(VendorPermissionPages.Listings))
+                        {
                         <li class="@(action is "Listings" or "Catalog" or "EditListing" or "Stock"?"active":"")">
                             <a asp-controller="VendorPortal" asp-action="Listings" asp-route-id="@storeId" aria-current="@(action is "Listings" or "Catalog" or "EditListing" or "Stock"?"page":null)"><i class="fa fa-cubes" aria-hidden="true"></i><span>@T("Products & stock","المنتجات والمخزون")</span></a>
                         </li>
-                        @if(Enabled("Marketplace:VendorOrdersEnabled"))
+                        }
+                        @if(Enabled("Marketplace:VendorOrdersEnabled") && await Can(VendorPermissionPages.Orders))
                         {
                             <li class="@(action is "Orders" or "OrderDetails"?"active":"")">
                                 <a asp-controller="VendorPortal" asp-action="Orders" asp-route-id="@storeId" aria-current="@(action is "Orders" or "OrderDetails"?"page":null)"><i class="fa fa-shopping-bag" aria-hidden="true"></i><span>@T("Orders","الطلبات")</span></a>
                             </li>
                         }
-                        @if(User.IsInRole("VendorOwner") && Enabled("Marketplace:FinancePreviewEnabled"))
+                        @if(Enabled("Marketplace:FinancePreviewEnabled") && await Can(VendorPermissionPages.Finance))
                         {
                             <li class="@(action=="FinanceReview"?"active":"")">
                                 <a asp-controller="VendorPortal" asp-action="FinanceReview" asp-route-id="@storeId" aria-current="@(action=="FinanceReview"?"page":null)"><i class="fa fa-money" aria-hidden="true"></i><span>@T("Finance","المالية")</span></a>

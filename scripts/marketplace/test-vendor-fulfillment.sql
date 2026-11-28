@@ -29,6 +29,15 @@ END TRY
 BEGIN CATCH
     IF ERROR_NUMBER()<>52000 THROW;
 END CATCH;
+UPDATE rp SET UpdatePage=0 FROM dbo.RolePermission rp JOIN dbo.PageMaster p ON p.PageId=rp.PageId WHERE p.PageCode='vendor.orders';
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @b,@vo,1,'AwaitingPacking','Packed';
+    THROW 52123,'Revoked fulfillment permission accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52001 THROW;
+END CATCH;
+UPDATE rp SET UpdatePage=1 FROM dbo.RolePermission rp JOIN dbo.PageMaster p ON p.PageId=rp.PageId WHERE p.PageCode='vendor.orders';
 EXEC dbo.AdvanceVendorFulfillment @b,@vo,1,'AwaitingPacking','Packed';
 EXEC dbo.AdvanceVendorFulfillment @b,@vo,1,'AwaitingPacking','Packed';
 EXEC dbo.AdvanceVendorFulfillment @b,@vo,1,'Packed','HandedOver';

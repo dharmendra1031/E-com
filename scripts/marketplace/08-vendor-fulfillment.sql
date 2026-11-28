@@ -38,7 +38,9 @@ BEGIN
             JOIN dbo.[Role] r WITH(HOLDLOCK) ON r.RoleId=u.RoleId
             JOIN dbo.Vendors v WITH(HOLDLOCK) ON v.VendorId=m.VendorId
             WHERE m.UserId=@ActorId AND m.VendorId=@VendorId AND m.IsActive=1 AND u.IsActive=1
-              AND r.IsActive=1 AND r.RoleName IN ('VendorOwner','VendorManager') AND v.Status='Approved')
+              AND r.IsActive=1 AND r.RoleName IN ('VendorOwner','VendorManager','VendorStaff') AND v.Status='Approved'
+              AND EXISTS (SELECT 1 FROM dbo.RolePermission rp WITH(HOLDLOCK) JOIN dbo.PageMaster pm WITH(HOLDLOCK) ON pm.PageId=rp.PageId
+                  WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Vendor' AND pm.PageCode='vendor.orders' AND rp.ListPage=1 AND rp.UpdatePage=1))
             THROW 52001,'Vendor permission denied.',1;
         DECLARE @orderId int=(SELECT OrderId FROM dbo.VendorOrders WHERE VendorOrderId=@VendorOrderId AND VendorId=@VendorId);
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@orderId AND PaymentStatus=1 AND MarketplaceRequestId IS NOT NULL)

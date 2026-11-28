@@ -125,3 +125,16 @@ Check(productRights.UpdatePage && orderRights.ListPage && !orderRights.UpdatePag
 orderRow.ListPage = false;
 Check(!orderRow.HasRights, "Empty permission row retained rights.");
 Console.WriteLine("Page permission matrix checks passed.");
+
+Check(EcommerceWebApplication.Models.VendorPermissionPages.ScopeFor("VendorStaff") == "Vendor" &&
+    EcommerceWebApplication.Models.VendorPermissionPages.ScopeFor("Admin") == "Admin", "Portal scope mismatch.");
+var vendorGrant = new EcommerceWebApplication.Models.ViewModels.PermissionRow { ListPage = true, UpdatePage = true };
+Check(vendorGrant.IsValidVendorGrant("vendor.stock", "VendorManager"), "Valid stock grant rejected.");
+Check(!vendorGrant.IsValidVendorGrant("vendor.dashboard", "VendorManager"), "Dashboard update allowed.");
+vendorGrant.UpdatePage = false;
+Check(!vendorGrant.IsValidVendorGrant("vendor.finance", "VendorManager"), "Manager finance grant allowed.");
+Check(vendorGrant.IsValidVendorGrant("vendor.finance", "VendorOwner"), "Owner finance grant rejected.");
+vendorGrant.ListPage = false;
+vendorGrant.CreatePage = true;
+Check(!vendorGrant.IsValidVendorGrant("vendor.listings", "VendorStaff"), "Write without view allowed.");
+Console.WriteLine("Vendor permission scope checks passed.");

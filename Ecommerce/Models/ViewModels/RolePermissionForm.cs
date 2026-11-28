@@ -6,6 +6,7 @@ public sealed class RolePermissionForm
 {
     [Range(1, int.MaxValue)]
     public int RoleId { get; set; }
+    public string? PortalScope { get; set; }
     public List<PermissionRow> Rows { get; set; } = new();
 
     public bool HasExactPages(IEnumerable<int> pageIds)
@@ -20,6 +21,7 @@ public sealed class PermissionRow
 {
     public int PageId { get; set; }
     public string? PageName { get; set; }
+    public string? PageCode { get; set; }
     public bool ListPage { get; set; }
     public bool CreatePage { get; set; }
     public bool UpdatePage { get; set; }
@@ -32,6 +34,7 @@ public sealed class PermissionRow
     public static PermissionRow From(PageMaster page, RolePermission? permission, bool arabic) => new()
     {
         PageId = page.PageId,
+        PageCode = page.PageCode,
         PageName = arabic ? page.PageNameArb ?? page.PageNameEng : page.PageNameEng,
         ListPage = permission?.ListPage ?? false,
         CreatePage = permission?.CreatePage ?? false,
@@ -40,6 +43,14 @@ public sealed class PermissionRow
         ReportView = permission?.ReportView ?? false,
         ReportPrint = permission?.ReportPrint ?? false
     };
+
+    public bool IsValidVendorGrant(string? code, string? role) =>
+        VendorPermissionPages.IsKnown(code) &&
+        (!HasRights || ListPage) &&
+        (!CreatePage || VendorPermissionPages.SupportsCreate(code)) &&
+        (!UpdatePage || VendorPermissionPages.SupportsUpdate(code)) &&
+        !DeletePage && !ReportView && !ReportPrint &&
+        (code != VendorPermissionPages.Finance || !HasRights || role == VendorRoles.Owner);
 
     public bool Matches(RolePermission permission) =>
         ListPage == permission.ListPage && CreatePage == permission.CreatePage &&

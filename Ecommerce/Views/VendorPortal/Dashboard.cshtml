@@ -11,9 +11,14 @@
             <h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
             <p class="admin-muted">@T("Vendor code","رمز البائع"): <bdi>@Model.Code</bdi> · <span class="seller-status" data-status="Approved">@T("Approved","معتمد")</span></p>
         </div>
+        @if(ViewBag.CanListProducts == true)
+        {
         <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary"><i class="fa fa-cubes" aria-hidden="true"></i> @T("Manage products","إدارة المنتجات")</a>
+        }
     </header>
     <div class="admin-kpi-grid">
+        @if(ViewBag.CanListProducts == true)
+        {
         <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span class="admin-kpi-label">@T("My products","منتجاتي") <i class="fa fa-cubes" aria-hidden="true"></i></span><strong>@ViewBag.ProductCount</strong></a>
         <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Approved"><span class="admin-kpi-label">@T("Approved active products","المنتجات المعتمدة النشطة") <i class="fa fa-check-circle" aria-hidden="true"></i></span><strong>@ViewBag.ApprovedCount</strong></a>
         <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span class="admin-kpi-label">@T("Pending approval","بانتظار الاعتماد") <i class="fa fa-clock-o" aria-hidden="true"></i></span><strong>@ViewBag.PendingCount</strong></a>
@@ -21,17 +26,23 @@
         {
             <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="OutOfStock"><span class="admin-kpi-label">@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة") <i class="fa fa-exclamation-circle" aria-hidden="true"></i></span><strong>@ViewBag.OutOfStock</strong></a>
         }
+        }
         @if(ViewBag.ToPack != null)
         {
             <a class="admin-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span class="admin-kpi-label">@T("Paid orders to pack","طلبات مدفوعة للتجهيز") <i class="fa fa-shopping-bag" aria-hidden="true"></i></span><strong>@ViewBag.ToPack</strong></a>
         }
     </div>
     <div class="seller-dashboard-sections">
+        @if(ViewBag.CanListProducts == true)
+        {
         <section class="admin-panel">
             <h2>@T("Products & stock","المنتجات والمخزون")</h2>
             <ul class="seller-task-list">
                 <li><a asp-action="Listings" asp-route-id="@Model.VendorId"><span><i class="fa fa-list" aria-hidden="true"></i> @T("View all listings","عرض جميع المنتجات")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                @if(ViewBag.CanCreateListing == true)
+                {
                 <li><a asp-action="Catalog" asp-route-id="@Model.VendorId"><span><i class="fa fa-search" aria-hidden="true"></i> @T("Browse product catalogue","تصفح كتالوج المنتجات")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                }
                 <li><a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span><i class="fa fa-clock-o" aria-hidden="true"></i> @T("Review pending listings","مراجعة المنتجات المعلقة")</span><strong>@ViewBag.PendingCount</strong></a></li>
                 @if(ViewBag.OutOfStock != null)
                 {
@@ -39,6 +50,7 @@
                 }
             </ul>
         </section>
+        }
         @if(ViewBag.ToPack != null)
         {
             <section class="admin-panel">

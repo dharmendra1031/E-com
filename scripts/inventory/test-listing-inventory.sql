@@ -34,6 +34,15 @@ DECLARE @la int = (SELECT VendorListingId FROM dbo.VendorListings WHERE VendorId
         @lb int = (SELECT VendorListingId FROM dbo.VendorListings WHERE VendorId = @b);
 IF EXISTS (SELECT 1 FROM dbo.InventoryBalances) THROW 51321, 'Unexpected opening stock.', 1;
 DECLARE @request uniqueidentifier = NEWID(), @other uniqueidentifier = NEWID();
+UPDATE rp SET UpdatePage=0 FROM dbo.RolePermission rp JOIN dbo.PageMaster p ON p.PageId=rp.PageId WHERE p.PageCode='vendor.stock';
+BEGIN TRY
+    EXEC dbo.PostInventoryAdjustment @b, @lb, 1, @request, 10, N'Physical receipt';
+    THROW 52122,'Revoked stock permission accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51312 THROW;
+END CATCH;
+UPDATE rp SET UpdatePage=1 FROM dbo.RolePermission rp JOIN dbo.PageMaster p ON p.PageId=rp.PageId WHERE p.PageCode='vendor.stock';
 EXEC dbo.PostInventoryAdjustment @b, @lb, 1, @request, 10, N'Physical receipt';
 EXEC dbo.PostInventoryAdjustment @b, @lb, 1, @request, 10, N'Physical receipt';
 IF (SELECT OnHandQuantity FROM dbo.InventoryBalances WHERE VendorListingId = @lb) <> 10

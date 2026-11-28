@@ -7,6 +7,8 @@ public class VendorListingsPage
     public int VendorId { get; set; }
     public string VendorName { get; set; } = "";
     public bool CanEdit { get; set; }
+    public bool CanCreate { get; set; }
+    public bool CanViewStock { get; set; }
     public bool IsAdmin { get; set; }
     public string? Search { get; set; }
     public string? Filter { get; set; }

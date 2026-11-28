@@ -85,6 +85,8 @@ namespace EcommerceWebApplication.Data
             // Prevent existing EF-based order/stock paths from consuming staged seller orders.
             modelBuilder.Entity<OrderModel>().HasQueryFilter(o => o.MarketplaceRequestId == null);
             modelBuilder.Entity<OrderItemmodel>().HasQueryFilter(o => o.VendorOrderId == null);
+            modelBuilder.Entity<RolePermission>().HasIndex(x => new { x.RoleId, x.PageId }).IsUnique();
+            modelBuilder.Entity<PageMaster>().HasIndex(x => x.PageCode).IsUnique().HasFilter("[PageCode] IS NOT NULL");
             modelBuilder.Entity<VendorListing>(entity =>
             {
                 entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
