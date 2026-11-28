@@ -1,5 +1,6 @@
 ﻿using DocumentFormat.OpenXml.Drawing.Charts;
 using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -300,7 +301,7 @@ namespace EcommerceWebApplication.Controllers
                 return Json(new { success = false, message = "User not found." });
 
             // Validate current password
-            if (customer.PasswordHash != CurrentPassword) // Simple example; hash check if used
+            if (!CustomerPassword.Verify(customer.PasswordHash, CurrentPassword, out _))
                 return Json(new { success = false, message = "Current password is incorrect." });
 
             if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword.Length < 8 || NewPassword.Length > 50)
@@ -309,7 +310,7 @@ namespace EcommerceWebApplication.Controllers
             if (NewPassword != ConfirmPassword)
                 return Json(new { success = false, message = "New password and confirmation do not match." });
 
-            customer.PasswordHash = NewPassword; // Hash it in real app!
+            customer.PasswordHash = CustomerPassword.Hash(NewPassword);
             _context.SaveChanges();
 
             return Json(new { success = true, message = "Password updated successfully!" });

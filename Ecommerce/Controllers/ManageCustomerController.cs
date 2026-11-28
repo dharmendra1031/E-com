@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -205,7 +206,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ChangePassword([FromBody] ChangePasswordModel model)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.NewPassword))
+            if (model == null || !CustomerPassword.IsValidNew(model.NewPassword))
                 return Json(new { success = false, message = "Password is required" });
 
             var user = _context.Customers.FirstOrDefault(x => x.UserId == model.UserId);
@@ -217,7 +218,7 @@ namespace EcommerceWebApplication.Controllers
             //var hasher = new PasswordHasher<Customers>();
             //user.PasswordHash = hasher.HashPassword(user, model.NewPassword);
 
-            user.PasswordHash = model.NewPassword;
+            user.PasswordHash = CustomerPassword.Hash(model.NewPassword);
 
             user.UpdatedAt = DateTime.UtcNow;
 

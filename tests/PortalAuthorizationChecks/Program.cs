@@ -108,3 +108,15 @@ CheckUnavailable(blockedPayment.Session());
 CheckUnavailable(blockedPayment.paymentsuccess());
 CheckUnavailable(blockedPayment.PaymentFailed());
 Console.WriteLine("Legacy financial endpoint containment checks passed.");
+
+var customerPassword = EcommerceWebApplication.Helper.CustomerPassword.Hash("Sample-Password-42");
+Check(customerPassword != "Sample-Password-42" &&
+    EcommerceWebApplication.Helper.CustomerPassword.Verify(customerPassword, "Sample-Password-42", out _) &&
+    !EcommerceWebApplication.Helper.CustomerPassword.Verify(customerPassword, "wrong", out _), "Customer password hashing failed.");
+Check(EcommerceWebApplication.Helper.CustomerPassword.Verify("legacy-password", "legacy-password", out var upgradeCustomer) && upgradeCustomer,
+    "Legacy credential upgrade failed.");
+Check(!EcommerceWebApplication.Helper.CustomerPassword.Verify("customer-v1:invalid", "customer-v1:invalid", out _),
+    "Malformed hash accepted as plaintext.");
+Check(EcommerceWebApplication.Helper.CustomerPassword.ApiOtpKey("Example@example.com", true) !=
+    EcommerceWebApplication.Helper.CustomerPassword.ApiOtpKey("Example@example.com", false), "OTP purposes overlap.");
+Console.WriteLine("Customer password and OTP purpose checks passed.");

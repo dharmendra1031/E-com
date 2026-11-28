@@ -53,6 +53,8 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModals model)
         {
+            if (!CustomerPassword.IsValidNew(model.Password))
+                ModelState.AddModelError(nameof(model.Password), "Use 8–50 characters.");
             if (model.BirthDate == default || model.BirthDate.Date > DateTime.Today)
                 ModelState.AddModelError(nameof(model.BirthDate), "Enter a valid birth date.");
             if (!string.Equals(HttpContext.Session.GetString("RegistrationVerifiedEmail"), model.Email, StringComparison.OrdinalIgnoreCase) ||
@@ -77,7 +79,7 @@ namespace EcommerceWebApplication.Controllers
                 FullName = model.FullName,
                 Email = model.Email,
                 Phone =  model.Phone,
-                PasswordHash = model.Password,
+                PasswordHash = CustomerPassword.Hash(model.Password),
                 IsActive = true,
                 RoleId = 2,
                 CreatedAt = DateTime.UtcNow,
@@ -436,12 +438,18 @@ namespace EcommerceWebApplication.Controllers
 
             var customer = await _context.Customers
         .Include(c => c.Role )
-        .FirstOrDefaultAsync(c => c.Email == model.Email && c.IsActive && c.IsDeleted == 0 && c.CustType == "Customer" && c.Role.RoleName == "Customer");
+        .FirstOrDefaultAsync(c => c.Email == model.Email && c.IsActive && c.IsDeleted == 0 && c.CustType == "Customer" && c.Role.IsActive && c.Role.RoleName == "Customer");
 
-            if (customer == null || customer.PasswordHash != model.Password)
+            if (customer == null || !CustomerPassword.Verify(customer.PasswordHash, model.Password, out var upgrade))
             {
                 ModelState.AddModelError("", "Invalid email or password");
                 return View(model);
+            }
+
+            if (upgrade)
+            {
+                customer.PasswordHash = CustomerPassword.Hash(model.Password);
+                await _context.SaveChangesAsync();
             }
 
             // ----------------- SESSION -----------------
@@ -633,8 +641,7 @@ namespace EcommerceWebApplication.Controllers
             if (user == null)
                 return Json(new { success = false, message = "User not found" });
 
-            // Save password (plain text as per your requirement)
-            user.PasswordHash = model.NewPassword;
+            user.PasswordHash = CustomerPassword.Hash(model.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

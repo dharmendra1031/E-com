@@ -628,7 +628,7 @@ namespace EcommerceWebApplication.Controllers
                     {
                         FullName = request.FullName.Trim(), Email = email, Phone = phone, RoleId = 2,
                         IsActive = true, IsDeleted = 0, CustType = "Guest", ShareholderNo = request.ShareholderNo,
-                        PasswordHash = Guid.NewGuid().ToString("N"), CreatedAt = now, UpdatedAt = now
+                        PasswordHash = CustomerPassword.Hash(Guid.NewGuid().ToString("N")), CreatedAt = now, UpdatedAt = now
                     };
                     _context.Customers.Add(guest);
                     await _context.SaveChangesAsync();

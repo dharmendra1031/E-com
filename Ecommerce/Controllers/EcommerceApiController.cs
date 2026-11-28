@@ -52,6 +52,69 @@ namespace EcommerceWebApplication.Controllers
             return hash != null && CustomerApiAuth.IsCurrent(principal, hash) ? id : null;
         }
 
+        private static bool ValidEmail(string? email) => !string.IsNullOrWhiteSpace(email) &&
+            email.Length <= 150 && new EmailAddressAttribute().IsValid(email.Trim());
+
+        private async Task<IActionResult> SendCustomerOtp(string? email, bool reset, string lang)
+        {
+            if (!ValidEmail(email)) return BadRequest(new { message = "A valid email is required." });
+            email = email!.Trim();
+            var exists = await _context.Customers.AnyAsync(u => u.Email == email && u.CustType == "Customer" &&
+                u.IsDeleted == 0 && (!reset || u.IsActive));
+            if (exists != reset)
+                return Ok(new { success = true, message = "If eligible, a code will be sent." });
+
+            var key = CustomerPassword.ApiOtpKey(email, reset);
+            var now = DateTime.Now;
+            var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var rows = await _context.UserOtps.Where(x => x.Email == key).Take(2).ToListAsync();
+            if (rows.Count > 1) return Conflict(new { message = "Unable to issue verification code." });
+            if (rows.Count == 1 && rows[0].Expiry > now.AddMinutes(4))
+                return StatusCode(429, new { message = "Please retry in one minute." });
+            var row = rows.SingleOrDefault();
+            if (row == null)
+            {
+                row = new UserOtp { Email = key, Otp = otp };
+                _context.UserOtps.Add(row);
+            }
+            row.Otp = otp;
+            row.IsVerified = false;
+            row.Expiry = now.AddMinutes(5);
+            _emailService.Send(email, lang == "ar" ? "رمز التحقق" : "Verification code",
+                $"<p>{otp}</p><p>{(lang == "ar" ? "صالح لمدة خمس دقائق" : "Valid for five minutes.")}</p>");
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return Ok(new { success = true, message = "If eligible, a code will be sent." });
+        }
+
+        private async Task<bool> ConsumeCustomerOtp(string email, string otp, bool reset)
+        {
+            var key = CustomerPassword.ApiOtpKey(email, reset);
+            var now = DateTime.Now;
+            var rows = await _context.UserOtps.Where(x => x.Email == key).Take(2).ToListAsync();
+            if (rows.Count != 1 || rows[0].IsVerified || rows[0].Expiry <= now || rows[0].Otp != otp)
+                return false;
+            _context.UserOtps.Remove(rows[0]);
+            return true;
+        }
+
+        private async Task<IActionResult> ResetCustomerPassword(string? email, string? otp, string? password, string lang)
+        {
+            if (!ValidEmail(email) || !CustomerPassword.IsValidNew(password) || string.IsNullOrWhiteSpace(otp))
+                return BadRequest(new { message = "Valid email, OTP and password required." });
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var matches = await _context.Customers.Where(u => u.Email == email!.Trim() && u.IsActive && u.IsDeleted == 0 &&
+                u.CustType == "Customer" && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer").Take(2).ToListAsync();
+            if (matches.Count != 1 || !await ConsumeCustomerOtp(email!, otp, true))
+                return BadRequest(new { message = "Invalid or expired OTP." });
+            matches[0].PasswordHash = CustomerPassword.Hash(password!);
+            matches[0].UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return Ok(new { success = true, status = true, message = lang == "ar" ? "تم تحديث كلمة المرور" : "Password reset successfully." });
+        }
+
         private async Task<int?> OptionalCustomerIdAsync()
         {
             var result = await HttpContext.AuthenticateAsync(CustomerApiAuth.Scheme);
@@ -552,15 +615,16 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> Login([FromBody] LoginDto model, string lang = "en")
         {
 
             bool isArabic = lang?.ToLower() == "ar";
             var user = await _context.Customers.FirstOrDefaultAsync(u => u.Email == model.Email && u.CustType == "Customer" &&
-                u.PasswordHash == model.Password && u.IsDeleted == 0 && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer");
+                u.IsDeleted == 0 && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer");
 
 
-            if (user == null)
+            if (user == null || !CustomerPassword.Verify(user.PasswordHash, model.Password, out var upgrade))
             {
                 return Unauthorized(new
                 {
@@ -578,6 +642,11 @@ namespace EcommerceWebApplication.Controllers
                         ? "الحساب غير نشط. تواصل مع الدعم."
                         : "Account is inactive. Contact support."
                 });
+            }
+            if (upgrade)
+            {
+                user.PasswordHash = CustomerPassword.Hash(model.Password);
+                await _context.SaveChangesAsync();
             }
             var totalCartCount = _context.CartItems
                                  .Count(x => x.UserId == user.UserId);
@@ -670,7 +739,7 @@ namespace EcommerceWebApplication.Controllers
             if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             bool isArabic = lang?.ToLower() == "ar";
 
-            if (request == null || string.IsNullOrEmpty(request.NewPassword))
+            if (request == null || !CustomerPassword.IsValidNew(request.NewPassword))
             {
                 if (isArabic)
                     return BadRequest(new { message = "طلب غير صالح" });
@@ -689,7 +758,7 @@ namespace EcommerceWebApplication.Controllers
                     return NotFound(new { message = "User not found" });
             }
 
-            if (user.PasswordHash != request.OldPassword)
+            if (!CustomerPassword.Verify(user.PasswordHash, request.OldPassword, out _))
             {
                 if (isArabic)
                     return BadRequest(new { message = "كلمة المرور القديمة غير صحيحة" });
@@ -697,7 +766,7 @@ namespace EcommerceWebApplication.Controllers
                     return BadRequest(new { message = "Old password is incorrect" });
             }
 
-            user.PasswordHash = request.NewPassword;
+            user.PasswordHash = CustomerPassword.Hash(request.NewPassword);
             user.UpdatedAt = DateTime.Now;
             _context.SaveChanges();
 
@@ -1954,97 +2023,10 @@ namespace EcommerceWebApplication.Controllers
 
         //}
         [HttpPost]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> SendOtp([FromBody] OtpRequest request, string lang = "en")
         {
-            try
-            {
-                //var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-                var currentCulture = lang?.ToLower();
-
-                string emailExistsMsg = currentCulture == "ar"
-                    ? "البريد الإلكتروني موجود مسبقًا."
-                    : "Email already exists.";
-
-                string otpSentMsg = currentCulture == "ar"
-                    ? "تم إرسال رمز التحقق (OTP) بنجاح."
-                    : "OTP sent successfully.";
-
-                string failedToSendMsg = currentCulture == "ar"
-                    ? "فشل إرسال كلمة المرور لمرة واحدة ."
-                    : "Failed to send OTP.";
-
-                string emailSubject = currentCulture == "ar"
-                    ? "كلمة مرورك لمرة واحدة "
-                    : "Your One-Time Password (OTP)";
-
-                var otp = new Random().Next(100000, 999999).ToString();
-
-
-                string emailBody = currentCulture == "ar"
-                    ? $@"
-                <p>عزيزي المستخدم،</p>
-                <p>رمز التحقق الخاص بك للدخول إلى حساب <strong>تعاونية صباحية</strong> هو: 
-                <strong>{otp}</strong></p>
-                <p>يرجى استخدام هذا الرمز خلال <strong>5 دقائق</strong> لإكمال عملية الدخول أو التحقق.</p>
-                <p style='color:red;'>لأمانك، لا تشارك هذا الرمز مع أي شخص.</p>
-                <br />
-                <p>شكرًا لك،<br />فريق موقع صباحية</p>"
-                    : $@"
-                <p>Dear User,</p>
-                <p>Your One-Time Password (OTP) for accessing your <strong>Raqmikart</strong> account is: 
-                <strong>{otp}</strong></p>
-                <p>Please use this OTP within the next <strong>5 minutes</strong> to complete your login or verification.</p>
-                <p style='color:red;'>For your security, do not share this OTP with anyone.</p>
-                <br />
-                <p>Thank you,<br />Team Raqmikart Website</p>";
-
-
-                if (_context.Customers.Any(u => u.Email == request.email && u.CustType == "Customer" && u.IsDeleted == 0))
-                    return BadRequest(new { message = emailExistsMsg });
-
-                emailBody = emailBody.Replace(new string('0', 6), otp);
-
-
-                _emailService.Send(request.email, emailSubject, emailBody);
-
-
-                var existing = _context.UserOtps.FirstOrDefault(x => x.Email == request.email);
-                if (existing != null)
-                {
-                    existing.Otp = otp;
-                    existing.Expiry = DateTime.Now.AddMinutes(2);
-                    existing.IsVerified = false;
-                }
-                else
-                {
-                    _context.UserOtps.Add(new UserOtp
-                    {
-                        Email = request.email,
-                        Otp = otp,
-                        Expiry = DateTime.Now.AddMinutes(2),
-                        IsVerified = false
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-
-
-                return Ok(new
-                {
-                    success = true,
-                    message = otpSentMsg,
-                    otp = otp
-                });
-            }
-            catch (Exception ex)
-            {
-                var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-                string failedToSendMsg = currentCulture == "ar"
-                    ? "فشل إرسال كلمة المرور لمرة واحدة ."
-                    : "Failed to send OTP.";
-
-                return StatusCode(500, new { message = failedToSendMsg, error = ex.Message });
-            }
+            return await SendCustomerOtp(request.email, false, lang);
         }
 
 
@@ -2101,9 +2083,13 @@ namespace EcommerceWebApplication.Controllers
         //}
 
         [HttpPost]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request, string lang = "en")
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            if (!ValidEmail(request.Email) || !CustomerPassword.IsValidNew(request.Password) ||
+                string.IsNullOrWhiteSpace(request.Otp)) return BadRequest(new { message = "Valid email, password and OTP required." });
+            request.Email = request.Email.Trim();
+            using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
             {
 
@@ -2127,7 +2113,10 @@ namespace EcommerceWebApplication.Controllers
                 }
 
 
-                string passwordHash = request.Password;
+                if (!await ConsumeCustomerOtp(request.Email, request.Otp, false))
+                    return BadRequest(new { message = "Invalid or expired OTP." });
+
+                string passwordHash = CustomerPassword.Hash(request.Password);
 
                 var newUser = new Customers
                 {
@@ -2148,22 +2137,6 @@ namespace EcommerceWebApplication.Controllers
                 _context.Customers.Add(newUser);
                 await _context.SaveChangesAsync();
 
-                string deviceId = request.deviceId;
-
-                if (!string.IsNullOrEmpty(deviceId))
-                {
-                    var deviceCartItems = _context.CartItems
-                                          .Where(x => x.UserId == 0 && x.DeviceId == deviceId)
-                                          .ToList();
-
-                    foreach (var item in deviceCartItems)
-                    {
-                        item.UserId = newUser.UserId;
-                        _context.CartItems.Update(item);
-                    }
-
-                    _context.SaveChanges();
-                }
                 var totalCartCount = _context.CartItems
                                      .Count(x => x.UserId == newUser.UserId);
 
@@ -2233,55 +2206,16 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost("verify-otp")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> VerifyOtpRegister([FromBody] otpvarify req, string lang = "en")
         {
-            try
-            {
-                var currentCulture = lang?.ToLower();
-
-                string invalidOtpMsg = currentCulture == "ar"
-                    ? "كلمة مرور لمرة واحدة غير صالحة أو منتهية الصلاحية."
-                    : "Invalid or expired OTP";
-
-                string successMsg = currentCulture == "ar"
-                    ? "تم التحقق من رمز التفعيل بنجاح."
-                    : "OTP verified successfully";
-
-                bool isEmailFlow = !string.IsNullOrEmpty(req.email);                       
-                bool isMobileFlow = !string.IsNullOrEmpty(req.mobile);
-
-                if (!isEmailFlow && !isMobileFlow)
-                {
-                    return BadRequest(new { message = "Email or Mobile required" });
-                }
-
-                var otpRecord = await _context.UserOtps.FirstOrDefaultAsync(x =>
-                    (isEmailFlow && x.Email != null && x.Email == req.email) ||
-                    (isMobileFlow && x.Mobile != null && x.Mobile == req.mobile));
-
-                if (otpRecord == null ||
-                    otpRecord.Otp != req.otp ||
-                    otpRecord.Expiry < DateTime.Now ||
-                    otpRecord.IsVerified)
-                {
-                    return BadRequest(new { message = invalidOtpMsg });
-                }
-
-                otpRecord.IsVerified = true;
-                otpRecord.Expiry = DateTime.Now;
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = successMsg });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    message = "Something went wrong",
-                    error = ex.Message
-                });
-            }
+            if (!ValidEmail(req.email) || string.IsNullOrWhiteSpace(req.otp)) return BadRequest();
+            var key = CustomerPassword.ApiOtpKey(req.email!, false);
+            var now = DateTime.Now;
+            var matches = await _context.UserOtps.AsNoTracking().Where(x => x.Email == key && !x.IsVerified &&
+                x.Expiry > now && x.Otp == req.otp).Take(2).CountAsync();
+            return matches == 1 ? Ok(new { message = "OTP verified; submit it with registration." }) :
+                BadRequest(new { message = "Invalid or expired OTP." });
         }
         //[HttpPost]
         //public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model, string lang = "en")
@@ -2397,94 +2331,10 @@ namespace EcommerceWebApplication.Controllers
         //    }
         //}
         [HttpPost("reset-password")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model, string lang = "en")
         {
-            try
-            {
-                var currentCulture = lang?.ToLower();
-
-                string userNotFoundMsg = currentCulture == "ar" ? "المستخدم غير موجود" : "User not found";
-                string otpNotVerifiedMsg = currentCulture == "ar" ? "يرجى التحقق من رمز OTP أولاً" : "Please verify OTP first";
-                string successMsg = currentCulture == "ar" ? "تم إعادة تعيين كلمة المرور بنجاح" : "Password reset successfully";
-
-                bool isEmailFlow = !string.IsNullOrEmpty(model.Email);
-                bool isMobileFlow = !string.IsNullOrEmpty(model.mobile);
-
-                if (!isEmailFlow && !isMobileFlow)
-                {
-                    return BadRequest(new { status = false, message = "Email or Mobile required" });
-                }
-
-              
-                var user = await _context.Customers.FirstOrDefaultAsync(x =>
-                    (isEmailFlow && x.Email == model.Email) ||
-                    (isMobileFlow && x.Phone == model.mobile));
-
-                if (user == null)
-                {
-                    return BadRequest(new { status = false, message = userNotFoundMsg });
-                }
-
-              
-                var otpRecord = await _context.UserOtps.FirstOrDefaultAsync(x =>
-                    (isEmailFlow && x.Email == model.Email) ||
-                    (isMobileFlow && x.Mobile == model.mobile));
-
-                if (otpRecord == null || !otpRecord.IsVerified)
-                {
-                    return BadRequest(new { status = false, message = otpNotVerifiedMsg });
-                }
-
-               
-                user.PasswordHash = model.NewPassword;
-                user.UpdatedAt = DateTime.Now;
-
-                await _context.SaveChangesAsync();
-
-                
-                string deviceId = model.deviceId;
-
-                if (!string.IsNullOrEmpty(deviceId))
-                {
-                    var deviceCartItems = _context.CartItems
-                                          .Where(x => x.UserId == 0 && x.DeviceId == deviceId)
-                                          .ToList();
-
-                    foreach (var item in deviceCartItems)
-                    {
-                        item.UserId = user.UserId;
-                        _context.CartItems.Update(item);
-                    }
-
-                    await _context.SaveChangesAsync();
-                }
-
-              
-                var totalCartCount = _context.CartItems
-                                     .Count(x => x.UserId == user.UserId);
-
-              
-                return Ok(new
-                {
-                    status = true,
-                    message = successMsg,
-                    userId = user.UserId,
-                    fullName = user.FullName,
-                    email = user.Email,
-                    phone = user.Phone,
-                    roleId = user.RoleId,
-                    totalcart = totalCartCount
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    status = false,
-                    message = "Something went wrong",
-                    error = ex.Message
-                });
-            }
+            return await ResetCustomerPassword(model.Email, model.Otp, model.NewPassword, lang);
         }
         //[HttpPost("forgot-password")]
         //public async Task<IActionResult> SendOtpForPasswordReset([FromBody] OtpRequest request, string lang = "en")
@@ -2601,200 +2451,17 @@ namespace EcommerceWebApplication.Controllers
         //    }
         //}
         [HttpPost("forgot-password")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> SendOtpForPasswordReset([FromBody] OtpRequest request, string lang = "en")
         {
-            try
-            {
-                var currentCulture = lang?.ToLower();
-
-             
-                bool isEmailFlow = !string.IsNullOrEmpty(request.email);
-                bool isMobileFlow = !string.IsNullOrEmpty(request.mobile);
-
-                if (!isEmailFlow && !isMobileFlow)
-                {
-                    return BadRequest(new { message = "Email or Mobile is required" });
-                }
-
-              
-                var user = _context.Customers.FirstOrDefault(u =>
-                    ((isEmailFlow && u.Email == request.email) ||
-                     (isMobileFlow && u.Phone == request.mobile))
-                    && u.IsDeleted == 0);
-
-                if (user == null)
-                {
-                    if (currentCulture == "ar")
-                        return BadRequest(new { message = "المستخدم غير موجود" });
-                    else
-                        return BadRequest(new { message = "User not found" });
-                }
-
-
-                string otp;
-                if (isEmailFlow)
-                {
-                    otp = new Random().Next(100000, 999999).ToString(); // dynamic
-                }
-                else
-                {
-                    otp = "123456";
-                }
-
-                string subject = "";
-                string body = "";
-
-
-                if (isEmailFlow)
-                {
-                    if (currentCulture == "ar")
-                    {
-                        subject = "رمز التحقق لإعادة تعيين كلمة المرور";
-                        body = $@"
-                <p>عزيزي {user.FullName},</p>
-                <p>رمز التحقق الخاص بك هو:
-                <strong>{otp}</strong></p>
-                <p>صالح لمدة 5 دقائق</p>";
-                    }
-                    else
-                    {
-                        subject = "Password Reset OTP";
-                        body = $@"
-                <p>Dear {user.FullName},</p>
-                <p>Your OTP is:
-                <strong>{otp}</strong></p>
-                <p>Valid for 5 minutes</p>";
-                    }
-
-                    _emailService.Send(request.email, subject, body);
-                }
-
-                // 🧩 Cheej 5: OTP save/update karo
-                var existing = _context.UserOtps.FirstOrDefault(x =>
-                    (isEmailFlow && x.Email == request.email) ||
-                    (isMobileFlow && x.Mobile == request.mobile));
-
-                if (existing != null)
-                {
-                    existing.Otp = otp;
-                    existing.Expiry = DateTime.Now.AddMinutes(2);
-                    existing.IsVerified = false;
-                }
-                else
-                {
-                    _context.UserOtps.Add(new UserOtp
-                    {
-                        Email = isEmailFlow ? request.email : null,
-                        Mobile = isMobileFlow ? request.mobile : null,
-                        Otp = otp,
-                        Expiry = DateTime.Now.AddMinutes(2),
-                        IsVerified = false
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-
-
-                if (currentCulture == "ar")
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "تم إرسال رمز التحقق بنجاح",
-                        otp = otp
-                    });
-                }
-                else
-                {
-                    return Ok(new { success = true, message = "OTP sent successfully", otp = otp });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    message = "Failed to send OTP",
-                    error = ex.Message
-                });
-            }
+            return await SendCustomerOtp(request.email, true, lang);
         }
 
         [HttpPost("forgot-password/reset")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CustomerAuth")]
         public async Task<IActionResult> VerifyOtpAndResetPassword([FromBody] ResetPasswordRequest request)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-
-                var otpRecord = _context.UserOtps.FirstOrDefault(x => x.Email == request.Email);
-                if (otpRecord == null || otpRecord.Otp != request.Otp || otpRecord.Expiry < DateTime.Now)
-                {
-                    if (currentCulture == "ar")
-                    {
-                        return BadRequest(new { message = "كلمة مرور لمرة واحدة غير صالحة أو منتهية الصلاحية" });
-                    }
-                    else
-                    {
-                        return BadRequest(new { message = "Invalid or expired OTP" });
-                    }
-
-                }
-                //return BadRequest(new { message = "Invalid or expired OTP" });
-
-                otpRecord.IsVerified = true;
-                await _context.SaveChangesAsync();
-
-                // ✅ Find user
-                var user = _context.Customers.FirstOrDefault(u => u.Email == request.Email && u.IsDeleted == 0);
-                if (user == null)
-                {
-                    if (currentCulture == "ar")
-                    {
-                        return BadRequest(new { message = "لم يتم العثور على المستخدم" });
-                    }
-                    else
-                    {
-                        return BadRequest(new { message = "User not found" });
-                    }
-
-                }
-                // return BadRequest(new { message = "User not found" });
-
-
-                user.PasswordHash = request.NewPassword;
-                await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                if (currentCulture == "ar")
-                {
-                    return Ok(new { message = "تمت إعادة تعيين كلمة المرور بنجاح!" });
-                }
-                else
-                {
-                    return Ok(new { message = "Password reset successful" });
-                }
-
-
-                //return Ok(new { message = "Password reset successful" });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-
-                var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-                if (currentCulture == "ar")
-                {
-                    return StatusCode(500, new { message = "حدث خطأ ما!", error = ex.Message });
-                }
-                else
-                {
-                    return StatusCode(500, new { message = "Something went wrong", error = ex.Message });
-                }
-
-                //return StatusCode(500, new { message = "Something went wrong", error = ex.Message });
-            }
+            return await ResetCustomerPassword(request.Email, request.Otp, request.NewPassword, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
         }
 
 

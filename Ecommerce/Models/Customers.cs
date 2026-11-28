@@ -28,6 +28,7 @@ namespace EcommerceWebApplication.Models
         public int? ShareholderNo { get; set; }
         //public string Phone { get; set; }
 
+        [ConcurrencyCheck]
         public string? PasswordHash { get; set; }
 
         // ✅ Foreign Key → Role
