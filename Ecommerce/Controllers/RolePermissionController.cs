@@ -1,91 +1,62 @@
-﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
     [Authorize(Policy = "SuperAdminOnly")]
-    public class RolePermissionController : Controller
+    public class RolePermissionController(EcommerceDbContext _context) : Controller
     {
-        private readonly EcommerceDbContext _context;
-
-        public RolePermissionController(EcommerceDbContext context)
+        [HttpGet]
+        public IActionResult RoleIndex(int? id, int? roleId)
         {
-            _context = context;
-        }
+            if (id.HasValue)
+            {
+                roleId = _context.RolePermission.AsNoTracking()
+                    .Where(p => p.RolePermissionId == id.Value)
+                    .Select(p => (int?)p.RoleId).SingleOrDefault();
+                if (!roleId.HasValue) return NotFound();
+            }
 
-        #region RolePermission
-        //Role Permission Code Here 
-        public IActionResult RoleIndex(int? Id, int? roleId)
-        {
-            ViewBag.RoleList = _context.Roles
+            var arabic = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+            ViewBag.RoleList = _context.Roles.AsNoTracking().OrderBy(r => r.RoleName)
                 .Select(r => new SelectListItem
                 {
                     Value = r.RoleId.ToString(),
-                    Text = r.RoleName
+                    Text = arabic ? (r.RoleNameArb ?? r.RoleName) : r.RoleName
                 }).ToList();
 
-            ViewBag.PageList = _context.PageMaster
-                .Select(p => new SelectListItem
-                {
-                    Value = p.PageId.ToString(),
-                    Text = p.PageNameEng
-                }).ToList();
+            var model = new RolePermissionForm { RoleId = roleId ?? 0 };
+            if (!roleId.HasValue) return View(model);
+            if (!_context.Roles.Any(r => r.RoleId == roleId.Value)) return NotFound();
 
-            if (Id.HasValue)
+            var existing = _context.RolePermission.AsNoTracking()
+                .Where(p => p.RoleId == roleId.Value).ToList();
+            if (existing.GroupBy(p => p.PageId).Any(g => g.Count() > 1))
             {
-                var existingPermission = _context.RolePermission
-                    .FirstOrDefault(rp => rp.RolePermissionId == Id.Value);
-
-                if (existingPermission == null)
-                    return NotFound();
-
-                var roleIdFromDb = existingPermission.RoleId;
-
-                var permissions = _context.RolePermission
-                    .Where(rp => rp.RoleId == roleIdFromDb)
-                    .ToList();
-
-                var model = new RolePermission
-                {
-                    RoleId = roleIdFromDb,
-                    PageIds = permissions.Select(p => p.PageId).ToList(),
-                    CreatePage = permissions.Any(p => p.CreatePage),
-                    UpdatePage = permissions.Any(p => p.UpdatePage),
-                    DeletePage = permissions.Any(p => p.DeletePage),
-                    ListPage = permissions.Any(p => p.ListPage),
-                    ReportView = permissions.Any(p => p.ReportView),
-                    ReportPrint = permissions.Any(p => p.ReportPrint),
-                    RolePermissionId = Id.Value
-                };
-
+                TempData["Error"] = "Duplicate permission rows must be resolved before editing this role.";
                 return View(model);
             }
-
-            // ✅ Create mode with pre-selected role
-            var newModel = new RolePermission();
-            if (roleId.HasValue)
-            {
-                newModel.RoleId = roleId.Value;
-            }
-
-            return View(newModel);
+            var byPage = existing.ToDictionary(p => p.PageId);
+            model.Rows = _context.PageMaster.AsNoTracking().OrderBy(p => p.PageNameEng).ThenBy(p => p.PageId)
+                .ToList().Select(p => PermissionRow.From(p, byPage.GetValueOrDefault(p.PageId), arabic)).ToList();
+            return View(model);
         }
+
         [HttpGet]
         public IActionResult CheckRolePermission(int roleId)
         {
-            var permission = _context.RolePermission
+            var permission = _context.RolePermission.AsNoTracking()
                 .FirstOrDefault(rp => rp.RoleId == roleId);
-
-            if (permission != null)
-            {
-                return Json(new { exists = true, rolePermissionId = permission.RolePermissionId });
-            }
-
-            return Json(new { exists = false });
+            return permission == null
+                ? Json(new { exists = false })
+                : Json(new { exists = true, rolePermissionId = permission.RolePermissionId });
         }
 
         public IActionResult PermissionList(int page = 1, int pageSize = 10)
@@ -122,228 +93,66 @@ namespace EcommerceWebApplication.Controllers
             return View(pagedModel);
         }
 
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateOrUpdatePermission(RolePermission model)
+        public IActionResult CreateOrUpdatePermission(RolePermissionForm model)
         {
-            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var userId) || !_context.Users.Any(u => u.UserId == userId && u.IsActive))
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var userId) ||
+                !_context.Users.Any(u => u.UserId == userId && u.IsActive))
                 return Forbid();
-            if (!_context.Roles.Any(r => r.RoleId == model.RoleId))
-            {
-                TempData["Error"] = "Invalid role.";
-                return RedirectToAction("RoleIndex");
-            }
-            model.PageIds = model.PageIds?.Distinct().ToList() ?? new List<int>();
-            var validPages = _context.PageMaster.Select(p => p.PageId).ToList().ToHashSet();
-            if (model.PageIds.Any(id => !validPages.Contains(id)))
-            {
-                TempData["Error"] = "Invalid page selection.";
-                return RedirectToAction("RoleIndex", new { roleId = model.RoleId });
-            }
-            
-            if (model.PageIds == null || !model.PageIds.Any())
-            {
-                var allPermissions = _context.RolePermission
-                    .Where(rp => rp.RoleId == model.RoleId)
-                    .ToList();
 
-                if (allPermissions.Any())
+            using var transaction = _context.Database.BeginTransaction(IsolationLevel.Serializable);
+            if (!_context.Roles.Any(r => r.RoleId == model.RoleId)) return NotFound();
+            var pageIds = _context.PageMaster.Select(p => p.PageId).ToList();
+            if (!ModelState.IsValid || !model.HasExactPages(pageIds))
+            {
+                TempData["Error"] = "Invalid or incomplete permission selection. Reload the role and try again.";
+                return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
+            }
+
+            var existing = _context.RolePermission.Where(p => p.RoleId == model.RoleId).ToList();
+            if (existing.GroupBy(p => p.PageId).Any(g => g.Count() > 1) ||
+                existing.Any(p => !pageIds.Contains(p.PageId)))
+            {
+                TempData["Error"] = "Invalid existing permission rows must be resolved before saving.";
+                return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
+            }
+
+            var byPage = existing.ToDictionary(p => p.PageId);
+            var now = DateTime.UtcNow;
+            foreach (var row in model.Rows)
+            {
+                byPage.TryGetValue(row.PageId, out var permission);
+                if (!row.HasRights)
                 {
-                    _context.RolePermission.RemoveRange(allPermissions);
-                    _context.SaveChanges();
-                    TempData["Success"] = "All permissions removed for this role successfully!";
+                    if (permission != null) _context.RolePermission.Remove(permission);
+                    continue;
                 }
 
-                return RedirectToAction("PermissionList");
-            }
-
-           
-            bool anyUpdated = false, anyCreated = false;
-
-            
-            var existingPermissions = _context.RolePermission
-                .Where(rp => rp.RoleId == model.RoleId)
-                .ToList();
-
-           
-            var toDelete = existingPermissions
-                .Where(rp => !model.PageIds.Contains(rp.PageId))
-                .ToList();
-
-            if (toDelete.Any())
-            {
-                _context.RolePermission.RemoveRange(toDelete);
-            }
-
-            foreach (var pageId in model.PageIds)
-            {
-                var existing = existingPermissions.FirstOrDefault(rp => rp.PageId == pageId);
-
-                if (existing != null)
+                if (permission == null)
                 {
-                  
-                    existing.CreatePage = model.CreatePage;
-                    existing.UpdatePage = model.UpdatePage;
-                    existing.DeletePage = model.DeletePage;
-                    existing.ListPage = model.ListPage;
-                    existing.ReportView = model.ReportView;
-                    existing.ReportPrint = model.ReportPrint;
-                    existing.UpdatedAt = DateTime.Now;
-                    existing.UpdateBy = userId;
-
-                    _context.RolePermission.Update(existing);
-                    anyUpdated = true;
-                }
-                else
-                {
-                    
-                    var newPermission = new RolePermission
+                    permission = new RolePermission
                     {
-                        RoleId = model.RoleId,
-                        PageId = pageId,
-                        CreatePage = model.CreatePage,
-                        UpdatePage = model.UpdatePage,
-                        DeletePage = model.DeletePage,
-                        ListPage = model.ListPage,
-                        ReportView = model.ReportView,
-                        ReportPrint = model.ReportPrint,
-                        CreatedAt = DateTime.Now,
-                        CreatedBy = userId
+                        RoleId = model.RoleId, PageId = row.PageId,
+                        CreatedAt = now, CreatedBy = userId
                     };
-
-                    _context.RolePermission.Add(newPermission);
-                    anyCreated = true;
+                    row.ApplyTo(permission);
+                    _context.RolePermission.Add(permission);
+                }
+                else if (!row.Matches(permission))
+                {
+                    row.ApplyTo(permission);
+                    permission.UpdatedAt = now;
+                    permission.UpdateBy = userId;
                 }
             }
 
-          
             _context.SaveChanges();
-
-           
-            if (anyUpdated && anyCreated)
-                TempData["Success"] = "Permissions updated and new entries added successfully!";
-            else if (anyUpdated)
-                TempData["Success"] = "Permissions updated successfully!";
-            else if (anyCreated)
-                TempData["Success"] = "Permissions saved successfully!";
-            else if (toDelete.Any())
-                TempData["Success"] = "Old permissions removed successfully!";
-
-            return RedirectToAction("PermissionList");
+            transaction.Commit();
+            TempData["Success"] = "Permissions saved successfully.";
+            return RedirectToAction(nameof(PermissionList));
         }
-
-
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public IActionResult CreateOrUpdatePermission(RolePermission model)
-        //{
-        //    if (model.PageIds != null && model.PageIds.Any())
-        //    {
-        //        bool anyUpdated = false, anyCreated = false;
-
-        //        foreach (var pageId in model.PageIds)
-        //        {
-        //            var existing = _context.RolePermission
-        //                .FirstOrDefault(rp => rp.RoleId == model.RoleId && rp.PageId == pageId);
-
-        //            if (existing != null)
-        //            {
-        //                existing.CreatePage = model.CreatePage;
-        //                existing.UpdatePage = model.UpdatePage;
-        //                existing.DeletePage = model.DeletePage;
-        //                existing.ListPage = model.ListPage;
-        //                existing.ReportView = model.ReportView;
-        //                existing.ReportPrint = model.ReportPrint;
-        //                existing.UpdatedAt = DateTime.Now;
-        //                existing.UpdateBy = 1;
-
-        //                _context.RolePermission.Update(existing);
-        //                anyUpdated = true;
-        //            }
-        //            else
-        //            {
-        //                var newPermission = new RolePermission
-        //                {
-        //                    RoleId = model.RoleId,
-        //                    PageId = pageId,
-        //                    CreatePage = model.CreatePage,
-        //                    UpdatePage = model.UpdatePage,
-        //                    DeletePage = model.DeletePage,
-        //                    ListPage = model.ListPage,
-        //                    ReportView = model.ReportView,
-        //                    ReportPrint = model.ReportPrint,
-        //                    CreatedAt = DateTime.Now,
-        //                    CreatedBy = 1
-        //                };
-
-        //                _context.RolePermission.Add(newPermission);
-        //                anyCreated = true;
-        //            }
-        //        }
-
-        //        _context.SaveChanges();
-
-        //        if (anyUpdated && anyCreated)
-        //            TempData["SuccessMessage"] = "Permissions updated and new entries added successfully!";
-        //        else if (anyUpdated)
-        //            TempData["SuccessMessage"] = "Permissions updated successfully!";
-        //        else if (anyCreated)
-        //            TempData["SuccessMessage"] = "Permissions saved successfully!";
-        //    }
-
-        //    return RedirectToAction("RoleIndex");
-        //}
-
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public IActionResult CreateOrUpdatePermission(RolePermission model)
-        //{
-        //    if (model.PageIds != null && model.PageIds.Any())
-        //    {
-        //        foreach (var pageId in model.PageIds)
-        //        {
-        //            var existing = _context.RolePermission
-        //                .FirstOrDefault(rp => rp.RoleId == model.RoleId && rp.PageId == pageId);
-
-        //            if (existing != null)
-        //            {
-        //                existing.CreatePage = model.CreatePage;
-        //                existing.UpdatePage = model.UpdatePage;
-        //                existing.DeletePage = model.DeletePage;
-        //                existing.ListPage = model.ListPage;
-        //                existing.ReportView = model.ReportView;
-        //                existing.ReportPrint = model.ReportPrint;
-        //                existing.UpdatedAt = DateTime.Now;
-        //                existing.UpdateBy = 1;
-
-        //                _context.RolePermission.Update(existing);
-        //            }
-        //            else
-        //            {
-        //                var newPermission = new RolePermission
-        //                {
-        //                    RoleId = model.RoleId,
-        //                    PageId = pageId,
-        //                    CreatePage = model.CreatePage,
-        //                    UpdatePage = model.UpdatePage,
-        //                    DeletePage = model.DeletePage,
-        //                    ListPage = model.ListPage,
-        //                    ReportView = model.ReportView,
-        //                    ReportPrint = model.ReportPrint,
-        //                    CreatedAt = DateTime.Now,
-        //                    CreatedBy = 1
-        //                };
-
-        //                _context.RolePermission.Add(newPermission);
-        //            }
-        //        }
-
-        //        _context.SaveChanges();
-        //        TempData["SuccessMessage"] = "Permissions saved/updated successfully!";
-        //    }
-
-        //    return RedirectToAction("RoleIndex");
-        //}
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -367,6 +176,5 @@ namespace EcommerceWebApplication.Controllers
                 return Json(new { success = false, message = "❌ Can not delete Role " });
             }
         }
-        #endregion
     }
 }

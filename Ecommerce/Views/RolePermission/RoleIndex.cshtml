@@ -1,231 +1,78 @@
-﻿@model EcommerceWebApplication.Models.RolePermission
+@model EcommerceWebApplication.Models.ViewModels.RolePermissionForm
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
-    var pageList = ViewBag.PageList as List<SelectListItem>;
-    int serial = 1;
-
-    var leftList = new List<SelectListItem>();
-    var rightList = new List<SelectListItem>();
-
-    foreach (var item in pageList)
-    {
-        if (serial % 2 == 1) // Odd → Left
-        {
-            leftList.Add(item);
-        }
-        else // Even → Right
-        {
-            rightList.Add(item);
-        }
-        serial++;
-    }
+    ViewData["Title"] = "Role Permission";
 }
 
 <div class="main-content">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card alert" style="min-height: calc(100vh - 160px);">
-                <div class="card-header">
-                    <h4>
-                        <i class="fas fa-blog"></i>
-                        @_localizer["Role Permission"]
-                    </h4>
-                    <div class="card-header-right-icon">
-                        <ul>
-                            <li>
-                                <a href="@Url.Action("PermissionList", "RolePermission")" class="btn btn-primary">
-                                    <i class="fas fa-list"></i> @_localizer["Permission List"]
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="basic-form">
-                        <form asp-action="CreateOrUpdatePermission" id="NavigationKey" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" asp-for="RolePermissionId"/>
-
-                            <div class="row">
-                                <!-- Left Section: Role & Page -->
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label asp-for="RoleId" class="form-label">@_localizer["Role"]</label>
-                                        <select asp-for="RoleId" class="form-control" asp-items="ViewBag.RoleList" id="RoleId">
-                                            <option value="">-- Select Role --</option>
-                                        </select>
-                                        <span asp-validation-for="RoleId" class="text-danger"></span>
-                                    </div>
-                                    <div class="form-group mt-3">
-                                        <label class="form-label">@_localizer["Pages"]</label>
-
-                                        <div class="border rounded p-3 ps-2 shadow-sm" style="max-height: 250px; overflow-y: auto;">
-                                            <div class="form-check mb-2">
-                                                <input type="checkbox" class="form-check-input" id="selectAllPages" />
-                                                <label class="form-check-label" for="selectAllPages"><strong>@_localizer["Select All"]</strong></label>
-
-                                            </div>
-
-                                            <div class="row w-100">
-                                                <!-- Left Column -->
-                                                <div class="col-md-6">
-                                                    @for (int i = 0; i < leftList.Count; i++)
-                                                    {
-                                                        var item = leftList[i];
-                                                        int hiddenSerial = i * 2 + 1; // 1, 3, 5...
-
-                                                        <div class="form-check mb-1">
-                                                            <input type="hidden" name="SerialNumber" value="@hiddenSerial" />
-                                                            <input type="checkbox"
-                                                                   class="form-check-input page-checkbox"
-                                                                   id="page_@item.Value"
-                                                                   name="PageIds"
-                                                                   value="@item.Value"
-                                                            @(Model.PageIds != null && Model.PageIds.Contains(int.Parse(item.Value)) ? "checked" : "") />
-                                                            <label class="form-check-label" for="page_@item.Value">@item.Text</label>
-                                                        </div>
-                                                    }
-                                                </div>
-
-                                                <!-- Right Column -->
-                                                <div class="col-md-6">
-                                                    @for (int i = 0; i < rightList.Count; i++)
-                                                    {
-                                                        var item = rightList[i];
-                                                        int hiddenSerial = (i + 1) * 2; // 2, 4, 6...
-
-                                                        <div class="form-check mb-1">
-                                                            <input type="hidden" name="SerialNumber" value="@hiddenSerial" />
-                                                            <input type="checkbox"
-                                                                   class="form-check-input page-checkbox"
-                                                                   id="page_@item.Value"
-                                                                   name="PageIds"
-                                                                   value="@item.Value"
-                                                            @(Model.PageIds != null && Model.PageIds.Contains(int.Parse(item.Value)) ? "checked" : "") />
-                                                            <label class="form-check-label" for="page_@item.Value">@item.Text</label>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <span asp-validation-for="PageIds" class="text-danger"></span>
-                                    </div>
-
-                                </div>
-
-                                <!-- Right Section: Permissions Card -->
-                                <div class="col-md-6">
-                                    <div class="card shadow-sm border rounded">
-                                        <div class="card-header">
-                                            <strong>@_localizer["Permissions"]</strong>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="CreatePage" type="checkbox" value="true" id="CreatePage" />
-                                                        <label class="form-check-label" for="CreatePage">@_localizer["Create"]</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="UpdatePage" type="checkbox" value="true" id="UpdatePage" />
-                                                        <label class="form-check-label" for="UpdatePage">@_localizer["Edit"]</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="DeletePage" type="checkbox" value="true" id="DeletePage" />
-                                                        <label class="form-check-label" for="DeletePage">@_localizer["Delete"]</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="ListPage" type="checkbox" value="true" id="ListPage" />
-                                                        <label class="form-check-label" for="ListPage">@_localizer["List"]</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="ReportView" type="checkbox" value="true" id="ReportView" />
-                                                        <label class="form-check-label" for="ReportView">@_localizer["Report View"]</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6 mb-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" asp-for="ReportPrint" type="checkbox" value="true" id="ReportPrint" />
-                                                        <label class="form-check-label" for="ReportPrint">@_localizer["Report Print"]</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary px-4">
-                                @(Model?.RolePermissionId > 0 ? _localizer["Update"] : _localizer["Save"])
-                            </button>
-                        </form>
-                    </div>
-                </div>
+    <div class="card alert">
+        <div class="card-header">
+            <h4><i class="ti-lock" aria-hidden="true"></i> @_localizer["Role Permission"]</h4>
+            <div class="card-header-right-icon">
+                <a asp-action="PermissionList" class="btn btn-primary"><i class="ti-list" aria-hidden="true"></i> @_localizer["Permission List"]</a>
             </div>
+        </div>
+        <div class="card-body">
+            <form asp-action="RoleIndex" method="get" class="mb-3">
+                <div class="form-group">
+                    <label for="roleId">@_localizer["Role"]</label>
+                    <select id="roleId" name="roleId" asp-items="ViewBag.RoleList" class="form-control" required>
+                        <option value="">-- @_localizer["Select Role"] --</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">@_localizer["List"]</button>
+            </form>
+
+            @if (Model.RoleId > 0 && Model.Rows.Count > 0)
+            {
+                <form asp-action="CreateOrUpdatePermission" method="post">
+                    <input type="hidden" asp-for="RoleId" />
+                    <div class="admin-table-scroll">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">@_localizer["Pages"]</th>
+                                    <th scope="col" class="text-center">@_localizer["List"]</th>
+                                    <th scope="col" class="text-center">@_localizer["Create"]</th>
+                                    <th scope="col" class="text-center">@_localizer["Edit"]</th>
+                                    <th scope="col" class="text-center">@_localizer["Delete"]</th>
+                                    <th scope="col" class="text-center">@_localizer["Report View"]</th>
+                                    <th scope="col" class="text-center">@_localizer["Report Print"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < Model.Rows.Count; i++)
+                                {
+                                    var name = Model.Rows[i].PageName;
+                                    <tr>
+                                        <th scope="row">
+                                            <input type="hidden" asp-for="Rows[i].PageId" />
+                                            @name
+                                        </th>
+                                        <td class="text-center"><input asp-for="Rows[i].ListPage" aria-label="@($"{name}: {_localizer["List"].Value}")" /></td>
+                                        <td class="text-center"><input asp-for="Rows[i].CreatePage" aria-label="@($"{name}: {_localizer["Create"].Value}")" /></td>
+                                        <td class="text-center"><input asp-for="Rows[i].UpdatePage" aria-label="@($"{name}: {_localizer["Edit"].Value}")" /></td>
+                                        <td class="text-center"><input asp-for="Rows[i].DeletePage" aria-label="@($"{name}: {_localizer["Delete"].Value}")" /></td>
+                                        <td class="text-center"><input asp-for="Rows[i].ReportView" aria-label="@($"{name}: {_localizer["Report View"].Value}")" /></td>
+                                        <td class="text-center"><input asp-for="Rows[i].ReportPrint" aria-label="@($"{name}: {_localizer["Report Print"].Value}")" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-primary">@_localizer["Save"]</button>
+                </form>
+            }
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <!-- Bootstrap 5 Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- ASP.NET Validation -->
-    <partial name="_ValidationScriptsPartial" />
-
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const selectAll = document.getElementById("selectAllPages");
-            const checkboxes = document.querySelectorAll(".page-checkbox");
-
-            // Select/Deselect all checkboxes
-            selectAll.addEventListener("change", function () {
-                checkboxes.forEach(cb => cb.checked = selectAll.checked);
-            });
-
-            // If all individual checkboxes are checked manually, also check "Select All"
-            checkboxes.forEach(cb => {
-                cb.addEventListener("change", function () {
-                    const allChecked = Array.from(checkboxes).every(c => c.checked);
-                    selectAll.checked = allChecked;
-                });
-            });
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const roleDropdown = document.getElementById("RoleId"); // default asp-for ID
-
-            roleDropdown.addEventListener("change", function () {
-                const selectedRoleId = this.value;
-
-                if (!selectedRoleId) return;
-
-                fetch(`/RolePermission/CheckRolePermission?roleId=${selectedRoleId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.exists) {
-                            // Edit mode
-                            window.location.href = `/RolePermission/RoleIndex?id=${data.rolePermissionId}`;
-                        } else {
-                            // Create mode with pre-selected role
-                            window.location.href = `/RolePermission/RoleIndex?roleId=${selectedRoleId}`;
-                        }
-                    });
-            });
+        const permissionRole = document.getElementById("roleId");
+        permissionRole.value = "@(Model.RoleId > 0 ? Model.RoleId.ToString() : "")";
+        permissionRole.addEventListener("change", () => {
+            if (permissionRole.value) permissionRole.form.requestSubmit();
         });
     </script>
 }

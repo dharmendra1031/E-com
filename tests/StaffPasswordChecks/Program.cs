@@ -101,3 +101,27 @@ foreach (var color in new[] { "#FFFFFF", "#000000", "#16E2F5", "#1569C7", "#F3E5
     Check(ThemeContrast(theme.Link,theme.Tint) >= 4.5, "Theme selected surface contrast insufficient: " + color);
 }
 Console.WriteLine("Configurable theme checks passed.");
+
+
+var productPage = new EcommerceWebApplication.Models.PageMaster { PageId = 101, PageNameEng = "Products" };
+var ordersPage = new EcommerceWebApplication.Models.PageMaster { PageId = 102, PageNameEng = "Orders" };
+var productRights = new EcommerceWebApplication.Models.RolePermission { PageId = 101, ListPage = true, UpdatePage = true };
+var orderRights = new EcommerceWebApplication.Models.RolePermission { PageId = 102, ListPage = true, ReportPrint = true };
+var productRow = EcommerceWebApplication.Models.ViewModels.PermissionRow.From(productPage, productRights, false);
+var orderRow = EcommerceWebApplication.Models.ViewModels.PermissionRow.From(ordersPage, orderRights, false);
+Check(productRow.UpdatePage && !orderRow.UpdatePage && !productRow.ReportPrint && orderRow.ReportPrint,
+    "Page-specific permission flags were merged.");
+var permissionForm = new EcommerceWebApplication.Models.ViewModels.RolePermissionForm { RoleId = 1, Rows = new() { productRow, orderRow } };
+Check(permissionForm.HasExactPages(new[] { 101, 102 }), "Valid page matrix rejected.");
+Check(!permissionForm.HasExactPages(new[] { 101, 102, 103 }), "Incomplete matrix accepted.");
+permissionForm.Rows[1] = productRow;
+Check(!permissionForm.HasExactPages(new[] { 101, 102 }), "Duplicate page accepted.");
+permissionForm.Rows[1] = orderRow;
+Check(!permissionForm.HasExactPages(new[] { 101, 103 }), "Unknown page accepted.");
+orderRow.ReportPrint = false;
+orderRow.ApplyTo(orderRights);
+Check(productRights.UpdatePage && orderRights.ListPage && !orderRights.UpdatePage && !orderRights.ReportPrint,
+    "Editing one page changed unrelated permissions.");
+orderRow.ListPage = false;
+Check(!orderRow.HasRights, "Empty permission row retained rights.");
+Console.WriteLine("Page permission matrix checks passed.");
