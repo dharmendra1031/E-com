@@ -6,12 +6,12 @@
 }
 <h2>@ViewData["Title"]</h2>
 @if (Model.Count == 0) { <p>@(ar ? "لا توجد متاجر متاحة" : "No available stores.")</p> }
-<div class="list-group">
+<div class="seller-store-grid">
 @foreach (var store in Model)
 {
-    <a class="list-group-item" asp-action="Dashboard" asp-route-id="@store.VendorId">
+    <a class="admin-kpi" asp-action="Dashboard" asp-route-id="@store.VendorId">
         <strong>@(ar && !string.IsNullOrWhiteSpace(store.NameArb) ? store.NameArb : store.Name)</strong>
-        <span> — @store.Code</span>
+        <span class="admin-muted"><bdi>@store.Code</bdi></span>
     </a>
 }
 </div>

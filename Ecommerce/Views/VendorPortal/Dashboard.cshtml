@@ -5,22 +5,51 @@
     string T(string en,string arabic)=>ar?arabic:en;
     ViewData["Title"] = T("Dashboard","لوحة التحكم");
 }
-<header class="seller-section-heading">
-    <div><h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
-        <p class="text-muted">@T("Vendor code","رمز البائع"): <bdi>@Model.Code</bdi> · @T("Approved","معتمد")</p></div>
-    <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary">@T("Manage products","إدارة المنتجات")</a>
-</header>
-<div class="seller-kpi-grid">
-    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("My products","منتجاتي")</span><strong>@ViewBag.ProductCount</strong></a>
-    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Approved"><span>@T("Approved active products","المنتجات المعتمدة النشطة")</span><strong>@ViewBag.ApprovedCount</strong></a>
-    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span>@T("Pending approval","بانتظار الاعتماد")</span><strong>@ViewBag.PendingCount</strong></a>
-    @if(ViewBag.OutOfStock != null)
-    {
-        <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="OutOfStock"><span>@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة")</span><strong>@ViewBag.OutOfStock</strong></a>
-    }
-    @if(ViewBag.ToPack != null)
-    {
-        <a class="seller-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span>@T("Paid orders to pack","طلبات مدفوعة للتجهيز")</span><strong>@ViewBag.ToPack</strong></a>
-    }
+<div class="admin-dashboard">
+    <header class="admin-section-heading seller-section-heading">
+        <div>
+            <h1>@(ar && !string.IsNullOrWhiteSpace(Model.NameArb) ? Model.NameArb : Model.Name)</h1>
+            <p class="admin-muted">@T("Vendor code","رمز البائع"): <bdi>@Model.Code</bdi> · <span class="seller-status" data-status="Approved">@T("Approved","معتمد")</span></p>
+        </div>
+        <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-primary"><i class="fa fa-cubes" aria-hidden="true"></i> @T("Manage products","إدارة المنتجات")</a>
+    </header>
+    <div class="admin-kpi-grid">
+        <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span class="admin-kpi-label">@T("My products","منتجاتي") <i class="fa fa-cubes" aria-hidden="true"></i></span><strong>@ViewBag.ProductCount</strong></a>
+        <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Approved"><span class="admin-kpi-label">@T("Approved active products","المنتجات المعتمدة النشطة") <i class="fa fa-check-circle" aria-hidden="true"></i></span><strong>@ViewBag.ApprovedCount</strong></a>
+        <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span class="admin-kpi-label">@T("Pending approval","بانتظار الاعتماد") <i class="fa fa-clock-o" aria-hidden="true"></i></span><strong>@ViewBag.PendingCount</strong></a>
+        @if(ViewBag.OutOfStock != null)
+        {
+            <a class="admin-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="OutOfStock"><span class="admin-kpi-label">@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة") <i class="fa fa-exclamation-circle" aria-hidden="true"></i></span><strong>@ViewBag.OutOfStock</strong></a>
+        }
+        @if(ViewBag.ToPack != null)
+        {
+            <a class="admin-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span class="admin-kpi-label">@T("Paid orders to pack","طلبات مدفوعة للتجهيز") <i class="fa fa-shopping-bag" aria-hidden="true"></i></span><strong>@ViewBag.ToPack</strong></a>
+        }
+    </div>
+    <div class="seller-dashboard-sections">
+        <section class="admin-panel">
+            <h2>@T("Products & stock","المنتجات والمخزون")</h2>
+            <ul class="seller-task-list">
+                <li><a asp-action="Listings" asp-route-id="@Model.VendorId"><span><i class="fa fa-list" aria-hidden="true"></i> @T("View all listings","عرض جميع المنتجات")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                <li><a asp-action="Catalog" asp-route-id="@Model.VendorId"><span><i class="fa fa-search" aria-hidden="true"></i> @T("Browse product catalogue","تصفح كتالوج المنتجات")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                <li><a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span><i class="fa fa-clock-o" aria-hidden="true"></i> @T("Review pending listings","مراجعة المنتجات المعلقة")</span><strong>@ViewBag.PendingCount</strong></a></li>
+                @if(ViewBag.OutOfStock != null)
+                {
+                    <li><a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="OutOfStock"><span><i class="fa fa-exclamation-circle" aria-hidden="true"></i> @T("Review out-of-stock products","مراجعة المنتجات غير المتوفرة")</span><strong>@ViewBag.OutOfStock</strong></a></li>
+                }
+            </ul>
+        </section>
+        @if(ViewBag.ToPack != null)
+        {
+            <section class="admin-panel">
+                <h2>@T("Order management","إدارة الطلبات")</h2>
+                <ul class="seller-task-list">
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId"><span>@T("All verified paid orders","جميع الطلبات المدفوعة المؤكدة")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span>@T("Awaiting packing","بانتظار التجهيز")</span><strong>@ViewBag.ToPack</strong></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="Packed"><span>@T("Packed orders","الطلبات المجهزة")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                    <li><a asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="HandedOver"><span>@T("Handed over","تم التسليم للناقل")</span><i class="fa fa-angle-double-right" aria-hidden="true"></i></a></li>
+                </ul>
+            </section>
+        }
+    </div>
 </div>
-<p class="text-muted seller-dashboard-note">@T("Select a card to open the related register. Counts reflect current store records.","اختر بطاقة لفتح السجل المرتبط بها. الأعداد حسب سجلات المتجر الحالية.")</p>
