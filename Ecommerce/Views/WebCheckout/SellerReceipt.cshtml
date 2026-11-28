@@ -11,6 +11,7 @@
 <div class="container py-4"><div class="store-cart-panel p-3">
     <h1 class="h4">@ViewData["Title"] #@Model.OrderId</h1>
     <p dir="ltr">KD @Model.Total.ToString("F3",CultureInfo.InvariantCulture)</p>
+    @await Html.PartialAsync("_SellerDeliverySnapshot")
     @if(TempData["SellerOrderMessage"] is string message){<p role="status">@message</p>}
     @if(Model.PaymentStatus==1 && Model.AttemptState=="Paid" && Model.ReservationState=="Consumed")
     {

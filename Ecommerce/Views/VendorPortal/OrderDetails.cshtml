@@ -2,6 +2,10 @@
 @{ var adminOrders=ViewData["AdminOrders"] is true; Layout=adminOrders?"_Layout":"_VendorPortalLayout";
     var backAction=adminOrders?"MarketplaceOrders":"Orders"; var advanceAction=adminOrders?"AdvanceMarketplaceFulfillment":"AdvanceFulfillment"; var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; ViewData["Title"]=ar?"تفاصيل الطلب":"Order details"; }
 <section class="@(adminOrders?"admin-panel":"seller-panel")"><div class="@(adminOrders?"admin-section-heading":"seller-section-heading")"><h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2><a class="btn btn-default" asp-action="@backAction" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a></div>
+@if(adminOrders)
+{
+    @await Html.PartialAsync("_SellerDeliverySnapshot")
+}
 <div class="table-responsive"><table class="table"><thead><tr><th>@(ar?"المنتج":"Product")</th><th>SKU</th><th>@(ar?"الكمية":"Qty")</th><th>@(ar?"السعر":"Price")</th></tr></thead><tbody>
 @foreach(var row in Model){<tr><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.SellerSku</td><td>@row.Quantity</td><td dir="ltr">KD @row.Price.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td></tr>}
 </tbody></table></div>

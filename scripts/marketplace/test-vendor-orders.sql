@@ -22,7 +22,10 @@ DECLARE @quote nvarchar(max)=CONCAT('[{"listingId":',@a,',"quantity":1,"price":1
 DECLARE @expiry datetime2(3)=DATEADD(minute,15,SYSUTCDATETIME()), @request uniqueidentifier=NEWID();
 BEGIN TRANSACTION;
 INSERT dbo.Orders(OrderId,CustomerId,MarketplaceRequestId,TotalAmount,DeliveryCharge) VALUES(9,1,@request,294,3);
+UPDATE dbo.Orders SET MarketplaceDeliverySnapshot=N'{"AddressId":1,"AreaId":1,"BlockId":1,"Street":"Original","Phone":"123"}' WHERE OrderId=9;
 EXEC dbo.AttachMarketplaceOrder 9,1,@quote,@expiry;
+IF NOT EXISTS(SELECT 1 FROM dbo.Orders WHERE OrderId=9 AND JSON_VALUE(MarketplaceDeliverySnapshot,'$.Street')=N'Original')
+    THROW 51728,'Delivery snapshot lost during attachment.',1;
 IF (SELECT COUNT(*) FROM dbo.VendorOrders WHERE OrderId=9)<>2
    OR (SELECT SUM(MerchandiseSubtotal) FROM dbo.VendorOrders WHERE OrderId=9)<>291
    OR (SELECT COUNT(*) FROM dbo.OrderItems WHERE OrderId=9 AND SellerSkuSnapshot IS NOT NULL)<>2
@@ -67,5 +70,12 @@ END CATCH;
 IF EXISTS(SELECT 1 FROM dbo.Orders WHERE OrderId=9) OR EXISTS(SELECT 1 FROM dbo.VendorOrders WHERE OrderId=9)
    OR EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=9) OR (SELECT COUNT(*) FROM dbo.CartItems WHERE VendorListingId IS NOT NULL)<>2
     THROW 51727,'Failed basket rollback incomplete.',1;
-PRINT 'Marketplace order attachment checks passed.';
+BEGIN TRY
+    UPDATE dbo.Orders SET MarketplaceDeliverySnapshot=N'invalid json' WHERE OrderId=1;
+    THROW 51729,'Invalid or legacy delivery snapshot accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>547 THROW;
+END CATCH;
+PRINT 'Marketplace order attachment and delivery snapshot checks passed.';
 GO

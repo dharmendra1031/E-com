@@ -17,11 +17,10 @@ public static class VendorOrderQueries
         string? status,int page,CancellationToken ct)
     {
         var query = db.Database.SqlQuery<VendorOrderRow>($"""
-            SELECT v.VendorOrderId,v.VendorId,s.Name AS VendorName,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,v.FulfillmentStatus,
+            SELECT v.VendorOrderId,v.VendorId,v.VendorName,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,v.FulfillmentStatus,
                 (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
             FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
-            JOIN dbo.Vendors s ON s.VendorId=v.VendorId
-            WHERE o.PaymentStatus=1 AND o.MarketplaceRequestId IS NOT NULL
+             WHERE o.PaymentStatus=1 AND o.MarketplaceRequestId IS NOT NULL
                 AND EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
             """);
         if(vendorId.HasValue) query=query.Where(o=>o.VendorId==vendorId.Value);

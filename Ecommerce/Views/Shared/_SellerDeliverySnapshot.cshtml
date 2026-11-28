@@ -1,0 +1,23 @@
+@using EcommerceWebApplication.Helper
+@{
+    var snapshot = ViewData["SellerDeliverySnapshot"] as SellerDeliverySnapshot;
+    var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    string T(string en, string arabic) => ar ? arabic : en;
+    string Name(string? en, string? arabic, int id) => (ar && !string.IsNullOrWhiteSpace(arabic) ? arabic : en) ?? id.ToString();
+}
+<section class="border rounded p-2 mb-3">
+    <h2 class="h6">@T("Delivery address at order creation","عنوان التوصيل عند إنشاء الطلب")</h2>
+    @if(snapshot == null)
+    {
+        <p class="text-muted mb-0">@T("Historical address unavailable. Contact support for confirmation.","عنوان الطلب التاريخي غير متاح. يرجى التواصل مع الدعم للتأكيد.")</p>
+    }
+    else
+    {
+        <div>@Name(snapshot.AreaName,snapshot.AreaNameArb,snapshot.AreaId) — @Name(snapshot.BlockName,snapshot.BlockNameArb,snapshot.BlockId)</div>
+        <div>@T("Street","الشارع"): @snapshot.Street</div>
+        @if(!string.IsNullOrWhiteSpace(snapshot.HouseNo)){<div>@T("House","المنزل"): @snapshot.HouseNo</div>}
+        @if(!string.IsNullOrWhiteSpace(snapshot.Floor)){<div>@T("Floor","الطابق"): @snapshot.Floor</div>}
+        @if(!string.IsNullOrWhiteSpace(snapshot.Landmark)){<div>@T("Landmark","معلم قريب"): @snapshot.Landmark</div>}
+        <div>@T("Phone","الهاتف"): <bdi>@snapshot.Phone</bdi></div>
+    }
+</section>

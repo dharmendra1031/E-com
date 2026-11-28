@@ -15,11 +15,11 @@ public record SellerCheckoutQuote(Guid RequestId, int CustomerId, DateTime Expir
     public decimal Total => Subtotal + VatAmount + DeliveryCharge;
 
     public bool IsValid() => RequestId != Guid.Empty && CustomerId > 0 && Lines is { Length: > 0 and <= 100 }
-        && Lines.All(l => l.ListingId > 0 && l.Quantity is > 0 and <= 1000000 &&
+        && Lines.All(l => l != null && l.ListingId > 0 && l.Quantity is > 0 and <= 1000000 &&
             l.Price >= 0 && l.Price <= MaxMoney && decimal.Round(l.Price, 3) == l.Price)
         && Lines.Select(l => l.ListingId).Distinct().Count() == Lines.Length
         && DeliveryCharge >= 0 && DeliveryCharge <= MaxMoney && decimal.Round(DeliveryCharge, 3) == DeliveryCharge
-        && VatPercent is >= 0 and <= 100 && Total <= MaxMoney;
+        && VatPercent is >= 0 and <= 100 && Total > 0 && Total <= MaxMoney;
 
     public string Protect(IDataProtector protector) => protector.Protect(JsonSerializer.Serialize(this));
 

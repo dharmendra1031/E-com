@@ -165,7 +165,15 @@ namespace EcommerceWebApplication.Controllers
             if(rows.Count==0) return NotFound();
             ViewData["AdminOrders"]=true;
             ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
-        ViewBag.FulfillmentHistory=await VendorOrderQueries.ReadHistoryAsync(_context,id,vendorOrderId,ct);
+            var deliveryJson=await _context.Database.SqlQuery<string>($"""
+                SELECT COALESCE(o.MarketplaceDeliverySnapshot,N'') AS Value
+                FROM dbo.Orders o JOIN dbo.VendorOrders v ON v.OrderId=o.OrderId
+                WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId}
+                    AND o.MarketplaceRequestId IS NOT NULL AND o.PaymentStatus=1
+                    AND EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+                """).SingleOrDefaultAsync(ct);
+            ViewData["SellerDeliverySnapshot"]=SellerDeliverySnapshot.Read(deliveryJson);
+            ViewBag.FulfillmentHistory=await VendorOrderQueries.ReadHistoryAsync(_context,id,vendorOrderId,ct);
             ViewBag.CanAdvance=MarketplaceFulfillmentEnabled && rights.Edit;
             return View("~/Views/VendorPortal/OrderDetails.cshtml",rows);
         }

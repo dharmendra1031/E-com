@@ -13,6 +13,10 @@ BEGIN TRY
     BEGIN TRANSACTION;
     IF COL_LENGTH(N'dbo.Orders', N'MarketplaceRequestId') IS NULL
         ALTER TABLE dbo.Orders ADD MarketplaceRequestId uniqueidentifier NULL;
+    IF COL_LENGTH(N'dbo.Orders',N'MarketplaceDeliverySnapshot') IS NULL
+        ALTER TABLE dbo.Orders ADD MarketplaceDeliverySnapshot nvarchar(max) NULL;
+    IF OBJECT_ID(N'dbo.CK_Orders_MarketplaceDeliverySnapshot',N'C') IS NULL
+        EXEC(N'ALTER TABLE dbo.Orders WITH CHECK ADD CONSTRAINT CK_Orders_MarketplaceDeliverySnapshot CHECK (MarketplaceDeliverySnapshot IS NULL OR (MarketplaceRequestId IS NOT NULL AND ISJSON(MarketplaceDeliverySnapshot)=1))');
     IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.Orders') AND name=N'UX_Orders_MarketplaceRequest')
         EXEC(N'CREATE UNIQUE INDEX UX_Orders_MarketplaceRequest ON dbo.Orders(CustomerId, MarketplaceRequestId) WHERE MarketplaceRequestId IS NOT NULL');
     IF OBJECT_ID(N'dbo.VendorOrders',N'U') IS NULL

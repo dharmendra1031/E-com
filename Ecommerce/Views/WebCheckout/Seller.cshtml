@@ -9,7 +9,7 @@
 }
 <div class="container py-3">
     <h1 class="h4">@ViewData["Title"]</h1>
-    <p class="alert alert-warning">@T("Development test only. No payment will be taken. Charges use current store settings for testing.", "اختبار تطوير فقط. لن يتم تحصيل أي مبلغ. الرسوم حسب إعدادات المتجر للاختبار.")</p>
+    <p class="alert alert-warning">@T("Development test only. No real payment will be taken. Charges use current store settings for testing.", "اختبار تطوير فقط. لن يتم تحصيل أي مبلغ حقيقي. الرسوم حسب إعدادات المتجر للاختبار.")</p>
     <form asp-action="PlaceSellerOrder" method="post">
         <input type="hidden" name="token" value="@Model.Token" />
         <div class="row g-3">

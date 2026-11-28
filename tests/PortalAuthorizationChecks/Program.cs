@@ -170,6 +170,23 @@ evidenceTransaction.PaidCurrency = "USD";
 Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.345m) == null, "Wrong paid currency accepted.");
 Console.WriteLine("Marketplace payment evidence regression checks passed.");
 
+var addressFixture = new EcommerceWebApplication.Models.UserAddress { AddressId = 7, Area = "1", Block = "2", Street = "Original street", HouseNo = "12", Phone = "12345678" };
+var areaFixture = new EcommerceWebApplication.Models.Area { Id = 1, AreaName = "Original area", AreaNameArb = "المنطقة" };
+var blockFixture = new EcommerceWebApplication.Models.Block { Id = 2, AreaId = 1, BlockName = "Block 2" };
+var addressJson = EcommerceWebApplication.Helper.SellerDeliverySnapshot.Capture(addressFixture, areaFixture, blockFixture).ToJson();
+addressFixture.Street = "Changed street"; areaFixture.AreaName = "Renamed area";
+var addressSnapshot = EcommerceWebApplication.Helper.SellerDeliverySnapshot.Read(addressJson);
+Check(addressSnapshot is { AddressId: 7, Street: "Original street", AreaName: "Original area", AreaNameArb: "المنطقة" } &&
+    EcommerceWebApplication.Helper.SellerDeliverySnapshot.Read(null) == null &&
+    EcommerceWebApplication.Helper.SellerDeliverySnapshot.Read("invalid") == null &&
+    EcommerceWebApplication.Helper.SellerDeliverySnapshot.Read("{}") == null, "Historical delivery snapshot failed.");
+var zeroQuote = new EcommerceWebApplication.Helper.SellerCheckoutQuote(Guid.NewGuid(), 1, DateTime.UtcNow.AddMinutes(10), 0, 0,
+    new[] { new EcommerceWebApplication.Helper.SellerQuoteLine(1,1,0) });
+Check(!zeroQuote.IsValid() && (zeroQuote with { DeliveryCharge = 1 }).IsValid() &&
+    !(zeroQuote with { Lines = new EcommerceWebApplication.Helper.SellerQuoteLine[] { null! } }).IsValid(),
+    "Invalid or unpayable quote accepted.");
+Console.WriteLine("Delivery snapshot and payable quote regression checks passed.");
+
 var noView = EcommerceWebApplication.Helper.AdminPageRights.From(false, true, true, true);
 Check(!noView.View && !noView.Create && !noView.Edit && !noView.Delete, "Write access without list permission.");
 var readOnlyBrand = EcommerceWebApplication.Helper.AdminPageRights.From(true, false, false, false);

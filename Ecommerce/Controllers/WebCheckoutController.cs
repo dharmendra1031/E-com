@@ -38,14 +38,21 @@ namespace EcommerceWebApplication.Controllers
             await _context.UserAddresses.AsNoTracking().Where(a => a.UserId == customerId && a.isdeleted == 0)
                 .OrderByDescending(a => a.IsDefault).ThenBy(a => a.AddressId).ToListAsync(ct);
 
-        private async Task<bool> ValidSellerAddress(int customerId, int addressId, CancellationToken ct)
+        private async Task<SellerDeliverySnapshot?> ReadSellerDeliveryAddress(int customerId, int addressId, CancellationToken ct)
         {
             var address = await _context.UserAddresses.AsNoTracking().SingleOrDefaultAsync(a =>
                 a.UserId == customerId && a.AddressId == addressId && a.isdeleted == 0, ct);
-            return address != null && !string.IsNullOrWhiteSpace(address.Street) && !string.IsNullOrWhiteSpace(address.Phone)
-                && int.TryParse(address.Area, out var area) && int.TryParse(address.Block, out var block)
-                && await _context.Block.AnyAsync(b => b.Id == block && b.AreaId == area, ct);
+            if (address == null || string.IsNullOrWhiteSpace(address.Street) || string.IsNullOrWhiteSpace(address.Phone) ||
+                !int.TryParse(address.Area, out var areaId) || !int.TryParse(address.Block, out var blockId)) return null;
+            var location = await (from block in _context.Block.AsNoTracking()
+                join area in _context.Area.AsNoTracking() on block.AreaId equals area.Id
+                where block.Id == blockId && area.Id == areaId
+                select new { Area = area, Block = block }).SingleOrDefaultAsync(ct);
+            return location == null ? null : SellerDeliverySnapshot.Capture(address, location.Area, location.Block);
         }
+
+        private async Task<bool> ValidSellerAddress(int customerId, int addressId, CancellationToken ct) =>
+            await ReadSellerDeliveryAddress(customerId, addressId, ct) != null;
 
         private async Task<(decimal Delivery, decimal Vat)?> SellerCharges(CancellationToken ct)
         {
@@ -115,7 +122,8 @@ namespace EcommerceWebApplication.Controllers
                 if (await _context.CartItems.AnyAsync(c => c.UserId == customerId, ct))
                     return Conflict("Review old cart items before checkout.");
                 if (quote.ExpiresAtUtc <= DateTime.UtcNow) return Conflict("Quote expired. Review checkout again.");
-                if (!await ValidSellerAddress(customerId, addressId, ct)) return BadRequest("Invalid delivery address.");
+                var deliverySnapshot = await ReadSellerDeliveryAddress(customerId, addressId, ct);
+                if (deliverySnapshot == null) return BadRequest("Invalid delivery address.");
                 var rows = await SellerCartAccess.ReadAsync(_context, customerId, ct);
                 var charges = await SellerCharges(ct);
                 if (!ReadyForSellerQuote(rows) || !quote.MatchesLines(QuoteLines(rows)) || charges == null ||
@@ -130,6 +138,13 @@ namespace EcommerceWebApplication.Controllers
                     CreatedAt = now, UpdatedAt = now, NewNotification = 0 };
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync(ct);
+                var snapshotJson = deliverySnapshot.ToJson();
+                if (await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                    UPDATE dbo.Orders SET MarketplaceDeliverySnapshot={snapshotJson}
+                    WHERE OrderId={order.OrderId} AND CustomerId={customerId} AND MarketplaceRequestId={quote.RequestId}
+                        AND MarketplaceDeliverySnapshot IS NULL
+                    """, ct) != 1)
+                    return Conflict("Delivery snapshot could not be saved.");
                 var linesJson = JsonSerializer.Serialize(quote.Lines, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                 var expires = DateTime.UtcNow.AddMinutes(15);
                 await _context.Database.ExecuteSqlInterpolatedAsync($"""
@@ -159,6 +174,11 @@ namespace EcommerceWebApplication.Controllers
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return RedirectToAction("Login","UserAccount",new {returnUrl=Request.Path.ToString()+Request.QueryString.ToString()});
             var receipt = await CustomerSellerOrders(customerId).SingleOrDefaultAsync(o => o.RequestId == requestId, ct);
             if (receipt == null) return NotFound();
+            var deliveryJson = await _context.Database.SqlQuery<string>($"""
+                SELECT COALESCE(MarketplaceDeliverySnapshot,N'') AS Value FROM dbo.Orders
+                WHERE CustomerId={customerId} AND MarketplaceRequestId={requestId}
+                """).SingleOrDefaultAsync(ct);
+            ViewData["SellerDeliverySnapshot"] = SellerDeliverySnapshot.Read(deliveryJson);
             ViewBag.SandboxPaymentEnabled = SellerSandboxPaymentEnabled;
             ViewBag.PaymentLookupId = SellerSandboxPaymentEnabled && MarketplacePaymentEvidence.IsValidLookupId(paymentId)
                 ? paymentId : null;
@@ -543,6 +563,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApplyCoupon([FromBody] ApplyCouponRequest request)
         {
+            if (SellerCheckoutEnabled) return Conflict(new { message = "Marketplace coupon allocation is not enabled." });
             var userId = CustomerId;
             if (!userId.HasValue || !await _context.Customers.AnyAsync(c => c.UserId == userId.Value && c.IsActive && c.IsDeleted == 0))
                 return Unauthorized(new { message = "Sign in to use a coupon." });
