@@ -82,3 +82,26 @@ Check(EcommerceWebApplication.Helper.CustomerApiAuth.IsCurrent(ticket.Principal,
     !EcommerceWebApplication.Helper.CustomerApiAuth.IsCurrent(ticket.Principal, "changed"), "Customer token credential invalidation failed.");
 Check(!EcommerceWebApplication.Helper.CustomerApiAuth.TryGetUserId(new System.Security.Claims.ClaimsPrincipal(), out _), "Anonymous identity accepted.");
 Console.WriteLine("Customer API and notification authorization metadata checks passed.");
+
+foreach (var action in new[] { "GetCart", "SaveCart", "UpdateCartQuantity", "DeleteCartItem", "ClearCart", "ApplyCoupon" })
+{
+    var method = customerApi.GetMethods().Single(m => m.Name == action);
+    Check(method.GetCustomAttributes<AuthorizeAttribute>().Any(a =>
+        a.AuthenticationSchemes == "CustomerApi" && a.Roles == "Customer"), $"Cart authorization missing: {action}");
+}
+static void CheckUnavailable(IActionResult result) =>
+    Check(result is ObjectResult { StatusCode: 503 }, "Unsafe legacy payment route was not blocked.");
+var blockedApi = new EcommerceApiController(null!, null!, null!, null!);
+CheckUnavailable(blockedApi.PlaceOrder(null!));
+CheckUnavailable(blockedApi.GuestRegister(null!));
+CheckUnavailable(blockedApi.UpdateStatus(null!));
+CheckUnavailable(blockedApi.ErrorUpdateStatus(null!));
+var blockedPayment = new PaymentApiController();
+CheckUnavailable(blockedPayment.SendPayment(null!));
+CheckUnavailable(blockedPayment.ExecutePayment(null!));
+CheckUnavailable(blockedPayment.VerifyPayment("test"));
+CheckUnavailable(blockedPayment.GetPaymentStatus(null!));
+CheckUnavailable(blockedPayment.Session());
+CheckUnavailable(blockedPayment.paymentsuccess());
+CheckUnavailable(blockedPayment.PaymentFailed());
+Console.WriteLine("Legacy financial endpoint containment checks passed.");

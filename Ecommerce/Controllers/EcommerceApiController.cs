@@ -41,14 +41,21 @@ namespace EcommerceWebApplication.Controllers
         }
 
 
-        private int? CurrentCustomerId()
+        private int? CurrentCustomerId(System.Security.Claims.ClaimsPrincipal? principal = null)
         {
-            if (!CustomerApiAuth.TryGetUserId(User, out var id)) return null;
+            principal ??= User;
+            if (!CustomerApiAuth.TryGetUserId(principal, out var id)) return null;
             var hash = _context.Customers.AsNoTracking()
                 .Where(u => u.UserId == id && u.IsActive && u.IsDeleted == 0 &&
                     u.CustType == "Customer" && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer")
                 .Select(u => u.PasswordHash).SingleOrDefault();
-            return hash != null && CustomerApiAuth.IsCurrent(User, hash) ? id : null;
+            return hash != null && CustomerApiAuth.IsCurrent(principal, hash) ? id : null;
+        }
+
+        private async Task<int?> OptionalCustomerIdAsync()
+        {
+            var result = await HttpContext.AuthenticateAsync(CustomerApiAuth.Scheme);
+            return result.Succeeded ? CurrentCustomerId(result.Principal) : null;
         }
 
         [HttpGet]
@@ -275,12 +282,10 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> GetProducts([FromQuery] int? categoryId, [FromQuery] int? subCategoryId, int? UserId, string? Deviceid, int PageIndex = 1, int PageSize = 12,
                 string? sortBy = "newest")
         {
-            var cartProductIds = await _context.CartItems
-    .Where(c =>
-        (UserId > 0 && c.UserId == UserId) ||
-        (UserId == 0 && c.DeviceId == Deviceid))
-    .Select(c => c.ProductId)
-    .ToListAsync();
+            var actor = await OptionalCustomerIdAsync();
+            var cartProductIds = actor.HasValue && actor == UserId
+                ? await _context.CartItems.Where(c => c.UserId == actor && c.VendorListingId == null).Select(c => c.ProductId).ToListAsync()
+                : new List<int>();
 
             var query = _context.Products
      .Include(p => p.ProductImages)
@@ -574,22 +579,6 @@ namespace EcommerceWebApplication.Controllers
                         : "Account is inactive. Contact support."
                 });
             }
-            string deviceId = model.deviceId;
-
-            if (!string.IsNullOrEmpty(deviceId))
-            {
-                var deviceCartItems = _context.CartItems
-                                      .Where(x => x.UserId == 0 && x.DeviceId == deviceId)
-                                      .ToList();
-
-                foreach (var item in deviceCartItems)
-                {
-                    item.UserId = user.UserId;
-                    _context.CartItems.Update(item);
-                }
-
-                _context.SaveChanges();
-            }
             var totalCartCount = _context.CartItems
                                  .Count(x => x.UserId == user.UserId);
 
@@ -809,21 +798,11 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetProductDetails(int productId, int? UserId, string? Deviceid)
+        public async Task<IActionResult> GetProductDetails(int productId, int? UserId, string? Deviceid)
         {
-
-            bool isInCart = false;
-
-            if (UserId > 0)
-            {
-                isInCart = _context.CartItems
-                    .Any(c => c.UserId == UserId && c.ProductId == productId);
-            }
-            else if (!string.IsNullOrEmpty(Deviceid))
-            {
-                isInCart = _context.CartItems
-                    .Any(c => c.DeviceId == Deviceid && c.ProductId == productId);
-            }
+            var actor = await OptionalCustomerIdAsync();
+            bool isInCart = actor.HasValue && actor == UserId &&
+                await _context.CartItems.AnyAsync(c => c.UserId == actor && c.VendorListingId == null && c.ProductId == productId);
 
             ProductDetailsDto product = null;
 
@@ -1657,87 +1636,34 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult GetCart(int? userId, string? deviceId, string lang = "en")
         {
-            var currentCulture = lang?.ToLower();
-            bool hasUser = userId.HasValue && userId > 0;
-            bool hasDevice = !string.IsNullOrWhiteSpace(deviceId);
-
-
-
-            if (!hasUser && !hasDevice)
-            {
-                return BadRequest(new
-                {
-                    message = currentCulture == "ar"
-                        ? "معرف المستخدم أو معرف الجهاز مطلوب"
-                        : "UserId or DeviceId is required"
-                });
-            }
-
-            IQueryable<object> cart;
-
-            if (hasUser)
-            {
-
-                cart = from c in _context.CartItems
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
+            var cart = from c in _context.CartItems
                        join p in _context.Products on c.ProductId equals p.ProductId
-                       join s in _context.ProductStocks
-                               on p.ProductId equals s.ProductId into stockGroup
-                       where c.UserId == userId
+                       join s in _context.ProductStocks on p.ProductId equals s.ProductId into stockGroup
+                       where c.UserId == actor && c.VendorListingId == null
                        select new
                        {
-                           c.ProductId,
-                           c.ProductName,
-                           c.ProductNameArb,
-                           p.Price,
-                           c.Quantity,
-                           c.ImageBase64,
-                           //Stock = _context.ProductStocks
-                           //    .Where(s => s.ProductId == c.ProductId)
-                           //    .Sum(s => (decimal?)s.StockQty) ?? 0
+                           c.ProductId, c.ProductName, c.ProductNameArb, p.Price, c.Quantity, c.ImageBase64,
                            Stock = (stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
-                 (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
-                 .Sum(o => (int?)o.Quantity) ?? 0),
+                               (_context.OrderItems.Where(o => o.ProductId == p.ProductId).Sum(o => (int?)o.Quantity) ?? 0)
                        };
-            }
-            else
-            {
-
-                cart = from c in _context.CartItems
-                       join p in _context.Products on c.ProductId equals p.ProductId
-                       join s in _context.ProductStocks
-                              on p.ProductId equals s.ProductId into stockGroup
-                       where c.DeviceId == deviceId
-                       select new
-                       {
-                           c.ProductId,
-                           c.ProductName,
-                           c.ProductNameArb,
-                           p.Price,
-                           c.Quantity,
-                           c.ImageBase64,
-                           //Stock = _context.ProductStocks
-                           //    .Where(s => s.ProductId == c.ProductId)
-                           //    .Sum(s => (decimal?)s.StockQty) ?? 0
-                           Stock = (stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
-                 (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
-                 .Sum(o => (int?)o.Quantity) ?? 0),
-                       };
-            }
-
             return Ok(cart.ToList());
         }
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult SaveCart([FromBody] CartSaveRequest request, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             var currentCulture = lang?.ToLower();
             try
             {
 
-                if (request == null || request.ProductId <= 0)
+                if (request.ProductId <= 0 || request.Quantity <= 0)
                 {
                     return BadRequest(new
                     {
@@ -1746,42 +1672,10 @@ namespace EcommerceWebApplication.Controllers
                             : "Invalid product"
                     });
                 }
-
-                bool isLoggedInUser = request.UserId.HasValue && request.UserId > 0;
-                if (!isLoggedInUser && string.IsNullOrEmpty(request.DeviceId))
-                {
-                    return BadRequest(new
-                    {
-                        message = currentCulture == "ar"
-                            ? "مطلوب تعريف المستخدم أو الجهاز"
-                            : "User or Device identification required"
-                    });
-                }
-
-
-                //var productData = _context.Products
-
-                //    .Where(p => p.ProductId == request.ProductId)
-                //    .Select(p => new
-                //    {
-                //        p.ProductId,
-                //        Name = p.Name ?? "",
-                //        NameArb = p.NameArb ?? "",
-                //        Price = p.Price,
-                //        Stock = (stockGroup.Sum(x => (int?)x.StockQty) ?? 0) -
-                // (_context.OrderItems.Where(o => o.ProductId == p.ProductId)
-                // .Sum(o => (int?)o.Quantity) ?? 0),
-                //        Image = _context.ProductImages
-                //                .Where(i => i.ProductId == p.ProductId)
-                //                .OrderByDescending(i => i.IsPrimary)
-                //                .Select(i => new { i.ImageData, i.ContentType })
-                //                .FirstOrDefault()
-                //    })
-                //    .FirstOrDefault();
                 var productData = (from p in _context.Products
                                    join s in _context.ProductStocks
                                         on p.ProductId equals s.ProductId into stockGroup
-                                   where p.ProductId == request.ProductId
+                                   where p.ProductId == request.ProductId && p.IsActive
                                    select new
                                    {
                                        p.ProductId,
@@ -1801,8 +1695,6 @@ namespace EcommerceWebApplication.Controllers
                                                .FirstOrDefault()
                                    }).FirstOrDefault();
 
-
-
                 if (productData == null)
                 {
                     return BadRequest(new
@@ -1813,29 +1705,9 @@ namespace EcommerceWebApplication.Controllers
                     });
                 }
 
-
                 int newQty = request.Quantity;
 
-                CartItem existingItem;
-
-                if (isLoggedInUser)
-                {
-                    existingItem = _context.CartItems
-                        .FirstOrDefault(c => c.UserId == request.UserId && c.ProductId == request.ProductId);
-                }
-                else
-                {
-                    existingItem = _context.CartItems
-                        .FirstOrDefault(c => c.DeviceId == request.DeviceId && (c.UserId == null || c.UserId == 0) && c.ProductId == request.ProductId);
-                }
-
-                //int finalQty = newQty;
-
-                //if (existingItem != null)
-                //{
-                //    finalQty = existingItem.Quantity + newQty; 
-                //}
-
+                var existingItem = _context.CartItems.FirstOrDefault(c => c.UserId == actor && c.VendorListingId == null && c.ProductId == request.ProductId);
 
                 if (newQty > productData.Stock)
                 {
@@ -1866,8 +1738,8 @@ namespace EcommerceWebApplication.Controllers
 
                     _context.CartItems.Add(new CartItem
                     {
-                        UserId = isLoggedInUser ? request.UserId : 0,
-                        DeviceId = request.DeviceId,
+                        UserId = actor,
+                        DeviceId = string.Empty,
                         ProductId = productData.ProductId,
                         ProductName = productData.Name,
                         ProductNameArb = productData.NameArb,
@@ -1908,8 +1780,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult UpdateCartQuantity([FromBody] UpdateCartQtyRequest request, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             var currentCulture = lang?.ToLower();
 
             if (request == null)
@@ -1924,18 +1798,7 @@ namespace EcommerceWebApplication.Controllers
             }
 
 
-            bool isLoggedInUser = request.UserId.HasValue && request.UserId > 0;
-
-            if (!isLoggedInUser && string.IsNullOrEmpty(request.DeviceId))
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = currentCulture == "ar"
-                        ? "مطلوب معرف المستخدم أو الجهاز"
-                        : "User or Device identification required"
-                });
-            }
+            
 
 
             // 🔍 Find product
@@ -1967,11 +1830,7 @@ namespace EcommerceWebApplication.Controllers
             // 🛒 Find cart item
             var cartItem = _context.CartItems.FirstOrDefault(c =>
                 c.ProductId == request.ProductId &&
-                (
-                    isLoggedInUser
-                        ? c.UserId == request.UserId
-                        : c.DeviceId == request.DeviceId
-                )
+                c.UserId == actor && c.VendorListingId == null
             );
 
             if (cartItem == null)
@@ -2039,8 +1898,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult DeleteCartItem([FromBody] DeleteCartItemRequest request, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             var currentCulture = lang?.ToLower();
             if (request == null)
             {
@@ -2054,27 +1915,12 @@ namespace EcommerceWebApplication.Controllers
             }
 
 
-            bool isLoggedInUser = request.UserId.HasValue && request.UserId > 0;
-
-            if (!isLoggedInUser && string.IsNullOrEmpty(request.DeviceId))
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = currentCulture == "ar"
-                        ? "مطلوب معرف المستخدم أو الجهاز"
-                        : "User or Device identification required"
-                });
-            }
+            
 
 
             var cartItem = _context.CartItems.FirstOrDefault(c =>
                 c.ProductId == request.ProductId &&
-                (
-                    isLoggedInUser
-                        ? c.UserId == request.UserId
-                        : c.DeviceId == request.DeviceId
-                )
+                c.UserId == actor && c.VendorListingId == null
             );
 
             if (cartItem == null)
@@ -2958,106 +2804,9 @@ namespace EcommerceWebApplication.Controllers
         //  Guest Registration
         // -----------------------
         [HttpPost("guest-register")]
-        public async Task<IActionResult> GuestRegister([FromBody] GuestRegisterRequestDto request)
+        public IActionResult GuestRegister([FromBody] GuestRegisterRequestDto request)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
-            {
-                var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-                // 1️⃣ Check if email already exists
-                var existingCustomer = await _context.Customers
-                    .FirstOrDefaultAsync(u => u.Email == request.Email);
-
-                if (existingCustomer != null)
-                {
-                    if (existingCustomer.CustType == "Customer")
-                    {
-                        if (currentCulture == "ar")
-                            return BadRequest(new
-                            {
-                                message = "هذا البريد الإلكتروني مُسجل كعميل. يُرجى تسجيل الدخول بدلاً منه."
-                            });
-                        else
-                            return BadRequest(new
-                            {
-                                message = "This email is already registered as a Customer. Please login instead."
-                            });
-
-                    }
-
-                    if (existingCustomer.CustType == "Guest")
-                    {
-
-                        return Ok(new
-                        {
-                            message = "Guest already exists",
-                            userId = existingCustomer.UserId,
-
-                        });
-                    }
-                }
-
-                // 2️⃣ Create new Guest user
-                var newUser = new Customers
-                {
-                    FullName = request.FullName,
-                    FullNameArb = request.FullName,
-                    Email = request.Email,
-                    Phone = request.Phone,
-                    CustType = "Guest",
-                    ShareholderNo = request.ShareholderNo,
-                    PasswordHash = "123",
-                    RoleId = 2, // Guest role
-                    IsActive = true,
-                    CreatedAt = DateTime.Now
-                };
-
-                _context.Customers.Add(newUser);
-                await _context.SaveChangesAsync();
-
-                // 3️⃣ If address info provided → save it
-                if (request.AreaId.HasValue && request.BlockId.HasValue)
-                {
-
-                    var newAddress = new UserAddress
-                    {
-                        UserId = newUser.UserId,
-                        Title = "Home",
-                        Area = request.AreaId.ToString(),
-                        Block = request.BlockId.ToString(),
-                        Street = request.Street,
-                        HouseNo = request.HouseNo,
-                        Floor = request.Floor,
-                        Landmark = request.Instruction,
-                        Phone = request.Phone,
-                        IsDefault = true,
-                        CreatedAt = DateTime.Now
-                    };
-
-                    _context.UserAddresses.Add(newAddress);
-                    await _context.SaveChangesAsync();
-                }
-
-                // 4️⃣ Commit the whole transaction
-                await transaction.CommitAsync();
-
-                return Ok(new
-                {
-                    message = "Guest registered successfully",
-                    userId = newUser.UserId,
-
-                });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new
-                {
-                    message = "Something went wrong while registering guest.",
-                    error = ex.InnerException?.Message ?? ex.Message
-                });
-            }
+            return LegacyCheckoutUnavailable.Result();
         }
         //public async Task<IActionResult> VerifyOtpAndRegister([FromBody] RegisterRequest request, [FromQuery] string otp)
         //{
@@ -3410,158 +3159,15 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost("SucessUpdatedtstatus")]
-        public async Task<IActionResult> UpdateStatus([FromBody] UpdateOrderStatusRequest request)
+        public IActionResult UpdateStatus([FromBody] UpdateOrderStatusRequest request)
         {
-            //request.Transid = "183450936";
-            if (request == null || request.Transid == null)
-                return BadRequest(new { message = "Invalid request data." });
-
-            try
-            {
-                var order = _context.Orders.Where(x => x.OrderTransaction == request.Transid).FirstOrDefault();
-                if (order == null)
-                    return NotFound(new { message = $"Order with ID {request.OrderId} not found." });
-
-
-                order.Status = 1;
-                order.PaymentStatus = 1;
-                await _context.SaveChangesAsync();
-
-
-                var user = await _context.Customers
-                    .FirstOrDefaultAsync(u => u.UserId == order.CustomerId);
-                if (user == null || string.IsNullOrEmpty(user.Email))
-                    return BadRequest(new { message = "User email not found." });
-
-                var culture = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
-                bool isArabic = culture == "ar";
-
-                var rows = await _context.Set<OrderProductViewModel>()
-                    .FromSqlRaw("EXEC dbo.sp_GetOrderProducts @OrderId = {0}, @language = {1}", order.OrderId, culture)
-                    .ToListAsync();
-
-                if (rows == null || !rows.Any())
-                    return BadRequest(new { message = "No order details found for invoice." });
-
-                if (isArabic)
-                {
-                    foreach (var r in rows)
-                        r.ProductName = r.ProductNameArb;
-                }
-
-                var rdlcFile = isArabic ? "OrderInvoiceReport_arbic.rdlc" : "OrderInvoiceReport.rdlc";
-                var rdlcPath = Path.Combine(_env.ContentRootPath, "Reports", rdlcFile);
-
-                using var defStream = System.IO.File.OpenRead(rdlcPath);
-                var report = new LocalReport();
-                report.EnableExternalImages = true;
-                report.LoadReportDefinition(defStream);
-                report.DataSources.Add(new ReportDataSource("DataSet1", rows));
-
-
-                var company = _context.CompanyDetails.FirstOrDefault();
-                string companyName = isArabic ? company.CompanyNameArabic : company.CompanyName;
-                string companyAddress = isArabic ? company.AddressArabic : company.Address;
-                string phone = company.Phone;
-
-                string imagePath = "";
-                if (company.Logo != null && company.Logo.Length > 0)
-                {
-                    var folder = Path.Combine(_env.WebRootPath, "Temp");
-                    if (!Directory.Exists(folder))
-                        Directory.CreateDirectory(folder);
-
-                    var fileName2 = "logo.png";
-                    imagePath = Path.Combine(folder, fileName2);
-                    System.IO.File.WriteAllBytes(imagePath, company.Logo);
-                    imagePath = new Uri(imagePath).AbsoluteUri;
-                }
-
-                var pGenAt = DateTime.Now.ToString("dd-MM-yyyy HH:mm");
-                report.SetParameters(new[]
-                {
-                    new ReportParameter("pGeneratedAt", pGenAt),
-                    new ReportParameter("CompanyName", companyName ?? ""),
-                    new ReportParameter("Address", companyAddress ?? ""),
-                    new ReportParameter("Phone", phone ?? ""),
-                    new ReportParameter("Logo", imagePath ?? ""),
-                    new ReportParameter("UserName", user.FullName ?? "User")
-                 });
-
-
-                byte[] pdfBytes = report.Render("PDF");
-
-                string subject = "Your Order Invoice from Sabahiya Coop";
-                string body = $@"
-                <p>Dear {user.FullName},</p>
-                <p>Your order #{order.OrderId} has been successfully updated and confirmed.</p>
-                <p>Please find your invoice attached below.</p>
-                <br/>
-                <p>Thank you,<br/>Sabahiya Coop Team</p>";
-
-
-                string safeUserName = user.FullName?.Replace(" ", "_") ?? "User";
-                string fileName = $"OrderConfirmInvoice_{order.OrderId}_{safeUserName}.pdf";
-
-
-                _emailService.Sendinvoice(user.Email, subject, body, pdfBytes, fileName);
-
-
-                var cartItems = await _context.CartItems
-                    .Where(c => c.UserId == order.CustomerId)
-                    .ToListAsync();
-
-                if (cartItems.Any())
-                    _context.CartItems.RemoveRange(cartItems);
-                return Ok(new
-                {
-                    success = true,
-                    message = "Order status updated and invoice emailed successfully.",
-                    orderId = order.OrderId
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    message = "Error while updating order or sending email.",
-                    error = ex.InnerException?.Message ?? ex.Message
-                });
-            }
+            return LegacyCheckoutUnavailable.Result();
         }
 
         [HttpPost("ErrorUpdateStatus")]
-        public async Task<IActionResult> ErrorUpdateStatus([FromBody] UpdateOrderStatusRequest request)
+        public IActionResult ErrorUpdateStatus([FromBody] UpdateOrderStatusRequest request)
         {
-            if (request == null || request.OrderId <= 0)
-                return BadRequest(new { message = "Invalid request data." });
-
-            var order = await _context.Orders.FindAsync(request.OrderId);
-            if (order == null)
-                return NotFound(new { message = $"Order with ID {request.OrderId} not found." });
-
-            try
-            {
-                order.Status = 1;
-                order.PaymentStatus = 3;
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Payment failed!"
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Error while updating order/payment status.",
-                    error = ex.Message
-                });
-            }
+            return LegacyCheckoutUnavailable.Result();
         }
         [HttpGet]
         public IActionResult GetBrandList(string lang = "en")
@@ -3653,53 +3259,18 @@ namespace EcommerceWebApplication.Controllers
             }
         }
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult ClearCart(int? userId, string? deviceId, string lang = "en")
         {
-            try
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
+            var count = _context.CartItems.Where(c => c.UserId == actor && c.VendorListingId == null).ExecuteDelete();
+            return Ok(new
             {
-                var currentCulture = lang?.ToLower();
-                bool isLoggedInUser = userId.HasValue && userId > 0;
-
-                if (!isLoggedInUser && string.IsNullOrEmpty(deviceId))
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = currentCulture == "ar"
-                            ? "مطلوب معرف المستخدم أو الجهاز"
-                            : "User or Device identification required"
-                    });
-
-
-                var cartItems = _context.CartItems.Where(c =>
-                    (isLoggedInUser && c.UserId == userId) ||
-                    (!isLoggedInUser && c.DeviceId == deviceId && c.UserId == 0)
-                );
-
-
-                if (!cartItems.Any())
-                    return Ok(new
-                    {
-                        success = true,
-                        message = currentCulture == "ar"
-                            ? "السلة فارغة بالفعل"
-                            : "Cart already empty"
-                    });
-                _context.CartItems.RemoveRange(cartItems);
-                _context.SaveChanges();
-
-
-                return Ok(new
-                {
-                    success = true,
-                    message = currentCulture == "ar"
-              ? "تم مسح محتويات السلة بنجاح"
-              : "Cart cleared successfully"
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+                success = true,
+                message = lang?.ToLower() == "ar"
+                    ? (count == 0 ? "السلة فارغة بالفعل" : "تم مسح محتويات السلة بنجاح")
+                    : (count == 0 ? "Cart already empty" : "Cart cleared successfully")
+            });
         }
 
 
@@ -3734,8 +3305,10 @@ namespace EcommerceWebApplication.Controllers
             public List<UserAddress> AddressList { get; set; } = new();
         }
         [HttpGet]
-        public IActionResult GetCheckoutBasicInfo(int? userid)
+        public async Task<IActionResult> GetCheckoutBasicInfo(int? userid)
         {
+            if (userid.HasValue && (await OptionalCustomerIdAsync() is not int actor || actor != userid.Value))
+                return Unauthorized();
             var result = new CheckoutBasicInfoDto();
 
 
@@ -3783,8 +3356,10 @@ namespace EcommerceWebApplication.Controllers
             return Ok(result);
         }
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> ApplyCoupon([FromBody] ApplyCouponRequest request, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             try
             {
                 var currentCulture = lang?.ToLower();
@@ -3921,217 +3496,9 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto request, string lang = "en")
+        public IActionResult PlaceOrder([FromBody] PlaceOrderDto request, string lang = "en")
         {
-            var currentCulture = lang?.ToLower();
-            int userId = request.UserId;
-
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "User not logged in" });
-            }
-
-            if (request == null || request.Items == null || !request.Items.Any())
-            {
-                if (currentCulture == "ar")
-                {
-                    return BadRequest(new { message = "امر طلب غير صالح" });
-                }
-                else
-                {
-                    return BadRequest(new { message = "Invalid order request" });
-                }
-
-            }
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                DateTime nowSqlSafe = DateTime.Now < new DateTime(1753, 1, 1)
-                    ? new DateTime(1753, 1, 1)
-                    : DateTime.Now;
-
-                var company = await _context.CompanyDetails
-                    .OrderByDescending(c => c.CompanyId)
-                    .FirstOrDefaultAsync();
-                decimal DeliveryCharge = company?.DeliveryCharge ?? 0;
-                decimal vatPercent = company?.Vat ?? 0;
-                decimal subtotal = request.Items.Sum(i => i.Price * i.Quantity);
-                decimal discountAmount = request.DiscountAmount;
-                decimal afterDiscount = Math.Max(subtotal - discountAmount, 0);
-                decimal vatAmount = (afterDiscount * vatPercent) / 100;
-                decimal finalTotal = afterDiscount + vatAmount + DeliveryCharge;
-
-                var order = new OrderModel
-                {
-                    CustomerId = request.UserId,
-                    TotalAmount = finalTotal,
-                    DiscountAmount = discountAmount,
-                    VatPercent = vatPercent,
-                    VatAmount = vatAmount,
-                    Status = 1,
-                    PaymentStatus = 2,
-                    NewNotification = 0,
-                    PaymentType = "Online",
-                    CouponCode = request.CouponCode,
-                    CreatedAt = nowSqlSafe,
-                    UpdatedAt = nowSqlSafe,
-                    DeliveryAddress = request.DeliveryAddress,
-                    OrderTransaction = "0",
-                    DeliveryCharge = DeliveryCharge
-                };
-
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
-
-                foreach (var item in request.Items)
-                {
-                    var product = await _context.Products
-                        .FirstOrDefaultAsync(p => p.ProductId == item.ProductId);
-
-                    if (product == null)
-                        throw new Exception($"Product not found: {item.ProductId}");
-
-
-                    var stockRows = await _context.ProductStocks
-                        .Where(s => s.ProductId == item.ProductId)
-                        .OrderBy(s => s.CreatedAt)
-                        .ToListAsync();
-
-                    int totalStock = stockRows.Sum(s => Convert.ToInt32(s.StockQty));
-
-
-
-                    var orderedQty = await _context.OrderItems
-                        .Where(o => o.ProductId == item.ProductId)
-                        .SumAsync(o => (int?)o.Quantity) ?? 0;
-
-                    int availableStock = totalStock - orderedQty;
-
-                    if (availableStock < item.Quantity)
-                    {
-                        return BadRequest(new
-                        {
-                            message = currentCulture == "ar"
-                                ? $"الكمية غير متوفرة للمنتج: {product.NameArb}"
-                                : $"Insufficient stock for product: {product.Name}"
-                        });
-                    }
-
-
-                    int qtyToDeduct = item.Quantity;
-
-                    foreach (var stock in stockRows)
-                    {
-                        if (qtyToDeduct <= 0) break;
-
-                        if (stock.StockQty >= qtyToDeduct)
-                        {
-                            stock.StockQty -= qtyToDeduct;
-                            qtyToDeduct = 0;
-                        }
-                        else
-                        {
-                            qtyToDeduct -= Convert.ToInt32(stock.StockQty);
-
-
-                            stock.StockQty = 0;
-                        }
-
-                        _context.ProductStocks.Update(stock);
-                    }
-
-                    // ✅ Save order item
-                    _context.OrderItems.Add(new OrderItemmodel
-                    {
-                        OrderId = order.OrderId,
-                        ProductId = item.ProductId,
-                        Quantity = item.Quantity,
-                        Price = item.Price
-                    });
-                }
-
-
-                _context.Payments.Add(new Payments
-                {
-                    OrderId = order.OrderId,
-                    AmountPaid = finalTotal,
-                    PaymentMethod = request.PaymentMethod,
-                    PaymentStatus = 2, // Unpaid
-                    TransactionId = null,
-                    PaidAt = null
-                });
-
-
-                if (request.CouponID > 0)
-                {
-                    _context.CouponUsage.Add(new CouponUsage
-                    {
-                        CouponId = request.CouponID,
-                        UserId = order.CustomerId,
-                        UsedAt = nowSqlSafe
-                    });
-                }
-
-
-                var cartItems = await _context.CartItems
-                    .Where(c => c.UserId == userId)
-                    .ToListAsync();
-
-                if (cartItems.Any())
-                    _context.CartItems.RemoveRange(cartItems);
-
-
-
-
-                var userAddresses = await _context.UserAddresses
-    .Where(a => a.UserId == userId)
-    .ToListAsync();
-
-                foreach (var addr in userAddresses)
-                {
-                    addr.IsDefault = false;
-                }
-
-                // ab selected ko 1
-                var selectedAddress = userAddresses
-                    .FirstOrDefault(a => a.AddressId == request.DeliveryAddress);
-
-                if (selectedAddress != null)
-                {
-                    selectedAddress.IsDefault = true;
-                }
-
-                await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                int newNotificationCount = await _context.Orders
-                .CountAsync(o => o.NewNotification == 0);
-
-
-                return Ok(new
-                {
-                    message = "Order placed successfully!",
-                    orderId = order.OrderId,
-                    subtotal = subtotal,
-                    discount = discountAmount,
-                    vatPercent = vatPercent,
-                    vatAmount = vatAmount,
-                    finalTotal = finalTotal,
-                    notificationCount = newNotificationCount
-                });
-            }
-            catch (Exception ex)
-            {
-
-                await transaction.RollbackAsync();
-
-                return StatusCode(500, new
-                {
-                    message = "Failed to place order.",
-                    error = ex.Message
-                });
-            }
+            return LegacyCheckoutUnavailable.Result();
         }
 
 
