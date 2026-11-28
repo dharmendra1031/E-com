@@ -57,6 +57,7 @@ jobs:
           docker exec inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -Q "CREATE DATABASE MarketplaceMigrationTest"
           docker cp scripts/marketplace/. inventory-ci:/tmp/marketplace/
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-schema.sql
+          docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-admin-page-mapping.sql
           docker cp scripts/inventory/. inventory-ci:/tmp/marketplace/inventory/
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i inventory/test-listing-inventory.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i inventory/test-order-reservations.sql

@@ -152,3 +152,22 @@ vendorGrant.ListPage = false;
 vendorGrant.CreatePage = true;
 Check(!vendorGrant.IsValidVendorGrant("vendor.listings", "VendorStaff"), "Write without view allowed.");
 Console.WriteLine("Vendor permission scope checks passed.");
+
+var revisionPages = new[] { productPage, ordersPage };
+var revisionGrants = new[] { productRights, orderRights };
+string Revision() => EcommerceWebApplication.Models.ViewModels.RolePermissionForm.ComputeRevision(1, "Admin", true, revisionPages, revisionGrants);
+var initialRevision = Revision();
+Check(initialRevision == EcommerceWebApplication.Models.ViewModels.RolePermissionForm.ComputeRevision(1, "Admin", true, revisionPages.Reverse(), revisionGrants.Reverse()),
+    "Permission revision depends on query row order.");
+productRights.UpdatePage = false;
+Check(initialRevision != Revision(), "Revoked right did not invalidate an open editor.");
+productRights.UpdatePage = true;
+Check(initialRevision == Revision(), "Identical rights revision changed.");
+productPage.PageCode = "admin.products";
+Check(initialRevision != Revision(), "Page remapping did not invalidate an open editor.");
+productPage.PageCode = null;
+Check(initialRevision != EcommerceWebApplication.Models.ViewModels.RolePermissionForm.ComputeRevision(1, "Admin", false, revisionPages, revisionGrants),
+    "Role deactivation did not invalidate an open editor.");
+Check(initialRevision != EcommerceWebApplication.Models.ViewModels.RolePermissionForm.ComputeRevision(1, "Admin", true, revisionPages, revisionGrants.Take(1)),
+    "Deleted grant did not invalidate an open editor.");
+Console.WriteLine("Permission editor stale-state checks passed.");

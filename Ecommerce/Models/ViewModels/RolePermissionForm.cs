@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace EcommerceWebApplication.Models.ViewModels;
 
@@ -7,8 +9,29 @@ public sealed class RolePermissionForm
     [Range(1, int.MaxValue)]
     public int RoleId { get; set; }
     public string? PortalScope { get; set; }
+    public string? Revision { get; set; }
     public bool IsVendorOwner { get; set; }
     public List<PermissionRow> Rows { get; set; } = new();
+
+    // Compare the exact role/page/grant state shown to the editor, not the submitted flags.
+    public static string ComputeRevision(int roleId, string? roleName, bool active,
+        IEnumerable<PageMaster> pages, IEnumerable<RolePermission> grants)
+    {
+        var snapshot = new
+        {
+            roleId, roleName, active,
+            Pages = pages.OrderBy(p => p.PageId).Select(p => new
+            {
+                p.PageId, p.PageCode, p.PortalScope, p.PageNameEng, p.PageNameArb
+            }),
+            Grants = grants.OrderBy(p => p.PageId).ThenBy(p => p.RolePermissionId).Select(p => new
+            {
+                p.RolePermissionId, p.PageId, p.ListPage, p.CreatePage, p.UpdatePage,
+                p.DeletePage, p.ReportView, p.ReportPrint, p.CreatedAt, p.UpdatedAt, p.CreatedBy, p.UpdateBy
+            })
+        };
+        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(snapshot)));
+    }
 
     public bool HasExactPages(IEnumerable<int> pageIds)
     {

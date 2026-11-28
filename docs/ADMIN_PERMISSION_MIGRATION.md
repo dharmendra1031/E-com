@@ -41,3 +41,12 @@ User, role, permission, vendor management, settlement/payment/refund review rema
 - Separate legacy API security review: EcommerceApiController customer record ownership and admin notification endpoints, SmsController authorization, PaymentApiController and gateway evidence. Do not widen staff login while legacy endpoints remain unclassified.
 
 The PortalAuthorizationChecks executable checks controller/action authorization metadata; it is not a substitute for real HTTP or browser testing. No production database was accessed by this change.
+
+## Reviewed mapping migration and stale editor protection
+After the vendor permission migration and preflight, create a temp table in one SQL session:
+```sql
+CREATE TABLE #AdminPageMapping(PageId int NOT NULL, ExpectedPageName nvarchar(100) NOT NULL, PageCode nvarchar(80) NOT NULL);
+-- Insert actual reviewed PageId, exact current English name and approved stable code here.
+-- Then execute scripts/marketplace/15-map-admin-pages.sql in the same session.
+```
+The script rejects empty/unknown mappings, duplicate IDs or codes, mismatched names/scopes, and conflicts with existing codes. It only assigns missing codes on reviewed existing Admin rows. It never creates grants or changes a legacy PageId, and is safe to repeat with the same mapping. The disposable SQL fixture maps one test page and verifies that its existing grant survives. The existing Role Permission editor now checks a deterministic revision of the role, page set and grants within the serializable save transaction; stale screens cannot overwrite a changed matrix. Permission List pagination is performed in SQL. No restricted Admin login has been enabled and no deployed database mapping has been guessed. Actual endpoint action classification, enforcement, restricted navigation and acceptance remain required.

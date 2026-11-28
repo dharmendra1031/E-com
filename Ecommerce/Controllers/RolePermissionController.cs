@@ -48,8 +48,15 @@ namespace EcommerceWebApplication.Controllers
                 return View(model);
             }
             var byPage = existing.ToDictionary(p => p.PageId);
-            model.Rows = _context.PageMaster.AsNoTracking().Where(p => p.PortalScope == scope).OrderBy(p => p.PageNameEng).ThenBy(p => p.PageId)
-                .ToList().Select(p => PermissionRow.From(p, byPage.GetValueOrDefault(p.PageId), arabic)).ToList();
+            var pages = _context.PageMaster.AsNoTracking().Where(p => p.PortalScope == scope)
+                .OrderBy(p => p.PageNameEng).ThenBy(p => p.PageId).ToList();
+            if (existing.Any(p => !pages.Any(page => page.PageId == p.PageId)))
+            {
+                TempData["Error"] = "Cross-portal permission rows must be resolved before editing this role.";
+                return View(model);
+            }
+            model.Revision = RolePermissionForm.ComputeRevision(selectedRole.RoleId, selectedRole.RoleName, selectedRole.IsActive, pages, existing);
+            model.Rows = pages.Select(p => PermissionRow.From(p, byPage.GetValueOrDefault(p.PageId), arabic)).ToList();
             return View(model);
         }
 
@@ -65,7 +72,8 @@ namespace EcommerceWebApplication.Controllers
 
         public IActionResult PermissionList(int page = 1, int pageSize = 10)
         {
-            var list = (from rp in _context.RolePermission
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var list = (from rp in _context.RolePermission.AsNoTracking()
                         join r in _context.Roles on rp.RoleId equals r.RoleId
                         join p in _context.PageMaster on rp.PageId equals p.PageId
                         select new PermissionListViewModel
@@ -80,9 +88,10 @@ namespace EcommerceWebApplication.Controllers
                             ReportView = rp.ReportView ? 1 : 0,
                             ReportPrint = rp.ReportPrint ? 1 : 0,
                             CreatedAt = rp.CreatedAt
-                        }).ToList();
-            int totalItems = list.Count;
-            var pagedData = list
+                        });
+            int totalItems = list.Count();
+            page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling(totalItems / (double)pageSize)));
+            var pagedData = list.OrderBy(p => p.RoleName).ThenBy(p => p.PageName).ThenBy(p => p.RolePermissionId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -134,6 +143,16 @@ namespace EcommerceWebApplication.Controllers
                 existing.Any(p => !pageIds.Contains(p.PageId)))
             {
                 TempData["Error"] = "Invalid existing permission rows must be resolved before saving.";
+                return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
+            }
+
+            var currentRevision = RolePermissionForm.ComputeRevision(selectedRole.RoleId, selectedRole.RoleName,
+                selectedRole.IsActive, pages, existing);
+            if (!string.Equals(model.Revision, currentRevision, StringComparison.Ordinal))
+            {
+                TempData["Error"] = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar"
+                    ? "تم تغيير الصلاحيات. راجع الصلاحيات الحالية قبل الحفظ."
+                    : "Permissions changed since this page was loaded. Review the current permissions before saving.";
                 return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });
             }
 
