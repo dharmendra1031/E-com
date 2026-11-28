@@ -16,10 +16,11 @@ public static class MarketplacePaymentReconciliation
     public static async Task<bool> VerifyLinkedAsync(EcommerceDbContext db, IPaymentService gateway,
         int orderId, Guid reference, decimal amount, CancellationToken ct)
     {
+        if (orderId <= 0 || reference == Guid.Empty || amount <= 0) return false;
         var invoices = await db.Database.SqlQuery<long>($"""
             SELECT InvoiceId AS Value FROM dbo.MarketplacePaymentAttempts
             WHERE OrderId={orderId} AND MerchantReference={reference} AND InvoiceId IS NOT NULL
-                AND State IN ('Linked','Paid')
+                AND ExpectedAmount={amount} AND Currency='KWD' AND State IN ('Linked','Paid')
             """).ToListAsync(ct);
         if (invoices.Count != 1) return false;
         var invoice = invoices[0];
@@ -40,6 +41,7 @@ public static class MarketplacePaymentReconciliation
     public static async Task<bool> VerifyWebhookAsync(EcommerceDbContext db, IPaymentService gateway,
         MarketplaceWebhookSignature.PaymentEvent payment, CancellationToken ct)
     {
+        if (payment.InvoiceId <= 0 || !payment.IsPaid || !MarketplacePaymentEvidence.IsValidLookupId(payment.PaymentId)) return false;
         ct.ThrowIfCancellationRequested();
         var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest
         {

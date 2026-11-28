@@ -149,6 +149,27 @@ Check(CheckSignature(signedBody.Replace("\"Code\":1","\"Code\":1,\"Code\":1"), t
     "Ambiguous or unsupported webhook accepted.");
 Console.WriteLine("MyFatoorah V2 webhook signature regression checks passed.");
 
+var evidenceRef = Guid.NewGuid();
+var evidenceTransaction = new MF.Models.TransactionModel { TransactionStatus = "Succss", Currency = "KD", PaidCurrency = "KWD", TransationValue = "12.345", PaymentId = "PAY_123" };
+var evidenceResponse = new MF.Models.GenericResponse<MF.Models.GetPaymentStatusResponse> { IsSuccess = true, Data = new() { InvoiceId = 12345, CustomerReference = evidenceRef.ToString("N"), InvoiceStatus = "Paid", InvoiceValue = 12.345m, InvoiceTransactions = new() { evidenceTransaction } } };
+Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.345m) == "PAY_123" &&
+    EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidenceResponse, "PAY_123", evidenceRef, 12.345m) == 12345,
+    "Valid payment evidence rejected.");
+Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12346, evidenceRef, 12.345m) == null &&
+    EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, Guid.NewGuid(), 12.345m) == null &&
+    EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.346m) == null &&
+    EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidenceResponse, "PAY_456", evidenceRef, 12.345m) == null,
+    "Mismatched payment evidence accepted.");
+evidenceResponse.Data.InvoiceTransactions.Add(null!);
+Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.345m) == null, "Malformed transaction list accepted.");
+evidenceResponse.Data.InvoiceTransactions.RemoveAt(1);
+evidenceTransaction.PaymentId = "invalid payment";
+Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.345m) == null, "Malformed payment identifier accepted.");
+evidenceTransaction.PaymentId = "PAY_123";
+evidenceTransaction.PaidCurrency = "USD";
+Check(EcommerceWebApplication.Helper.MarketplacePaymentEvidence.VerifiedPaymentId(evidenceResponse, 12345, evidenceRef, 12.345m) == null, "Wrong paid currency accepted.");
+Console.WriteLine("Marketplace payment evidence regression checks passed.");
+
 var noView = EcommerceWebApplication.Helper.AdminPageRights.From(false, true, true, true);
 Check(!noView.View && !noView.Create && !noView.Edit && !noView.Delete, "Write access without list permission.");
 var readOnlyBrand = EcommerceWebApplication.Helper.AdminPageRights.From(true, false, false, false);

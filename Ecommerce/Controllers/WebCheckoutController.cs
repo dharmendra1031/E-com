@@ -285,7 +285,7 @@ namespace EcommerceWebApplication.Controllers
                 if (response?.IsSuccess != true || response.Data == null || response.Data.InvoiceId <= 0 ||
                     response.Data.CustomerReference != requestId.ToString("N") ||
                     !Uri.TryCreate(response.Data.InvoiceURL, UriKind.Absolute, out var paymentUrl) ||
-                    paymentUrl.Scheme != "https" || !string.IsNullOrEmpty(paymentUrl.UserInfo) ||
+                    paymentUrl.Scheme != "https" || !paymentUrl.IsDefaultPort || !string.IsNullOrEmpty(paymentUrl.UserInfo) ||
                     !string.Equals(paymentUrl.Host,"demo.myfatoorah.com",StringComparison.OrdinalIgnoreCase))
                     return Conflict("Sandbox invoice requires reconciliation. Do not initiate another payment.");
                 await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.LinkMarketplaceInvoice @OrderId={order.OrderId}, @InvoiceId={response.Data.InvoiceId}, @MerchantReference={requestId}", ct);
@@ -350,7 +350,7 @@ namespace EcommerceWebApplication.Controllers
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 HttpContext.RequestServices.GetRequiredService<ILogger<WebCheckoutController>>()
-                    .LogWarning(ex, "Sandbox payment verification requires review for order {OrderId}.", order.OrderId);
+                    .LogWarning("Sandbox payment verification requires review for order {OrderId}. Error type: {ErrorType}.", order.OrderId, ex.GetType().Name);
                 return Receipt("Payment requires reconciliation. Do not pay again. / يلزم مراجعة الدفع.", true);
             }
         }

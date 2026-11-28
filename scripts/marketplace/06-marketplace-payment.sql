@@ -46,6 +46,8 @@ BEGIN
         IF NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@OrderId)
            OR EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@OrderId AND (Status<>'Reserved' OR ExpiresAtUtc<=SYSUTCDATETIME()))
             THROW 51801,'Reservation not active.',1;
+        IF EXISTS(SELECT 1 FROM dbo.Payments WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@OrderId)
+            THROW 51802,'Existing payment record requires reconciliation.',1;
         -- Do not automatically create another invoice when a network response was lost.
         IF EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@OrderId)
             THROW 51802,'Existing payment attempt requires reconciliation.',1;
@@ -65,6 +67,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
     IF @InvoiceId IS NULL OR @InvoiceId<=0 THROW 51803,'Invalid invoice.',1;
     BEGIN TRY
         BEGIN TRANSACTION;
@@ -74,7 +81,7 @@ BEGIN
             THROW 51803,'Invoice already linked.',1;
         UPDATE dbo.MarketplacePaymentAttempts SET InvoiceId=@InvoiceId,State='Linked',UpdatedAtUtc=SYSUTCDATETIME()
         WHERE OrderId=@OrderId AND MerchantReference=@MerchantReference AND State='Starting' AND InvoiceId IS NULL;
-        IF @@ROWCOUNT<>1 AND NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@OrderId AND InvoiceId=@InvoiceId AND MerchantReference=@MerchantReference AND State='Linked')
+        IF @@ROWCOUNT<>1 AND NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@OrderId AND InvoiceId=@InvoiceId AND MerchantReference=@MerchantReference AND State IN ('Linked','Paid'))
             THROW 51803,'Invoice linkage conflict.',1;
         COMMIT TRANSACTION;
     END TRY
@@ -110,7 +117,13 @@ BEGIN
         IF EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@OrderId AND InvoiceId=@InvoiceId
             AND MerchantReference=@MerchantReference AND ExpectedAmount=@Amount AND Currency=@Currency AND State='Paid' AND PaymentId=@PaymentId)
         BEGIN
-            IF NOT EXISTS(SELECT 1 FROM dbo.Orders WHERE OrderId=@OrderId AND PaymentStatus=1)
+            IF NOT EXISTS(SELECT 1 FROM dbo.Orders WHERE OrderId=@OrderId AND PaymentStatus=1
+                    AND OrderTransaction=CONVERT(nvarchar(30),@InvoiceId))
+               OR (SELECT COUNT_BIG(*) FROM dbo.Payments WHERE OrderId=@OrderId)<>1
+               OR NOT EXISTS(SELECT 1 FROM dbo.Payments WHERE OrderId=@OrderId AND AmountPaid=@Amount
+                    AND PaymentStatus=1 AND TransactionId=CONVERT(nvarchar(30),@InvoiceId))
+               OR NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@OrderId)
+               OR EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@OrderId AND Status<>'Consumed')
                 THROW 51805,'Paid state inconsistent.',1;
             COMMIT TRANSACTION;
             RETURN;
@@ -152,7 +165,8 @@ BEGIN
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@OrderId AND CustomerId=@CustomerId AND MarketplaceRequestId IS NOT NULL AND PaymentStatus=2)
             THROW 51806,'Unpaid order required.',1;
         IF EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@OrderId)
-            THROW 51806,'Payment attempt requires reconciliation.',1;
+           OR EXISTS(SELECT 1 FROM dbo.Payments WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@OrderId)
+            THROW 51806,'Payment attempt or record requires reconciliation.',1;
         EXEC dbo.FinalizeOrderInventory @OrderId,'Released','UnpaidCancellation';
         COMMIT TRANSACTION;
     END TRY

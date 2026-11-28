@@ -29,13 +29,14 @@ public static class MarketplacePaymentEvidence
             data.CustomerReference != reference.ToString("N") || data.InvoiceValue != amount ||
             !string.Equals(data.InvoiceStatus, "Paid", StringComparison.OrdinalIgnoreCase) ||
             data.InvoiceTransactions == null) return null;
+        if (data.InvoiceTransactions.Any(t => t == null)) return null;
         var paid = data.InvoiceTransactions.Where(t => string.Equals(t.TransactionStatus,"Succss",StringComparison.OrdinalIgnoreCase)
             || string.Equals(t.TransactionStatus,"Success",StringComparison.OrdinalIgnoreCase)).ToList();
         if (paid.Count != 1) return null;
         var transaction = paid[0];
         if (!IsKuwaitiCurrency(transaction.Currency) || !IsKuwaitiCurrency(transaction.PaidCurrency) ||
             !decimal.TryParse(transaction.TransationValue, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value) ||
-            value != amount || string.IsNullOrWhiteSpace(transaction.PaymentId) || transaction.PaymentId.Length > 100)
+            value != amount || !IsValidLookupId(transaction.PaymentId))
             return null;
         return transaction.PaymentId;
     }

@@ -39,13 +39,32 @@ BEGIN CATCH
     IF ERROR_NUMBER()<>51806 THROW;
 END CATCH;
 EXEC dbo.ConfirmMarketplacePayment 9,12345,@request,N'PAY1',291,'KWD';
+-- A webhook can complete payment before the original SendPayment caller links its invoice.
+EXEC dbo.LinkMarketplaceInvoice 9,12345,@request;
+BEGIN TRY
+    EXEC dbo.LinkMarketplaceInvoice 9,12346,@request;
+    THROW 51828,'Paid invoice linkage changed.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51803 THROW;
+END CATCH;
 EXEC dbo.ConfirmMarketplacePayment 9,12345,@request,N'PAY1',291,'KWD';
 IF (SELECT COUNT(*) FROM dbo.Payments WHERE OrderId=9 AND AmountPaid=291 AND PaymentStatus=1)<>1
    OR NOT EXISTS(SELECT 1 FROM dbo.Orders WHERE OrderId=9 AND PaymentStatus=1)
    OR EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=9 AND Status<>'Consumed')
    OR (SELECT COUNT(*) FROM dbo.InventoryTransactions WHERE SourceType='Consume' AND SourceId=9)<>2
     THROW 51824,'Paid inventory/ledger or retry incorrect.',1;
-PRINT 'Marketplace payment posting foundation checks passed.';
+UPDATE dbo.Payments SET AmountPaid=290 WHERE OrderId=9;
+BEGIN TRY
+    EXEC dbo.ConfirmMarketplacePayment 9,12345,@request,N'PAY1',291,'KWD';
+    THROW 51829,'Inconsistent paid ledger accepted on replay.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51805 THROW;
+END CATCH;
+UPDATE dbo.Payments SET AmountPaid=291 WHERE OrderId=9;
+EXEC dbo.ConfirmMarketplacePayment 9,12345,@request,N'PAY1',291,'KWD';
+PRINT 'Marketplace payment posting and paid replay consistency checks passed.';
 GO
 
 -- Exercise expiry in a rollback-only fixture; later lifecycle tests keep their existing data.
@@ -87,4 +106,37 @@ IF NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=90 AND Statu
     THROW 51825,'Unsafe expiry release or duplicate movement.',1;
 ROLLBACK TRANSACTION;
 PRINT 'Marketplace expiry protects starting, linked, paid and unexpired orders.';
+GO
+
+-- An unexpected payment record must block payment initiation and cancellation.
+DECLARE @listing int=(SELECT l.VendorListingId FROM dbo.VendorListings l JOIN dbo.Vendors v ON v.VendorId=l.VendorId WHERE v.VendorCode=N'A');
+DECLARE @lines nvarchar(max)=CONCAT('[{"listingId":',@listing,',"quantity":1}]');
+DECLARE @until datetime2(3)=DATEADD(minute,15,SYSUTCDATETIME());
+DECLARE @reference uniqueidentifier=NEWID();
+INSERT dbo.Orders(OrderId,CustomerId,MarketplaceRequestId,TotalAmount) VALUES(94,1,@reference,101);
+EXEC dbo.ReserveOrderInventory 94,@lines,@until;
+INSERT dbo.Payments(OrderId,AmountPaid,PaymentMethod,PaymentStatus,TransactionId,PaidAt) VALUES(94,101,'Online',1,N'Unexpected',GETDATE());
+BEGIN TRY
+    EXEC dbo.BeginMarketplacePayment 94,1;
+    THROW 51830,'Existing payment allowed duplicate invoice.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51802 THROW;
+END CATCH;
+BEGIN TRY
+    EXEC dbo.CancelUnstartedMarketplaceOrder 94,1;
+    THROW 51831,'Existing payment allowed stock release.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51806 THROW;
+END CATCH;
+IF EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=94)
+   OR NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=94 AND Status='Reserved')
+    THROW 51832,'Unexpected payment changed order or stock.',1;
+DELETE dbo.Payments WHERE OrderId=94;
+EXEC dbo.CancelUnstartedMarketplaceOrder 94,1;
+DELETE dbo.InventoryTransactions WHERE SourceId=94 AND SourceType IN ('Reserve','Release');
+DELETE dbo.InventoryReservations WHERE OrderId=94;
+DELETE dbo.Orders WHERE OrderId=94;
+PRINT 'Existing payment prevents duplicate initiation and unsafe cancellation.';
 GO

@@ -52,6 +52,9 @@ public sealed class MarketplaceMaintenanceWorker(IServiceScopeFactory scopes,
             """).ToListAsync(ct);
         foreach (var orderId in ids)
         {
+            ct.ThrowIfCancellationRequested();
+            if (!SellerCartAccess.CheckoutEnabled(configuration, environment) ||
+                !configuration.GetValue("Marketplace:ReservationExpiryWorkerEnabled", false)) return;
             lastExpiryId = orderId;
             try
             {
@@ -90,7 +93,7 @@ public sealed class MarketplaceMaintenanceWorker(IServiceScopeFactory scopes,
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "Marketplace payment remains under review for order {OrderId}.", row.OrderId);
+                logger.LogWarning("Marketplace payment remains under review for order {OrderId}. Error type: {ErrorType}.", row.OrderId, ex.GetType().Name);
             }
         }
         if (rows.Count < 10) lastPaymentId = 0;
