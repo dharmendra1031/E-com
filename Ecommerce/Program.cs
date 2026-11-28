@@ -56,7 +56,7 @@ try
     // Register ApiSettings from appsettings.json
     builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
     builder.Services.AddScoped<IEmailService, EmailService>();
-    // Register HttpClient for UserController
+    builder.Services.AddHttpClient();
 
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddScoped<IMFClient, MFClient>();
