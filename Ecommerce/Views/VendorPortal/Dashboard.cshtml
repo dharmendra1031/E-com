@@ -12,15 +12,15 @@
 </header>
 <div class="seller-kpi-grid">
     <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("My products","منتجاتي")</span><strong>@ViewBag.ProductCount</strong></a>
-    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Approved active products","المنتجات المعتمدة النشطة")</span><strong>@ViewBag.ApprovedCount</strong></a>
-    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Pending approval","بانتظار الاعتماد")</span><strong>@ViewBag.PendingCount</strong></a>
+    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Approved"><span>@T("Approved active products","المنتجات المعتمدة النشطة")</span><strong>@ViewBag.ApprovedCount</strong></a>
+    <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="Pending"><span>@T("Pending approval","بانتظار الاعتماد")</span><strong>@ViewBag.PendingCount</strong></a>
     @if(ViewBag.OutOfStock != null)
     {
-        <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId"><span>@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة")</span><strong>@ViewBag.OutOfStock</strong></a>
+        <a class="seller-kpi" asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-filter="OutOfStock"><span>@T("Approved products out of stock","المنتجات المعتمدة غير المتوفرة")</span><strong>@ViewBag.OutOfStock</strong></a>
     }
     @if(ViewBag.ToPack != null)
     {
-        <a class="seller-kpi" asp-action="Orders" asp-route-id="@Model.VendorId"><span>@T("Paid orders to pack","طلبات مدفوعة للتجهيز")</span><strong>@ViewBag.ToPack</strong></a>
+        <a class="seller-kpi" asp-action="Orders" asp-route-id="@Model.VendorId" asp-route-status="AwaitingPacking"><span>@T("Paid orders to pack","طلبات مدفوعة للتجهيز")</span><strong>@ViewBag.ToPack</strong></a>
     }
 </div>
 <p class="text-muted seller-dashboard-note">@T("Select a card to open the related register. Counts reflect current store records.","اختر بطاقة لفتح السجل المرتبط بها. الأعداد حسب سجلات المتجر الحالية.")</p>

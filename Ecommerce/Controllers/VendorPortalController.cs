@@ -92,8 +92,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (configuration.GetValue("Marketplace:VendorOrdersEnabled",false))
             ViewBag.ToPack = await db.Database.SqlQuery<int>($"""
                 SELECT COUNT(*) AS Value FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
-                JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
-                WHERE v.VendorId={id} AND o.PaymentStatus=1 AND p.State='Paid' AND v.FulfillmentStatus='AwaitingPacking'
+                WHERE v.VendorId={id} AND o.PaymentStatus=1 AND v.FulfillmentStatus='AwaitingPacking'
+                    AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
                 """).SingleAsync(ct);
         return View(store);
     }
@@ -107,18 +107,21 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
     }
 
     [HttpGet("store/{id:int}/listings")]
-    public async Task<IActionResult> Listings(int id, string? search, int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> Listings(int id, string? search, int page = 1, CancellationToken ct = default, string? filter = null, bool partial = false)
     {
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
         var store = await StoreMembership(id, userId).Select(m => new { m.Vendor.Name, m.User.Role!.RoleName })
             .SingleOrDefaultAsync(ct);
         if (store == null) return NotFound();
-        return View(await VendorListingQueries.ReadPageAsync(db, id, store.Name, search, page,
-            store.RoleName is VendorRoles.Owner or VendorRoles.Manager, false, ct));
+        if (filter is not ("Approved" or "Pending" or "Inactive" or "OutOfStock") ||
+            (filter == "OutOfStock" && !InventoryEnabled)) filter = null;
+        var model = await VendorListingQueries.ReadPageAsync(db, id, store.Name, search, page,
+            store.RoleName is VendorRoles.Owner or VendorRoles.Manager, false, ct, filter);
+        return partial ? PartialView("_VendorListings", model) : View(model);
     }
 
     [HttpGet("store/{id:int}/catalog")]
-    public async Task<IActionResult> Catalog(int id, string? search, int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> Catalog(int id, string? search, int page = 1, CancellationToken ct = default, bool partial = false)
     {
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId) ||
             !await StoreMembership(id, userId, true).AnyAsync(ct)) return NotFound();
@@ -133,9 +136,10 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
                 (p.Ds_Barcode != null && p.Ds_Barcode.Contains(search)));
         var rows = await query.OrderBy(p => p.ProductId).Skip((page - 1) * size).Take(size + 1)
             .Select(p => new VendorListingsPage.Row { ProductId = p.ProductId, ProductName = p.Name,
-                ProductNameArb = p.NameArb }).ToListAsync(ct);
-        return View(new VendorListingsPage { VendorId = id, Search = search, Page = page,
-            Rows = rows.Take(size).ToList(), HasNext = rows.Count > size });
+                ProductNameArb = p.NameArb, CatalogSku = p.SKUId, Barcode = p.Ds_Barcode }).ToListAsync(ct);
+        var model = new VendorListingsPage { VendorId = id, Search = search, Page = page,
+            Rows = rows.Take(size).ToList(), HasNext = rows.Count > size };
+        return partial ? PartialView("_CatalogRegister", model) : View(model);
     }
 
     [HttpGet("store/{id:int}/listing")]
@@ -221,8 +225,9 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!InventoryEnabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
         var member = await StoreMembership(id, userId).Select(m => m.User.Role!.RoleName).SingleOrDefaultAsync(ct);
         if (member == null) return NotFound();
+        var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
         var productName = await db.VendorListings.AsNoTracking().Where(l => l.VendorId == id &&
-            l.VendorListingId == listingId).Select(l => l.Product.Name).SingleOrDefaultAsync(ct);
+            l.VendorListingId == listingId).Select(l => ar && l.Product.NameArb != "" ? l.Product.NameArb : l.Product.Name).SingleOrDefaultAsync(ct);
         if (productName == null) return NotFound();
         var balances = await db.Database.SqlQuery<ListingStockPage>($"""
             SELECT {id} AS VendorId, {listingId} AS ListingId, {productName} AS ProductName,
@@ -246,7 +251,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         balances.HasNext = rows.Count > size;
         balances.Movements = rows.Take(size).ToList();
         balances.CanEdit = member is VendorRoles.Owner or VendorRoles.Manager;
-        balances.Adjustment = new StockAdjustmentForm { RequestId = Guid.NewGuid() };
+        balances.Adjustment = new StockAdjustmentForm { RequestId = Guid.NewGuid(), Direction = "Add", Quantity = 1 };
         return View(balances);
     }
 
@@ -282,7 +287,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
 
     [HttpGet("store/{id:int}/finance")]
     [ResponseCache(NoStore=true,Location=ResponseCacheLocation.None)]
-    public async Task<IActionResult> FinanceReview(int id,int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> FinanceReview(int id,int page=1,CancellationToken ct=default,bool partial=false)
     {
         if (!access.Enabled || !configuration.GetValue("Marketplace:FinancePreviewEnabled",false) ||
             !VendorPortalAuth.TryGetUserId(User,out var actor) ||
@@ -298,25 +303,28 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
                     AND r.IsActive=1 AND r.RoleName='VendorOwner' AND v.Status='Approved')
             """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;ViewBag.VendorId=id;
-        return View(rows.Take(25).ToList());
+        return partial ? PartialView("_FinanceRegister", rows.Take(25).ToList()) : View(rows.Take(25).ToList());
     }
 
     [HttpGet("store/{id:int}/orders")]
-    public async Task<IActionResult> Orders(int id, int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> Orders(int id, int page = 1, CancellationToken ct = default, string? status = null, bool partial = false)
     {
         if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User, out var userId) ||
             !await StoreMembership(id, userId).AnyAsync(ct)) return NotFound();
         page = Math.Clamp(page, 1, 100000);
-        var rows = await db.Database.SqlQuery<VendorOrderRow>($"""
+        if (status is not ("AwaitingPacking" or "Packed" or "HandedOver" or "Delivered")) status = null;
+        var query = db.Database.SqlQuery<VendorOrderRow>($"""
             SELECT v.VendorOrderId,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,v.FulfillmentStatus,
                    (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
             FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
-            JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
-            WHERE v.VendorId={id} AND o.PaymentStatus=1 AND p.State='Paid'
-            """).OrderByDescending(o => o.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
-        ViewBag.VendorId=id; ViewBag.Page=page; ViewBag.HasNext=rows.Count>25;
-        return View(rows.Take(25).ToList());
+            WHERE v.VendorId={id} AND o.PaymentStatus=1
+                AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+            """);
+        if (status != null) query = query.Where(o => o.FulfillmentStatus == status);
+        var rows = await query.OrderByDescending(o => o.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.VendorId=id; ViewBag.Page=page; ViewBag.HasNext=rows.Count>25; ViewBag.Status=status;
+        return partial ? PartialView("_OrdersRegister", rows.Take(25).ToList()) : View(rows.Take(25).ToList());
     }
 
     [HttpGet("store/{id:int}/orders/{vendorOrderId:int}")]
@@ -330,8 +338,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
                    i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price,v.FulfillmentStatus
             FROM dbo.OrderItems i JOIN dbo.VendorOrders v ON v.VendorOrderId=i.VendorOrderId AND v.OrderId=i.OrderId
             JOIN dbo.Orders o ON o.OrderId=v.OrderId
-            JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
-            WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId} AND o.PaymentStatus=1 AND p.State='Paid'
+            WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId} AND o.PaymentStatus=1
+                AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
             """).ToListAsync(ct);
         if(rows.Count==0) return NotFound();
         ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;

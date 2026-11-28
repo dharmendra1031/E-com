@@ -33,7 +33,7 @@ public class StockMovementRow
 public class StockAdjustmentForm
 {
     public Guid RequestId { get; set; }
-    [Required] public string Direction { get; set; } = "Add";
-    [Range(typeof(long), "1", "1000000000")] public long Quantity { get; set; } = 1;
+    [Required] public string Direction { get; set; } = "";
+    [Range(typeof(long), "1", "1000000000")] public long Quantity { get; set; }
     [Required, StringLength(200)] public string Reason { get; set; } = "";
 }

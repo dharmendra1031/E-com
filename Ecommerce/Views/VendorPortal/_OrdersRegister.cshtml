@@ -1,0 +1,23 @@
+@model List<EcommerceWebApplication.Models.ViewModels.VendorOrderRow>
+@{ var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+   int page=ViewBag.Page; int vendorId=ViewBag.VendorId;  }
+<div class="seller-section-heading"><h2>@(ar?"الطلبات المدفوعة":"Paid orders")</h2></div>
+<form asp-action="Orders" asp-route-id="@vendorId" method="get" class="seller-filters" data-seller-filter>
+<div class="form-group"><label for="status">@(ar?"حالة التجهيز":"Fulfillment status")</label><select id="status" name="status" class="form-control">
+<option value="">@(ar?"الكل":"All")</option>
+<option value="AwaitingPacking" selected="@(ViewBag.Status=="AwaitingPacking")">@(ar?"بانتظار التجهيز":"Awaiting packing")</option>
+<option value="Packed" selected="@(ViewBag.Status=="Packed")">@(ar?"تم التجهيز":"Packed")</option>
+<option value="HandedOver" selected="@(ViewBag.Status=="HandedOver")">@(ar?"تم التسليم للناقل":"Handed over")</option>
+<option value="Delivered" selected="@(ViewBag.Status=="Delivered")">@(ar?"تم التوصيل":"Delivered")</option>
+</select></div><button type="submit" class="btn btn-primary">@(ar?"بحث":"Search")</button><a asp-action="Orders" asp-route-id="@vendorId" class="btn btn-default" data-seller-page>@(ar?"مسح":"Clear")</a></form>
+<div class="table-responsive"><table class="table table-hover"><thead><tr><th>@(ar?"الطلب":"Order")</th><th>@(ar?"التاريخ":"Date")</th><th>@(ar?"العناصر":"Items")</th><th>@(ar?"مجموع البضائع":"Merchandise subtotal")</th><th>@(ar?"التجهيز":"Fulfillment")</th><th>@(ar?"الإجراء":"Action")</th></tr></thead><tbody>
+@foreach(var row in Model) {
+<tr><td><bdi>#@row.VendorOrderId</bdi></td><td>@row.CreatedAt.ToString("yyyy-MM-dd")</td><td>@row.ItemCount</td><td dir="ltr">KD @row.MerchandiseSubtotal.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td><td>@(row.FulfillmentStatus switch { "AwaitingPacking" => ar?"بانتظار التجهيز":"Awaiting packing", "Packed"=>ar?"تم التجهيز":"Packed", "HandedOver"=>ar?"تم التسليم للناقل":"Handed over", "Delivered"=>ar?"تم التوصيل":"Delivered", _=>row.FulfillmentStatus })</td><td><a class="btn btn-primary" asp-action="OrderDetails" asp-route-id="@vendorId" asp-route-vendorOrderId="@row.VendorOrderId">@(ar?"عرض":"View")</a></td></tr>
+}
+@if(Model.Count==0){<tr><td colspan="6">@(ar?"لا توجد طلبات":"No paid orders")</td></tr>}
+</tbody></table></div>
+<nav class="seller-pagination">
+<span>@(ar?"صفحة":"Page") @page</span>
+@if(page>1){<a asp-action="Orders" asp-route-id="@vendorId" asp-route-status="@ViewBag.Status" data-seller-page asp-route-page="@(page-1)" class="btn btn-default">@(ar?"السابق":"Previous")</a>}
+@if(ViewBag.HasNext==true){<a asp-action="Orders" asp-route-id="@vendorId" asp-route-status="@ViewBag.Status" data-seller-page asp-route-page="@(page+1)" class="btn btn-default">@(ar?"التالي":"Next")</a>}
+</nav>

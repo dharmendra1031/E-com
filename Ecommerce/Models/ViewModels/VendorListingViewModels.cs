@@ -9,6 +9,7 @@ public class VendorListingsPage
     public bool CanEdit { get; set; }
     public bool IsAdmin { get; set; }
     public string? Search { get; set; }
+    public string? Filter { get; set; }
     public int Page { get; set; }
     public bool HasNext { get; set; }
     public List<Row> Rows { get; set; } = new();
@@ -20,6 +21,8 @@ public class VendorListingsPage
         public string ProductName { get; set; } = "";
         public string ProductNameArb { get; set; } = "";
         public string SellerSku { get; set; } = "";
+        public string? CatalogSku { get; set; }
+        public string? Barcode { get; set; }
         public decimal Price { get; set; }
         public string Status { get; set; } = "";
         public bool ProductActive { get; set; }

@@ -5,9 +5,9 @@
     string T(string en, string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Product listing","عرض المنتج");
 }
-<div class="panel panel-default"><div class="panel-body">
+<section class="seller-panel seller-editor">
     <h2>@Model.ProductName</h2>
-    <form asp-action="EditListing" asp-route-id="@Model.VendorId" method="post">
+    <form asp-action="EditListing" asp-route-id="@Model.VendorId" method="post" data-seller-save>
         <input asp-for="VendorId" type="hidden" /><input asp-for="ListingId" type="hidden" />
         <input asp-for="ProductId" type="hidden" /><input asp-for="Version" type="hidden" />
         <div asp-validation-summary="All" class="text-danger"></div>
@@ -17,4 +17,4 @@
         <button type="submit" class="btn btn-primary">@T("Save for approval","حفظ للاعتماد")</button>
         <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Cancel","إلغاء")</a>
     </form>
-</div></div>
+</section>

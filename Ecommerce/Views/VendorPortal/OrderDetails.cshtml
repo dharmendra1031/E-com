@@ -1,7 +1,6 @@
 @model List<EcommerceWebApplication.Models.ViewModels.VendorOrderLine>
 @{ Layout="_VendorPortalLayout"; var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; ViewData["Title"]=ar?"تفاصيل الطلب":"Order details"; }
-<h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2>
-<a asp-action="Orders" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a>
+<section class="seller-panel"><div class="seller-section-heading"><h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2><a class="btn btn-default" asp-action="Orders" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a></div>
 <div class="table-responsive"><table class="table"><thead><tr><th>@(ar?"المنتج":"Product")</th><th>SKU</th><th>@(ar?"الكمية":"Qty")</th><th>@(ar?"السعر":"Price")</th></tr></thead><tbody>
 @foreach(var row in Model){<tr><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.SellerSku</td><td>@row.Quantity</td><td dir="ltr">KD @row.Price.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td></tr>}
 </tbody></table></div>
@@ -15,10 +14,11 @@
 @if (TempData["FulfillmentMessage"] is string message) { <p role="status">@message</p> }
 @if (ViewBag.CanAdvance == true && next != null)
 {
-    <form asp-action="AdvanceFulfillment" asp-route-id="@ViewBag.VendorId" asp-route-vendorOrderId="@ViewBag.VendorOrderId" method="post">
+    <form asp-action="AdvanceFulfillment" asp-route-id="@ViewBag.VendorId" asp-route-vendorOrderId="@ViewBag.VendorOrderId" method="post" data-seller-save>
         <input type="hidden" name="expectedStatus" value="@status" />
         <input type="hidden" name="newStatus" value="@next" />
         <button class="btn btn-primary" type="submit">@(next=="Packed"?(ar?"تأكيد التجهيز":"Confirm packing"):(ar?"تأكيد التسليم للناقل":"Confirm carrier handover"))</button>
     </form>
 }
 <p class="text-muted">@(ar?"التسليم للناقل ليس تأكيد التوصيل للعميل.":"Carrier handover is not proof of customer delivery.")</p>
+</section>

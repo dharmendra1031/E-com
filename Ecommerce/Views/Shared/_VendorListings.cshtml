@@ -5,16 +5,37 @@
     string T(string en, string arabic) => ar ? arabic : en;
     string Status(string status) => status switch { "Approved" => T("Approved","معتمد"), "Inactive" => T("Inactive","غير نشط"), _ => T("Pending","قيد المراجعة") };
 }
+<div class="seller-section-heading">
 <h2>@Model.VendorName — @T("Products", "المنتجات")</h2>
+<div class="seller-actions">
 <a asp-action="@(Model.IsAdmin ? "Index" : "Dashboard")" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back","رجوع")</a>
 @if (Model.CanEdit)
 {
     <a asp-action="Catalog" asp-route-id="@Model.VendorId" class="btn btn-primary">@T("Add from catalog","إضافة من الكتالوج")</a>
 }
-<form asp-action="Listings" asp-route-id="@Model.VendorId" method="get" class="form-inline">
+</div></div>
+<form asp-action="Listings" asp-route-id="@Model.VendorId" method="get" class="seller-filters" data-seller-filter>
+    <div class="form-group">
     <label for="search">@T("Search","بحث")</label>
     <input id="search" name="search" value="@Model.Search" class="form-control" />
+    </div>
+    @if (!Model.IsAdmin)
+    {
+        <div class="form-group"><label for="filter">@T("Status","الحالة")</label>
+            <select id="filter" name="filter" class="form-control">
+                <option value="">@T("All","الكل")</option>
+                <option value="Approved" selected="@(Model.Filter=="Approved")">@T("Approved active","معتمد ونشط")</option>
+                <option value="Pending" selected="@(Model.Filter=="Pending")">@T("Pending","قيد المراجعة")</option>
+                <option value="Inactive" selected="@(Model.Filter=="Inactive")">@T("Inactive","غير نشط")</option>
+                @if(InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true",StringComparison.OrdinalIgnoreCase)==true)
+                {
+                    <option value="OutOfStock" selected="@(Model.Filter=="OutOfStock")">@T("Out of stock","نفد المخزون")</option>
+                }
+            </select>
+        </div>
+    }
     <button class="btn btn-primary" type="submit">@T("Search","بحث")</button>
+    <a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default" data-seller-page>@T("Clear","مسح")</a>
 </form>
 <div class="table-responsive">
 <table class="table table-hover">
@@ -24,8 +45,8 @@
 @foreach (var row in Model.Rows)
 {
     <tr><td>@(ar && !string.IsNullOrWhiteSpace(row.ProductNameArb) ? row.ProductNameArb : row.ProductName) @if (!row.ProductActive) { <span> (@T("Product inactive","المنتج غير نشط"))</span> }</td>
-        <td>@row.SellerSku</td><td><bdi>KD @row.Price.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</bdi></td><td>@Status(row.Status)</td>
-        <td>
+        <td><bdi>@row.SellerSku</bdi></td><td><bdi>KD @row.Price.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</bdi></td><td><span class="seller-status" data-status="@row.Status">@Status(row.Status)</span></td>
+        <td><div class="seller-actions">
         @if (!Model.IsAdmin && InventoryConfiguration["Marketplace:VendorInventoryEnabled"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
         {
             <a asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@row.ListingId" class="btn btn-sm btn-default">@T("Stock","المخزون")</a>
@@ -43,13 +64,13 @@
                 @if (row.Status != "Inactive") { <button type="submit" name="status" value="Inactive" class="btn btn-sm btn-default">@T("Deactivate","إلغاء التنشيط")</button> }
             </form>
         }
-        </td></tr>
+        </div></td></tr>
 }
 </tbody></table>
 </div>
-<nav>
-@if (Model.Page > 1) { <a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page-1)" class="btn btn-default">@T("Previous","السابق")</a> }
+<nav class="seller-pagination" aria-label="@T("Pages","الصفحات")">
+@if (Model.Page > 1) { <a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-filter="@Model.Filter" data-seller-page asp-route-page="@(Model.Page-1)" class="btn btn-default">@T("Previous","السابق")</a> }
 <span>@Model.Page</span>
-@if (Model.HasNext) { <a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-page="@(Model.Page+1)" class="btn btn-default">@T("Next","التالي")</a> }
+@if (Model.HasNext) { <a asp-action="Listings" asp-route-id="@Model.VendorId" asp-route-search="@Model.Search" asp-route-filter="@Model.Filter" data-seller-page asp-route-page="@(Model.Page+1)" class="btn btn-default">@T("Next","التالي")</a> }
 </nav>
-<p>@T("Listing approval does not enable customer sales yet.","اعتماد العرض لا يتيح البيع للعملاء بعد.")</p>
+<p>@T("Approval alone does not guarantee availability for customer sales.","الاعتماد وحده لا يضمن إتاحة المنتج للبيع.")</p>

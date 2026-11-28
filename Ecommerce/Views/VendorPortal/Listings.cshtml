@@ -3,4 +3,7 @@
     Layout = "_VendorPortalLayout";
     ViewData["Title"] = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" ? "العروض" : "Listings";
 }
-<div class="panel panel-default"><div class="panel-body"><partial name="_VendorListings" model="Model" /></div></div>
+<section class="seller-panel" data-seller-workspace>
+    <p class="seller-message" role="status"></p>
+    <div data-seller-results><partial name="_VendorListings" model="Model" /></div>
+</section>

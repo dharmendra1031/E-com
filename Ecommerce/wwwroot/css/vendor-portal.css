@@ -42,3 +42,18 @@ html[dir=rtl] .seller-workspace .table th {text-align:right;}
 .seller-workspace .table th {background:#f5f5f5;white-space:nowrap;}
 .seller-workspace .table td {vertical-align:middle;}
 @media(max-width:767px) {.seller-kpi-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.seller-kpi {padding:12px;}.seller-kpi strong {font-size:22px;}}
+
+.seller-panel {background:#fff;border:1px solid #ddd;border-radius:6px;padding:16px;margin-bottom:12px;min-width:0;}
+.seller-editor {max-width:540px;margin-top:12px;}
+.seller-actions,.seller-filters,.seller-pagination {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.seller-filters {align-items:flex-end;margin-bottom:16px;}
+.seller-filters .form-group {margin:0;min-width:0;flex:1 1 180px;}
+.seller-filters label {display:block;}
+.seller-pagination {justify-content:center;margin-top:16px;}
+.seller-status {display:inline-block;padding:4px 8px;border-radius:4px;background:#f5f5f5;color:#171717;}
+.seller-status[data-status=Approved] {color:#15803d;background:#e7f5ec;}
+.seller-status[data-status=Pending] {color:#854d0e;background:#fef3c7;}
+.seller-message:empty {display:none;}
+.seller-workspace [aria-busy=true] {opacity:.65;}
+.seller-workspace .table-responsive {overflow-x:auto;}
+.seller-workspace .seller-panel .table {margin-bottom:12px;}

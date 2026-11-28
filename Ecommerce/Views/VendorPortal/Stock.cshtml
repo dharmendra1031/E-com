@@ -5,20 +5,19 @@
     string T(string en, string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Stock","المخزون");
 }
-<h2>@Model.ProductName — @ViewData["Title"]</h2>
+<div class="seller-section-heading"><h2>@Model.ProductName — @ViewData["Title"]</h2><a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back to listings","العودة إلى العروض")</a></div>
 @if (TempData["StockError"] is string error) { <p class="alert alert-danger" role="alert">@error</p> }
 @if (TempData["StockSuccess"] is string success) { <p class="alert alert-success" role="status">@success</p> }
-<a asp-action="Listings" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back to listings","العودة إلى العروض")</a>
 @if (!Model.HasBalance) { <p>@T("No opening stock posted.","لم يتم تسجيل رصيد افتتاحي.")</p> }
-<div class="row">
-    <div class="col-sm-4"><div class="panel panel-default"><div class="panel-body">@T("On hand","المخزون الفعلي") <strong>@Model.OnHand</strong></div></div></div>
-    <div class="col-sm-4"><div class="panel panel-default"><div class="panel-body">@T("Reserved","محجوز") <strong>@Model.Reserved</strong></div></div></div>
-    <div class="col-sm-4"><div class="panel panel-default"><div class="panel-body">@T("Available","متاح") <strong>@Model.Available</strong></div></div></div>
+<div class="seller-kpi-grid">
+    <div class="seller-kpi"><span>@T("On hand","المخزون الفعلي")</span><strong>@Model.OnHand</strong></div>
+    <div class="seller-kpi"><span>@T("Reserved","محجوز")</span><strong>@Model.Reserved</strong></div>
+    <div class="seller-kpi"><span>@T("Available","متاح")</span><strong>@Model.Available</strong></div>
 </div>
 @if (Model.CanEdit)
 {
-    <form asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@Model.ListingId" method="post" class="panel panel-default">
-        <div class="panel-body">
+    <form asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@Model.ListingId" method="post" class="seller-panel seller-editor" data-seller-save>
+        <div>
             <input asp-for="Adjustment.RequestId" type="hidden" />
             <div class="form-group">
                 <label asp-for="Adjustment.Direction">@T("Stock action","إجراء المخزون")</label>
@@ -37,7 +36,7 @@
         </div>
     </form>
 }
-<h3>@T("Movement history","سجل الحركات")</h3>
+<section class="seller-panel"><h3>@T("Movement history","سجل الحركات")</h3>
 <div class="table-responsive"><table class="table table-hover">
 <thead><tr><th>@T("Date (UTC)","التاريخ (UTC)")</th><th>@T("Stock change","تغير المخزون")</th><th>@T("Reserved change","تغير المحجوز")</th><th>@T("Source","المصدر")</th><th>@T("Reason","السبب")</th></tr></thead>
 <tbody>
@@ -47,8 +46,9 @@
     <tr><td>@row.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td><td>@row.OnHandDelta</td><td>@row.ReservedDelta</td><td>@row.SourceType</td><td>@row.Reason</td></tr>
 }
 </tbody></table></div>
-<nav>
+<nav class="seller-pagination">
 @if (Model.Page > 1) { <a asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@Model.ListingId" asp-route-page="@(Model.Page-1)" class="btn btn-default">@T("Previous","السابق")</a> }
 <span>@Model.Page</span>
 @if (Model.HasNext) { <a asp-action="Stock" asp-route-id="@Model.VendorId" asp-route-listingId="@Model.ListingId" asp-route-page="@(Model.Page+1)" class="btn btn-default">@T("Next","التالي")</a> }
 </nav>
+</section>
