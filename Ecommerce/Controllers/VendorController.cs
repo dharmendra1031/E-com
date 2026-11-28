@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Data;
 using EcommerceWebApplication.Helper;
+using MF.Models;
 
 namespace EcommerceWebApplication.Controllers;
 
@@ -130,7 +131,7 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
     }
 
     [HttpGet]
-    public async Task<IActionResult> PaymentReview(int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> PaymentReview([FromServices] IWebHostEnvironment environment, int page=1,CancellationToken ct=default)
     {
         if (!configuration.GetValue("Marketplace:PaymentReviewEnabled",false)) return NotFound();
         page=Math.Clamp(page,1,100000);
@@ -141,7 +142,35 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
             WHERE o.MarketplaceRequestId IS NOT NULL AND o.PaymentStatus=2
             """).OrderByDescending(o=>o.OrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
+        ViewBag.CanReconcile=MarketplacePaymentReconciliation.SandboxEnabled(configuration, environment);
         return View(rows.Take(25).ToList());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("MarketplacePayment")]
+    public async Task<IActionResult> ReconcilePayment(int orderId, [FromServices] IWebHostEnvironment environment,
+        [FromServices] IPaymentService gateway, CancellationToken ct)
+    {
+        if (!configuration.GetValue("Marketplace:PaymentReviewEnabled",false) ||
+            !MarketplacePaymentReconciliation.SandboxEnabled(configuration, environment)) return NotFound();
+        var order = await db.Orders.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(o =>
+            o.OrderId == orderId && o.MarketplaceRequestId != null && o.PaymentStatus == 2, ct);
+        if (order?.MarketplaceRequestId is not Guid reference) return NotFound();
+        try
+        {
+            TempData["PaymentReviewMessage"] = await MarketplacePaymentReconciliation.VerifyLinkedAsync(
+                db, gateway, order.OrderId, reference, order.TotalAmount, ct)
+                ? "Payment verified and posted. / تم التحقق من الدفع وتسجيله."
+                : "No conclusive payment evidence. No changes made. / لا يوجد إثبات دفع مؤكد.";
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            HttpContext.RequestServices.GetRequiredService<ILogger<VendorController>>()
+                .LogWarning(ex, "Sandbox payment review failed for order {OrderId}.", orderId);
+            TempData["PaymentReviewMessage"]="Payment requires review. Do not charge again. / يلزم مراجعة الدفع.";
+        }
+        return RedirectToAction(nameof(PaymentReview));
     }
 
     [HttpGet]

@@ -162,3 +162,35 @@ BEGIN
     END CATCH;
 END;
 GO
+
+-- Expiry is sufficient only when no payment attempt or payment record exists.
+-- Acquire the same order lock as BeginMarketplacePayment before rechecking.
+CREATE OR ALTER PROCEDURE dbo.ReleaseExpiredUnstartedMarketplaceOrder
+    @OrderId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    SET ANSI_PADDING ON;
+    SET ANSI_WARNINGS ON;
+    SET CONCAT_NULL_YIELDS_NULL ON;
+    SET ARITHABORT ON;
+    SET NUMERIC_ROUNDABORT OFF;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        IF EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK)
+            WHERE OrderId=@OrderId AND MarketplaceRequestId IS NOT NULL AND PaymentStatus=2)
+           AND NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@OrderId)
+           AND NOT EXISTS(SELECT 1 FROM dbo.Payments WITH(HOLDLOCK) WHERE OrderId=@OrderId)
+           AND EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@OrderId)
+           AND NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations
+               WHERE OrderId=@OrderId AND (Status<>'Reserved' OR ExpiresAtUtc>SYSUTCDATETIME()))
+            EXEC dbo.FinalizeOrderInventory @OrderId,'Released','VerifiedExpiry';
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END;
+GO

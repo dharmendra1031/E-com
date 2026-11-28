@@ -252,9 +252,7 @@ namespace EcommerceWebApplication.Controllers
             return RedirectToAction(nameof(SellerReturns),new {requestId=orderRequestId});
         }
 
-        private bool SellerSandboxPaymentEnabled => SellerCheckoutEnabled &&
-            _configuration.GetValue("Marketplace:SellerSandboxPaymentEnabled", false) &&
-            string.Equals(_configuration["ApiUrl"]?.TrimEnd('/'), "https://apitest.myfatoorah.com", StringComparison.OrdinalIgnoreCase);
+        private bool SellerSandboxPaymentEnabled => MarketplacePaymentReconciliation.SandboxEnabled(_configuration, _environment);
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -332,41 +330,20 @@ namespace EcommerceWebApplication.Controllers
 
             try
             {
-                long invoice;
-                string? verifiedId;
                 if (states[0] == "Starting")
                 {
-                    // A lost invoice-link response may be recovered using a paid transaction
-                    // returned by the gateway, never from unverified callback fields.
                     if (!MarketplacePaymentEvidence.IsValidLookupId(paymentId))
                         return Receipt("Enter the gateway payment reference or contact support. / أدخل مرجع الدفع أو اتصل بالدعم.");
                     var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest { KeyType = "PaymentId", Key = paymentId! });
                     var recovered = MarketplacePaymentEvidence.VerifiedRecoveryInvoice(response, paymentId, requestId, order.TotalAmount);
                     if (!recovered.HasValue)
                         return Receipt("Payment not verified. Do not pay again. / لم يتم التحقق من الدفع.", true);
-                    invoice = recovered.Value;
-                    verifiedId = paymentId;
-                    await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.LinkMarketplaceInvoice @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}", ct);
+                    await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.LinkMarketplaceInvoice @OrderId={order.OrderId}, @InvoiceId={recovered.Value}, @MerchantReference={requestId}", ct);
+                    await MarketplacePaymentReconciliation.ConfirmAsync(_context, order.OrderId, requestId, recovered.Value, paymentId!, order.TotalAmount, ct);
                 }
-                else
-                {
-                    var invoices = await _context.Database.SqlQuery<long>($"""
-                        SELECT InvoiceId AS Value FROM dbo.MarketplacePaymentAttempts
-                        WHERE OrderId={order.OrderId} AND MerchantReference={requestId} AND InvoiceId IS NOT NULL AND State IN ('Linked','Paid')
-                        """).ToListAsync(ct);
-                    if (invoices.Count != 1)
-                        return Receipt("No linked invoice. Contact support. / الفاتورة غير مرتبطة.");
-                    invoice = invoices[0];
-                    var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest
-                    {
-                        KeyType = "InvoiceId", Key = invoice.ToString(CultureInfo.InvariantCulture)
-                    });
-                    verifiedId = MarketplacePaymentEvidence.VerifiedPaymentId(response, invoice, requestId, order.TotalAmount);
-                    if (verifiedId == null)
-                        return Receipt("Payment not verified. Do not pay again. / لم يتم التحقق من الدفع.");
-                }
+                else if (!await MarketplacePaymentReconciliation.VerifyLinkedAsync(_context, gateway, order.OrderId, requestId, order.TotalAmount, ct))
+                    return Receipt("Payment not verified. Do not pay again. / لم يتم التحقق من الدفع.");
 
-                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.ConfirmMarketplacePayment @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}, @PaymentId={verifiedId}, @Amount={order.TotalAmount}, @Currency={"KWD"}", ct);
                 return RedirectToAction(nameof(SellerReceipt), new { requestId });
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)

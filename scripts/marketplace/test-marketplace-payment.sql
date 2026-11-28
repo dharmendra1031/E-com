@@ -47,3 +47,37 @@ IF (SELECT COUNT(*) FROM dbo.Payments WHERE OrderId=9 AND AmountPaid=291 AND Pay
     THROW 51824,'Paid inventory/ledger or retry incorrect.',1;
 PRINT 'Marketplace payment posting foundation checks passed.';
 GO
+
+-- Exercise expiry in a rollback-only fixture; later lifecycle tests keep their existing data.
+DECLARE @listing int=(SELECT l.VendorListingId FROM dbo.VendorListings l JOIN dbo.Vendors v ON v.VendorId=l.VendorId WHERE v.VendorCode=N'A');
+DECLARE @lines nvarchar(max)=CONCAT('[{"listingId":',@listing,',"quantity":1}]');
+DECLARE @until datetime2(3)=DATEADD(minute,15,SYSUTCDATETIME());
+DECLARE @ref90 uniqueidentifier=NEWID(), @ref91 uniqueidentifier=NEWID(), @ref92 uniqueidentifier=NEWID(), @ref93 uniqueidentifier=NEWID();
+DECLARE @available bigint=(SELECT AvailableQuantity FROM dbo.InventoryBalances WHERE VendorListingId=@listing);
+BEGIN TRANSACTION;
+INSERT dbo.Orders(OrderId,CustomerId,MarketplaceRequestId,TotalAmount) VALUES
+    (90,1,@ref90,101),(91,1,@ref91,101),(92,1,@ref92,101),(93,1,@ref93,101);
+EXEC dbo.ReserveOrderInventory 90,@lines,@until;
+EXEC dbo.ReserveOrderInventory 91,@lines,@until;
+EXEC dbo.ReserveOrderInventory 92,@lines,@until;
+EXEC dbo.ReserveOrderInventory 93,@lines,@until;
+EXEC dbo.BeginMarketplacePayment 91,1;
+EXEC dbo.BeginMarketplacePayment 92,1;
+EXEC dbo.LinkMarketplaceInvoice 92,98765,@ref92;
+UPDATE dbo.InventoryReservations SET CreatedAtUtc=DATEADD(minute,-2,SYSUTCDATETIME()),
+    ExpiresAtUtc=DATEADD(minute,-1,SYSUTCDATETIME()) WHERE OrderId IN (90,91,92);
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 90;
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 90;
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 91;
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 92;
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 93;
+EXEC dbo.ReleaseExpiredUnstartedMarketplaceOrder 9;
+IF NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=90 AND Status='Released')
+   OR (SELECT COUNT(*) FROM dbo.InventoryReservations WHERE OrderId IN (91,92,93) AND Status='Reserved')<>3
+   OR (SELECT COUNT(*) FROM dbo.InventoryTransactions WHERE SourceType='Release' AND SourceId=90)<>1
+   OR (SELECT AvailableQuantity FROM dbo.InventoryBalances WHERE VendorListingId=@listing)<>@available-3
+   OR EXISTS(SELECT 1 FROM dbo.Payments WHERE OrderId IN (90,91,92,93))
+    THROW 51825,'Unsafe expiry release or duplicate movement.',1;
+ROLLBACK TRANSACTION;
+PRINT 'Marketplace expiry protects starting, linked, paid and unexpired orders.';
+GO
