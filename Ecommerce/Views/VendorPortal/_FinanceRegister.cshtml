@@ -2,7 +2,7 @@
 @{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;int page=ViewBag.Page;int vendorId=ViewBag.VendorId;}
 <div class="seller-section-heading"><h2>@(ar?"مراجعة العمولة":"Commission review")</h2></div>
 <partial name="_MarketplaceFinanceTable" model="Model" />
-<nav class="seller-pagination"><span>@(ar?"صفحة":"Page") @page</span>
+<nav class="seller-pagination"><span>@(ar?"صفحة":"Page") @(page)</span>
 @if(page>1){<a asp-action="FinanceReview" asp-route-id="@vendorId" data-seller-page asp-route-page="@(page-1)" class="btn btn-default">@(ar?"السابق":"Previous")</a>}
 @if(ViewBag.HasNext==true){<a asp-action="FinanceReview" asp-route-id="@vendorId" data-seller-page asp-route-page="@(page+1)" class="btn btn-default">@(ar?"التالي":"Next")</a>}
 </nav>
