@@ -35,6 +35,11 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> Banner(int id) => Image(await _context.Banner.AsNoTracking()
             .Where(b => b.BannerId == id).Select(b => b.BannerImage).FirstOrDefaultAsync());
 
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> CompanyLogo(int id) => Image(await _context.CompanyDetails.AsNoTracking()
+            .Where(c => c.CompanyId == id).Select(c => c.Logo).FirstOrDefaultAsync());
+
         private IActionResult Image(byte[]? data)
         {
             if (data == null || data.Length < 12) return NotFound();

@@ -1,7 +1,10 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration PortalConfiguration
+@inject EcommerceWebApplication.Data.EcommerceDbContext BrandingDb
+
 @{
     Layout = null;
     var ar = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    var branding = await EcommerceWebApplication.Helper.CompanyBranding.ReadAsync(BrandingDb, ar);
     string T(string en,string arabic) => ar ? arabic : en;
     var signedIn = User.Identity?.IsAuthenticated == true && User.Identity.AuthenticationType == EcommerceWebApplication.Helper.VendorPortalAuth.Scheme;
     var hasStore = signedIn && int.TryParse(ViewContext.RouteData.Values["id"]?.ToString(), out _);
@@ -15,7 +18,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] — @T("Vendor Portal","بوابة البائع")</title>
+    <title>@ViewData["Title"] — @branding.Name — @T("Vendor Portal","بوابة البائع")</title>
     <link rel="stylesheet" href="~/AdminTheame/assets/css/lib/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/vendor-portal.css" asp-append-version="true" />
     <partial name="_StoreTheme" />

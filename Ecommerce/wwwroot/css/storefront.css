@@ -319,3 +319,5 @@
 .storefront .form-check-input:checked { background-color:var(--theme-link);border-color:var(--theme-link); }
 .storefront .form-control:focus,.storefront .form-select:focus { border-color:var(--theme-link);box-shadow:0 0 0 .2rem var(--theme-tint); }
 .storefront .header-top .store-top-link { color:var(--theme-foreground); }
+
+.store-brand-name {display:block;color:var(--theme-foreground);font-weight:700;font-size:clamp(1rem,2vw,1.5rem);overflow-wrap:anywhere;}

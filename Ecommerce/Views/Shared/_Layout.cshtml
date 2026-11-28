@@ -1,5 +1,7 @@
 ﻿@using System.Security.Claims
 @inject Microsoft.Extensions.Configuration.IConfiguration MarketplaceConfiguration
+@inject EcommerceWebApplication.Data.EcommerceDbContext BrandingDb
+
 @{
    
     var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
@@ -114,7 +116,8 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@pageTitle · Raqmikart Admin</title>
+    @{ var branding = await EcommerceWebApplication.Helper.CompanyBranding.ReadAsync(BrandingDb, isArabic); }
+    <title>@pageTitle · @branding.Name @(isArabic ? "الإدارة" : "Admin")</title>
     <!-- ================= Favicon ================== -->
     <!-- Standard -->
     <link rel="shortcut icon" href="http://placehold.it/64.png/000/fff">
@@ -355,7 +358,7 @@
 
     <div class="header">
         <div class="pull-left">
-            <div class="logo"><a href="~/WebHome/Index" target="_blank" rel="noopener"><span>Raqmikart</span><small>ADMIN</small></a></div>
+            <div class="logo"><a href="~/WebHome/Index" target="_blank" rel="noopener"><span title="@branding.Name">@branding.Name</span><small>@(isArabic ? "الإدارة" : "ADMIN")</small></a></div>
             <button type="button" class="hamburger sidebar-toggle admin-menu-toggle" aria-label="@(isArabic ? "القائمة" : "Toggle navigation")">
                 <span class="line"></span>
                 <span class="line"></span>

@@ -248,7 +248,7 @@ namespace EcommerceWebApplication.Controllers
                 LinkedIn = company.LinkedInUrl,
                 Logo = company.Logo != null
                     ? $"data:image/png;base64,{Convert.ToBase64String(company.Logo)}"
-                    : "/Images/download.png"
+                    : null
             });
         }
 

@@ -18,8 +18,8 @@ input[type=email]:focus,
 input[type=password]:focus,
 select:focus,
 textarea:focus {
-    border: 2px solid #03a9f4;
-    background-color: #c7eafc;
+    border-color: var(--theme-link, #075a96);
+    background-color: #fff;
 }
 
 .icon-name {
@@ -4546,7 +4546,7 @@ p {
 }
 
 .pace .pace-progress {
-    background: #1de9b6;
+    background: var(--theme-primary, #075a96);
     position: fixed;
     z-index: 2000;
     top: 0;
@@ -4561,7 +4561,7 @@ p {
     right: 0;
     width: 100px;
     height: 100%;
-    box-shadow: 0 0 10px #29d, 0 0 5px #29d;
+    box-shadow: 0 0 10px var(--theme-primary, #075a96), 0 0 5px var(--theme-primary, #075a96);
     opacity: 1;
     -webkit-transform: rotate(3deg) translate(0, -4px);
     -moz-transform: rotate(3deg) translate(0, -4px);
@@ -4579,8 +4579,8 @@ p {
     width: 14px;
     height: 14px;
     border: 2px solid transparent;
-    border-top-color: #1de9b6;
-    border-left-color: #1de9b6;
+    border-top-color: var(--theme-link, #075a96);
+    border-left-color: var(--theme-link, #075a96);
     border-radius: 10px
 }
 

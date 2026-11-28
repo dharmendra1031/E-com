@@ -13,7 +13,7 @@
         <div class="col-lg-12">
             <div class="card alert">
                 <div class="card-header">
-                    <h4>@_localizer["Create Company"]</h4>
+                    <h4>@(CultureInfo.CurrentCulture.TextInfo.IsRightToLeft ? "إعدادات الشركة" : "Company settings")</h4>
                 </div>
 
                 <div class="card-body">
@@ -26,7 +26,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Company Name(AR)"] <span style="color:red">*</span></label>
-                                        <input asp-for="CompanyNameArabic" class="form-control" />
+                                        <input asp-for="CompanyNameArabic" class="form-control" dir="rtl" lang="ar" />
                                         <span asp-validation-for="CompanyNameArabic" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -34,7 +34,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Company Name(EN)"] <span style="color:red">*</span></label>
-                                        <input asp-for="CompanyName" class="form-control" />
+                                        <input asp-for="CompanyName" class="form-control" dir="ltr" />
                                         <span asp-validation-for="CompanyName" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -45,14 +45,14 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Address(AR)"]<span style="color:red">*</span></label>
-                                        <input asp-for="AddressArabic" class="form-control" />
+                                        <input asp-for="AddressArabic" class="form-control" dir="rtl" lang="ar" />
                                         <span asp-validation-for="AddressArabic" class="text-danger"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="fw-bold">@_localizer["Address(EN)"] <span style="color:red">*</span></label>
-                                        <input asp-for="Address" class="form-control" />
+                                        <input asp-for="Address" class="form-control" dir="ltr" />
                                         <span asp-validation-for="Address" class="text-danger"></span>
                                     </div>
                                 </div>
