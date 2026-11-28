@@ -41,6 +41,7 @@ IF (SELECT OnHandQuantity FROM dbo.InventoryBalances WHERE VendorListingId=@list
    OR (SELECT COUNT(*) FROM dbo.VendorReturnReceipts WHERE ReceiptRequestId=@request)<>1
    OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceReturnReview WHERE ReturnId=@id AND Status='Received')
    OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceReturnItems WHERE OrderItemId=@item AND RemainingQuantity=0)
+   OR NOT EXISTS(SELECT 1 FROM dbo.InventoryTransactions t JOIN dbo.VendorReturnReceipts rr ON t.SourceType='ReturnReceipt' AND t.SourceId=rr.ReturnReceiptId AND t.SourceLineId=rr.OrderItemId WHERE rr.ReceiptRequestId=@request AND t.CreatedBy=3 AND t.OnHandDelta=1)
    OR (SELECT COUNT(*) FROM dbo.Payments WHERE OrderId=9)<>1
     THROW 52325,'Receipt or refund isolation incorrect.',1;
 PRINT 'Marketplace return request and approval checks passed.';

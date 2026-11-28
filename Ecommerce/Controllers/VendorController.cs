@@ -91,30 +91,38 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
         page=Math.Clamp(page,1,100000);
         var rows=await db.Database.SqlQuery<MarketplaceFinanceRow>($"""
             SELECT VendorOrderId,OrderId,VendorId,VendorName,MerchandiseSubtotal,CommissionRatePercent,
-                CommissionAmount,MerchandiseAfterCommission,FulfillmentStatus,ReviewState FROM dbo.MarketplaceFinanceReview
+                CommissionAmount,MerchandiseAfterCommission,FulfillmentStatus,ReviewState,
+                ReceivedReturnQuantity,ReturnedMerchandiseValue,RemainingMerchandiseValue,OpenReturnQuantity FROM dbo.MarketplaceFinanceReview
             """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
         return View(rows.Take(25).ToList());
     }
 
     [HttpGet]
-    public async Task<IActionResult> ReturnReview(int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> ReturnReview(int page=1,CancellationToken ct=default,string? status=null,int? orderId=null)
     {
         if (!configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
         page=Math.Clamp(page,1,100000);
-        var rows=await db.Database.SqlQuery<MarketplaceReturnRow>($"""
+        if (status is not ("Pending" or "Approved" or "Rejected" or "Received")) status=null;
+        if(orderId is <=0) return BadRequest();
+        var query=db.Database.SqlQuery<MarketplaceReturnRow>($"""
             SELECT ReturnId,OrderId,CustomerId,ProductName,ProductNameArb,Quantity,Reason,Status,RequestedAtUtc
             FROM dbo.MarketplaceReturnReview
-            """).OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+            """);
+        if(status!=null) query=query.Where(r=>r.Status==status);
+        if(orderId.HasValue) query=query.Where(r=>r.OrderId==orderId.Value);
+        var rows=await query.OrderByDescending(r=>r.ReturnId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        ViewBag.Status=status;ViewBag.OrderId=orderId;
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
         return View(rows.Take(25).ToList());
     }
 
     [HttpPost]
-    public async Task<IActionResult> ReviewReturn(int returnId,string expectedStatus,string newStatus,CancellationToken ct)
+    public async Task<IActionResult> ReviewReturn(int returnId,string expectedStatus,string newStatus,CancellationToken ct,bool receiptConfirmed=false)
     {
         if (!configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
-        if (!ModelState.IsValid || !int.TryParse(User.FindFirstValue("UserId"),out var actor)) return BadRequest();
+        if (!ModelState.IsValid || !int.TryParse(User.FindFirstValue("UserId"),out var actor) ||
+            (newStatus=="Received" && !receiptConfirmed)) return BadRequest();
         try
         {
             await db.Database.ExecuteSqlInterpolatedAsync($"""

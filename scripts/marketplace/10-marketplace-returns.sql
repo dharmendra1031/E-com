@@ -82,6 +82,7 @@ BEGIN
         DECLARE @order int,@item int,@request uniqueidentifier,@qty int,@reason nvarchar(200),@status varchar(12);
         SELECT @order=i.OrderId FROM dbo.MarketplaceReturnRequests q JOIN dbo.OrderItems i ON i.OrderItemId=q.OrderItemId WHERE q.ReturnId=@ReturnId;
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@order AND PaymentStatus=1 AND MarketplaceRequestId IS NOT NULL)
+           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@order AND State='Paid')
             THROW 52306,'Paid order required.',1;
         SELECT @item=OrderItemId,@request=RequestId,@qty=Quantity,@reason=Reason,@status=Status
         FROM dbo.MarketplaceReturnRequests WITH(UPDLOCK,HOLDLOCK) WHERE ReturnId=@ReturnId;
@@ -96,7 +97,7 @@ BEGIN
         IF @status IS NULL OR @status<>@ExpectedStatus THROW 52306,'Return status changed.',1;
         IF @NewStatus='Received'
         BEGIN
-            EXEC dbo.PostMarketplaceReturnStock @item,@request,@qty,@reason;
+            EXEC dbo.PostMarketplaceReturnStock @item,@request,@qty,@reason,@ActorId;
             UPDATE dbo.MarketplaceReturnRequests SET Status='Received',ReceivedBy=@ActorId,ReceivedAtUtc=SYSUTCDATETIME() WHERE ReturnId=@ReturnId;
         END
         ELSE

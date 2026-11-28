@@ -54,3 +54,23 @@ IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=11 AND Me
     THROW 52426,'Finance projection incorrect or retroactive.',1;
 PRINT 'Marketplace commission version, snapshot and finance review checks passed.';
 GO
+
+-- Physical return quantities/values must match only the originating vendor suborder.
+IF EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview f WHERE f.OrderId=9 AND
+    (f.ReceivedReturnQuantity<>(SELECT COALESCE(SUM(CONVERT(bigint,rr.Quantity)),0) FROM dbo.OrderItems i JOIN dbo.VendorReturnReceipts rr ON rr.OrderItemId=i.OrderItemId WHERE i.VendorOrderId=f.VendorOrderId AND i.OrderId=f.OrderId)
+    OR f.ReturnedMerchandiseValue<>(SELECT COALESCE(SUM(rr.Quantity*i.Price),0) FROM dbo.OrderItems i JOIN dbo.VendorReturnReceipts rr ON rr.OrderItemId=i.OrderItemId WHERE i.VendorOrderId=f.VendorOrderId AND i.OrderId=f.OrderId)
+    OR f.RemainingMerchandiseValue<>f.MerchandiseSubtotal-f.ReturnedMerchandiseValue))
+    THROW 52427,'Return reconciliation differs from receipt evidence.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=9 AND ReceivedReturnQuantity>0 AND ReturnedMerchandiseValue>0)
+    OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=11 AND ReceivedReturnQuantity=0 AND OpenReturnQuantity=0 AND RemainingMerchandiseValue=101.000 AND CommissionAmount=10.100)
+    THROW 52428,'Return totals or original snapshot incorrect.',1;
+DECLARE @item int=(SELECT OrderItemId FROM dbo.OrderItems WHERE OrderId=11),@request uniqueidentifier=NEWID();
+EXEC dbo.RequestMarketplaceReturn 1,@item,@request,1,N'Finance review fixture';
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=11 AND OpenReturnQuantity=1 AND ReceivedReturnQuantity=0 AND RemainingMerchandiseValue=101.000 AND ReviewState='Return review required')
+    THROW 52429,'Pending return changed merchandise or did not block review.',1;
+DECLARE @returnId int=(SELECT ReturnId FROM dbo.MarketplaceReturnRequests WHERE RequestId=@request);
+EXEC dbo.ReviewMarketplaceReturn @returnId,3,'Pending','Rejected';
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=11 AND OpenReturnQuantity=0 AND ReceivedReturnQuantity=0 AND CommissionAmount=10.100)
+    THROW 52430,'Rejected return changed commission or remained open.',1;
+PRINT 'Vendor-wise physical return and finance reconciliation checks passed.';
+GO

@@ -20,4 +20,8 @@ public class MarketplaceFinanceRow
     public decimal? MerchandiseAfterCommission { get; set; }
     public string FulfillmentStatus { get; set; } = "";
     public string ReviewState { get; set; } = "";
+    public long ReceivedReturnQuantity { get; set; }
+    public decimal ReturnedMerchandiseValue { get; set; }
+    public decimal RemainingMerchandiseValue { get; set; }
+    public long OpenReturnQuantity { get; set; }
 }

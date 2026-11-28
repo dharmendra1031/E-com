@@ -1,6 +1,17 @@
 @model List<EcommerceWebApplication.Models.ViewModels.MarketplaceReturnRow>
 @{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;int page=ViewBag.Page;ViewData["Title"]=T("Marketplace returns","إرجاع السوق");}
 <h2>@ViewData["Title"]</h2>
+<form asp-action="ReturnReview" method="get" class="admin-register-filters">
+    <div class="form-group"><label for="orderId">@T("Order number","رقم الطلب")</label><input id="orderId" name="orderId" type="number" min="1" value="@ViewBag.OrderId" class="form-control" /></div>
+    <div class="form-group"><label for="status">@T("Status","الحالة")</label><select id="status" name="status" class="form-control">
+        <option value="">@T("All","الكل")</option>
+        <option value="Pending" selected="@(ViewBag.Status=="Pending")">@T("Pending","قيد المراجعة")</option>
+        <option value="Approved" selected="@(ViewBag.Status=="Approved")">@T("Approved","معتمد")</option>
+        <option value="Rejected" selected="@(ViewBag.Status=="Rejected")">@T("Rejected","مرفوض")</option>
+        <option value="Received" selected="@(ViewBag.Status=="Received")">@T("Received","تم الاستلام")</option>
+    </select></div>
+    <button type="submit" class="btn btn-primary">@T("Search","بحث")</button><a asp-action="ReturnReview" class="btn btn-default">@T("Clear","مسح")</a>
+</form>
 <p>@T("Confirm receipt only for physically inspected, saleable stock. No refund is issued.","أكد الاستلام فقط للبضائع المفحوصة والقابلة للبيع. لا يتم استرداد المبلغ.")</p>
 @if(TempData["ReturnMessage"] is string message){<p role="status">@message</p>}
 <div class="admin-table-scroll"><table class="table"><thead><tr><th>@T("Order","الطلب")</th><th>@T("Product","المنتج")</th><th>@T("Qty","الكمية")</th><th>@T("Reason","السبب")</th><th>@T("Status","الحالة")</th><th>@T("Action","الإجراء")</th></tr></thead><tbody>
@@ -16,6 +27,7 @@
                 <button class="btn btn-primary" name="newStatus" value="Approved">@T("Approve","اعتماد")</button>
                 <button class="btn btn-default" name="newStatus" value="Rejected">@T("Reject","رفض")</button>
             }else{
+                <label><input type="checkbox" name="receiptConfirmed" value="true" required /> @T("Physically inspected and saleable","تم الفحص وهي صالحة للبيع")</label>
                 <button class="btn btn-primary" name="newStatus" value="Received">@T("Confirm saleable receipt","تأكيد استلام صالح للبيع")</button>
             }
         </form>
@@ -24,5 +36,5 @@
 }
 @if(Model.Count==0){<tr><td colspan="6">@T("No return requests","لا توجد طلبات إرجاع")</td></tr>}
 </tbody></table></div>
-@if(page>1){<a asp-action="ReturnReview" asp-route-page="@(page-1)" class="btn btn-default">@T("Previous","السابق")</a>}
-@if(ViewBag.HasNext==true){<a asp-action="ReturnReview" asp-route-page="@(page+1)" class="btn btn-default">@T("Next","التالي")</a>}
+@if(page>1){<a asp-action="ReturnReview" asp-route-status="@ViewBag.Status" asp-route-orderId="@ViewBag.OrderId" asp-route-page="@(page-1)" class="btn btn-default">@T("Previous","السابق")</a>}
+@if(ViewBag.HasNext==true){<a asp-action="ReturnReview" asp-route-status="@ViewBag.Status" asp-route-orderId="@ViewBag.OrderId" asp-route-page="@(page+1)" class="btn btn-default">@T("Next","التالي")</a>}

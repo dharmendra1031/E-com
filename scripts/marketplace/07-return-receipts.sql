@@ -18,7 +18,7 @@ IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.VendorRe
 GO
 -- Trusted internal service only after authorized physical acceptance; no public caller.
 CREATE OR ALTER PROCEDURE dbo.PostMarketplaceReturnStock
-    @OrderItemId int, @ReceiptRequestId uniqueidentifier, @Quantity int, @Reason nvarchar(200)
+    @OrderItemId int, @ReceiptRequestId uniqueidentifier, @Quantity int, @Reason nvarchar(200), @ActorId int = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -58,8 +58,8 @@ BEGIN
         UPDATE dbo.InventoryBalances SET OnHandQuantity=OnHandQuantity+@Quantity,UpdatedAtUtc=SYSUTCDATETIME()
             WHERE VendorListingId=@listing AND OnHandQuantity<=9223372036854775807-@Quantity;
         IF @@ROWCOUNT<>1 THROW 51904,'Inventory balance unavailable.',1;
-        INSERT dbo.InventoryTransactions(VendorListingId,OnHandDelta,ReservedDelta,SourceType,SourceId,SourceLineId,Reason)
-            VALUES(@listing,@Quantity,0,'ReturnReceipt',@receipt,@OrderItemId,@Reason);
+        INSERT dbo.InventoryTransactions(VendorListingId,OnHandDelta,ReservedDelta,SourceType,SourceId,SourceLineId,Reason,CreatedBy)
+            VALUES(@listing,@Quantity,0,'ReturnReceipt',@receipt,@OrderItemId,@Reason,@ActorId);
         COMMIT;
     END TRY
     BEGIN CATCH

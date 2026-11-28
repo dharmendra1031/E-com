@@ -93,6 +93,10 @@ SELECT vo.VendorOrderId,vo.OrderId,vo.VendorId,vo.VendorName,vo.MerchandiseSubto
        vo.CommissionRatePercent,vo.CommissionAmount,
        vo.MerchandiseSubtotal-vo.CommissionAmount AS MerchandiseAfterCommission,
        vo.FulfillmentStatus,
+       COALESCE(received.Qty,CONVERT(bigint,0)) AS ReceivedReturnQuantity,
+       COALESCE(received.Amount,CONVERT(decimal(18,3),0)) AS ReturnedMerchandiseValue,
+       CONVERT(decimal(18,3),vo.MerchandiseSubtotal-COALESCE(received.Amount,0)) AS RemainingMerchandiseValue,
+       COALESCE(pending.Qty,CONVERT(bigint,0)) AS OpenReturnQuantity,
        CASE WHEN vo.CommissionPolicyId IS NULL THEN 'Missing policy snapshot'
             WHEN EXISTS(SELECT 1 FROM dbo.OrderItems i JOIN dbo.MarketplaceReturnRequests q ON q.OrderItemId=i.OrderItemId
                 WHERE i.VendorOrderId=vo.VendorOrderId AND q.Status IN ('Pending','Approved','Received'))
@@ -101,5 +105,16 @@ SELECT vo.VendorOrderId,vo.OrderId,vo.VendorId,vo.VendorName,vo.MerchandiseSubto
             ELSE 'Financial review required' END AS ReviewState
 FROM dbo.VendorOrders vo JOIN dbo.Orders o ON o.OrderId=vo.OrderId
 JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId AND p.State='Paid'
-WHERE o.PaymentStatus=1;
+OUTER APPLY (
+    SELECT SUM(CONVERT(bigint,rr.Quantity)) AS Qty,
+           CONVERT(decimal(18,3),SUM(rr.Quantity*i.Price)) AS Amount
+    FROM dbo.OrderItems i JOIN dbo.VendorReturnReceipts rr ON rr.OrderItemId=i.OrderItemId
+    WHERE i.VendorOrderId=vo.VendorOrderId AND i.OrderId=vo.OrderId
+) received
+OUTER APPLY (
+    SELECT SUM(CONVERT(bigint,q.Quantity)) AS Qty
+    FROM dbo.OrderItems i JOIN dbo.MarketplaceReturnRequests q ON q.OrderItemId=i.OrderItemId
+    WHERE i.VendorOrderId=vo.VendorOrderId AND i.OrderId=vo.OrderId AND q.Status IN ('Pending','Approved')
+) pending
+WHERE o.PaymentStatus=1 AND o.MarketplaceRequestId IS NOT NULL;
 GO
