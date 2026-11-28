@@ -45,3 +45,18 @@ public sealed class VendorReturnRow
     public string Status { get; set; } = "";
     public DateTime RequestedAtUtc { get; set; }
 }
+
+public sealed class VendorSalesDay
+{
+    public DateTime Day { get; set; }
+    public long OrderCount { get; set; }
+    public decimal Merchandise { get; set; }
+}
+
+public sealed class VendorSalesReport
+{
+    public int VendorId { get; set; }
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public List<VendorSalesDay> Days { get; set; } = new();
+}

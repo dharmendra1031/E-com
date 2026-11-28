@@ -69,7 +69,7 @@
         }
         @if(ViewBag.CanViewFinance==true)
         {
-            <section class="admin-panel"><h2>@T("Finance review","المراجعة المالية")</h2><p>@T("Commission and test settlement records; not actual payouts.","سجلات العمولة والتسوية التجريبية وليست دفعات فعلية.")</p><a class="btn btn-default" asp-action="FinanceReview" asp-route-id="@Model.VendorId">@T("View finance","عرض المالية")</a></section>
+            <section class="admin-panel"><h2>@T("Finance review","المراجعة المالية")</h2><p>@T("Commission and test settlement records; not actual payouts.","سجلات العمولة والتسوية التجريبية وليست دفعات فعلية.")</p><a class="btn btn-default" asp-action="FinanceReview" asp-route-id="@Model.VendorId">@T("View finance","عرض المالية")</a> <a class="btn btn-default" asp-action="Reports" asp-route-id="@Model.VendorId">@T("Sales reports","تقارير المبيعات")</a></section>
         }
     </div>
     @if(ViewBag.RecentOrders is List<EcommerceWebApplication.Models.ViewModels.VendorOrderRow> recent)

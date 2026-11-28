@@ -245,6 +245,30 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
 
     private bool InventoryEnabled => access.Enabled && configuration.GetValue("Marketplace:VendorInventoryEnabled", false);
 
+    [HttpGet("store/{id:int}/reports")]
+    public async Task<IActionResult> Reports(int id,DateTime? from,DateTime? to,CancellationToken ct)
+    {
+        if (!access.Enabled || !configuration.GetValue("Marketplace:FinancePreviewEnabled",false) ||
+            !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await access.CanAsync(id,actor,VendorPermissionPages.Finance,ct)) return NotFound();
+        var today=DateTime.UtcNow.Date;
+        var end=to?.Date ?? today;
+        var start=from?.Date ?? (end>=DateTime.MinValue.AddDays(29) ? end.AddDays(-29) : DateTime.MinValue);
+        if (!ModelState.IsValid || !VendorOrderQueries.ValidReportRange(start,end,today)) return BadRequest();
+        var rows=await VendorOrderQueries.ReadSalesDaysAsync(db,id,start,end.AddDays(1),ct);
+        return View(new VendorSalesReport { VendorId=id,From=start,To=end,Days=rows });
+    }
+
+    [HttpGet("store/{id:int}/profile")]
+    public async Task<IActionResult> StoreProfile(int id,CancellationToken ct)
+    {
+        if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User,out var actor) ||
+            !await access.CanAsync(id,actor,VendorPermissionPages.Dashboard,ct)) return NotFound();
+        var store=await StoreMembership(id,actor).Select(m=>new VendorPortalStore
+        { VendorId=m.VendorId,Code=m.Vendor.VendorCode,Name=m.Vendor.Name,NameArb=m.Vendor.NameArb }).SingleOrDefaultAsync(ct);
+        return store==null ? NotFound() : View(store);
+    }
+
     [HttpGet("store/{id:int}/inventory")]
     public async Task<IActionResult> Inventory(int id,string? search,int page=1,CancellationToken ct=default)
     {

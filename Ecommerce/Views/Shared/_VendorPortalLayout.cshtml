@@ -101,6 +101,16 @@
                             <li class="@(action=="FinanceReview"?"active":"")">
                                 <a asp-controller="VendorPortal" asp-action="FinanceReview" asp-route-id="@storeId" aria-current="@(action=="FinanceReview"?"page":null)"><i class="fa fa-money" aria-hidden="true"></i><span>@T("Commission & settlement","العمولة والتسوية")</span></a>
                             </li>
+                            <li class="@(action=="Reports"?"active":"")">
+                                <a asp-controller="VendorPortal" asp-action="Reports" asp-route-id="@storeId"><i class="fa fa-bar-chart" aria-hidden="true"></i><span>@T("Sales reports","تقارير المبيعات")</span></a>
+                            </li>
+                        }
+                        @if(await Can(VendorPermissionPages.Dashboard))
+                        {
+                            <li class="label">@T("Store","المتجر")</li>
+                            <li class="@(action=="StoreProfile"?"active":"")">
+                                <a asp-controller="VendorPortal" asp-action="StoreProfile" asp-route-id="@storeId"><i class="fa fa-info-circle" aria-hidden="true"></i><span>@T("Store profile","ملف المتجر")</span></a>
+                            </li>
                         }
                     </ul>
                 </nav>

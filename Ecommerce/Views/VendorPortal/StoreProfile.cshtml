@@ -1,0 +1,13 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorPortalStore
+@{ Layout="_VendorPortalLayout";var ar=System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="ar";string T(string en,string arabic)=>ar?arabic:en;ViewData["Title"]=T("Store profile","ملف المتجر"); }
+<section class="seller-panel">
+<h1>@ViewData["Title"]</h1>
+<dl class="seller-store-details">
+<dt>@T("Vendor code","رمز البائع")</dt><dd><bdi>@Model.Code</bdi></dd>
+<dt>@T("Store name (English)","اسم المتجر بالإنجليزية")</dt><dd>@Model.Name</dd>
+<dt>@T("Store name (Arabic)","اسم المتجر بالعربية")</dt><dd dir="rtl">@Model.NameArb</dd>
+<dt>@T("Status","الحالة")</dt><dd><span class="seller-status" data-status="Approved">@T("Approved","معتمد")</span></dd>
+</dl>
+<p>@T("Store details are managed by marketplace administration. Contact Admin for changes.","تتم إدارة بيانات المتجر من قبل إدارة السوق. تواصل مع الإدارة للتعديل.")</p>
+<a asp-action="Dashboard" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Back to dashboard","العودة إلى لوحة التحكم")</a>
+</section>

@@ -57,12 +57,18 @@ foreach (var method in vendor.GetMethods(BindingFlags.Public | BindingFlags.Inst
     Check(!method.IsDefined(typeof(AllowAnonymousAttribute), true),
         $"Vendor {method.Name} bypasses authorization.");
 }
-foreach(var name in new[] { "Inventory", "Returns" })
+foreach(var name in new[] { "Inventory", "Returns", "Reports", "StoreProfile" })
 {
     var method=vendor.GetMethod(name)!;
     Check(method.IsDefined(typeof(HttpGetAttribute)) && !method.IsDefined(typeof(AllowAnonymousAttribute)),
         "Vendor register must be authenticated and read-only.");
 }
+var reportToday = new DateTime(2026,11,28);
+Check(EcommerceWebApplication.Helper.VendorOrderQueries.ValidReportRange(reportToday.AddDays(-89),reportToday,reportToday) &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.ValidReportRange(reportToday.AddDays(-90),reportToday,reportToday) &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.ValidReportRange(reportToday,reportToday.AddDays(1),reportToday) &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.ValidReportRange(reportToday,reportToday.AddDays(-1),reportToday),
+    "Invalid vendor report period accepted.");
 var denied = vendor.GetMethod("Denied")!;
 Check(denied.GetParameters().Length == 0 && denied.IsDefined(typeof(HttpGetAttribute)) &&
     denied.IsDefined(typeof(AllowAnonymousAttribute)), "Vendor denied route must remain a public error response.");

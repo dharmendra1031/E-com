@@ -1,0 +1,30 @@
+@model EcommerceWebApplication.Models.ViewModels.VendorSalesReport
+@using System.Globalization
+@{
+    Layout="_VendorPortalLayout";
+    var ar=CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="ar";
+    string T(string en,string arabic)=>ar?arabic:en;
+    string Money(decimal value)=>"KD "+value.ToString("F3",CultureInfo.InvariantCulture);
+    string Date(DateTime value)=>value.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture);
+    ViewData["Title"]=T("Sales reports","تقارير المبيعات");
+    var maximum=Model.Days.Count==0?1m:Math.Max(1m,Model.Days.Max(d=>d.Merchandise));
+}
+<div class="admin-dashboard">
+<header class="seller-section-heading"><h1>@ViewData["Title"]</h1></header>
+<section class="seller-panel">
+<p>@T("Verified paid test orders, grouped by payment confirmation date (UTC). Original merchandise only, before returns, commission, tax or delivery; not revenue or a payable balance.","طلبات الاختبار المدفوعة المؤكدة حسب تاريخ تأكيد الدفع بالتوقيت العالمي. قيمة البضائع الأصلية فقط قبل المرتجعات والعمولة والضريبة والتوصيل، وليست إيراداً أو رصيداً مستحقاً.")</p>
+<form asp-action="Reports" asp-route-id="@Model.VendorId" method="get" class="seller-filters">
+<div class="form-group"><label for="from">@T("From","من")</label><input id="from" name="from" type="date" required value="@Date(Model.From)" class="form-control"/></div>
+<div class="form-group"><label for="to">@T("To","إلى")</label><input id="to" name="to" type="date" required value="@Date(Model.To)" max="@Date(DateTime.UtcNow)" class="form-control"/></div>
+<button type="submit" class="btn btn-primary">@T("Apply","تطبيق")</button><a asp-action="Reports" asp-route-id="@Model.VendorId" class="btn btn-default">@T("Last 30 days","آخر 30 يوماً")</a>
+</form>
+<p class="small">@T("Maximum period: 90 days.","الفترة القصوى: 90 يوماً.")</p>
+<div class="admin-kpi-grid">
+<div class="admin-kpi"><span class="admin-kpi-label">@T("Paid suborders","الطلبات الفرعية المدفوعة")</span><strong>@Model.Days.Sum(x=>x.OrderCount)</strong></div>
+<div class="admin-kpi"><span class="admin-kpi-label">@T("Original merchandise total","إجمالي البضائع الأصلية")</span><strong dir="ltr">@Money(Model.Days.Sum(x=>x.Merchandise))</strong></div>
+</div>
+<div class="table-responsive mt-3"><table class="table"><thead><tr><th>@T("Date (UTC)","التاريخ")</th><th>@T("Orders","الطلبات")</th><th>@T("Merchandise","البضائع")</th><th>@T("Daily volume","الحجم اليومي")</th></tr></thead><tbody>
+@foreach(var day in Model.Days){<tr><td><bdi>@Date(day.Day)</bdi></td><td>@day.OrderCount</td><td dir="ltr">@Money(day.Merchandise)</td><td><meter min="0" max="@maximum.ToString(CultureInfo.InvariantCulture)" value="@day.Merchandise.ToString(CultureInfo.InvariantCulture)" aria-label="@Money(day.Merchandise)"></meter></td></tr>}
+@if(Model.Days.Count==0){<tr><td colspan="4">@T("No verified paid orders in this period.","لا توجد طلبات مدفوعة مؤكدة في هذه الفترة.")</td></tr>}
+</tbody></table></div>
+</section></div>
