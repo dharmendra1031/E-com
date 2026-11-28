@@ -65,6 +65,20 @@ Check(Verified()==null,"Wrong transaction amount accepted.");
 tx.TransationValue="291.000";
 Check(MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12346,reference,291m)==null,"Wrong invoice accepted.");
 Check(MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12345,Guid.NewGuid(),291m)==null,"Wrong order reference accepted.");
+Check(MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidence,"test-payment",reference,291m)==12345,
+    "Valid payment recovery rejected.");
+Check(MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidence,"different-payment",reference,291m)==null,
+    "Unrelated callback transaction accepted.");
+Check(MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidence,"test-payment",Guid.NewGuid(),291m)==null,
+    "Cross-order recovery accepted.");
+Check(MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidence,"test-payment",reference,290m)==null,
+    "Wrong recovery amount accepted.");
+Check(!MarketplacePaymentEvidence.IsValidLookupId("invalid reference") &&
+    !MarketplacePaymentEvidence.IsValidLookupId(new string('a',101)), "Invalid lookup accepted.");
+evidence.Data.InvoiceStatus="Pending";
+Check(MarketplacePaymentEvidence.VerifiedRecoveryInvoice(evidence,"test-payment",reference,291m)==null,
+    "Unpaid recovery accepted.");
+evidence.Data.InvoiceStatus="Paid";
 evidence.Data.InvoiceTransactions.Add(tx);
 Check(Verified()==null,"Ambiguous multiple successful transactions accepted.");
 Console.WriteLine("Marketplace payment evidence checks passed.");

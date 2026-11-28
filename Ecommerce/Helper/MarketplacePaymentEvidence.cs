@@ -5,11 +5,27 @@ namespace EcommerceWebApplication.Helper;
 
 public static class MarketplacePaymentEvidence
 {
+    public static bool IsValidLookupId(string? paymentId) =>
+        paymentId is { Length: > 0 and <= 100 } &&
+        paymentId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+
+    // A callback ID is only a lookup key. Trust the authenticated gateway response,
+    // and require the successful transaction to be the one requested.
+    public static long? VerifiedRecoveryInvoice(GenericResponse<GetPaymentStatusResponse>? response,
+        string? lookupId, Guid reference, decimal amount)
+    {
+        if (!IsValidLookupId(lookupId) || response?.Data is not { InvoiceId: > 0 } data)
+            return null;
+        return string.Equals(VerifiedPaymentId(response, data.InvoiceId, reference, amount),
+            lookupId, StringComparison.Ordinal) ? data.InvoiceId : null;
+    }
+
     public static string? VerifiedPaymentId(GenericResponse<GetPaymentStatusResponse>? response, long invoiceId,
         Guid reference, decimal amount)
     {
         var data = response?.Data;
-        if (response?.IsSuccess != true || data == null || data.InvoiceId != invoiceId ||
+        if (invoiceId <= 0 || reference == Guid.Empty || amount <= 0 ||
+            response?.IsSuccess != true || data == null || data.InvoiceId != invoiceId ||
             data.CustomerReference != reference.ToString("N") || data.InvoiceValue != amount ||
             !string.Equals(data.InvoiceStatus, "Paid", StringComparison.OrdinalIgnoreCase) ||
             data.InvoiceTransactions == null) return null;

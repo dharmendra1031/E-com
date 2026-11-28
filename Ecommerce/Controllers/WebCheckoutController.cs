@@ -152,13 +152,15 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<IActionResult> SellerReceipt(Guid requestId, CancellationToken ct)
+        public async Task<IActionResult> SellerReceipt(Guid requestId, CancellationToken ct, string? paymentId = null)
         {
             if (!SellerCheckoutEnabled) return NotFound();
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
             var receipt = await CustomerSellerOrders(customerId).SingleOrDefaultAsync(o => o.RequestId == requestId, ct);
             if (receipt == null) return NotFound();
             ViewBag.SandboxPaymentEnabled = SellerSandboxPaymentEnabled;
+            ViewBag.PaymentLookupId = SellerSandboxPaymentEnabled && MarketplacePaymentEvidence.IsValidLookupId(paymentId)
+                ? paymentId : null;
             ViewBag.Suborders = await _context.Database.SqlQuery<CustomerSuborderRow>($"""
                 SELECT v.VendorOrderId,v.VendorName,v.VendorNameArb,v.MerchandiseSubtotal,v.FulfillmentStatus
                 FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
@@ -256,6 +258,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("MarketplacePayment")]
         public async Task<IActionResult> StartSellerSandboxPayment(Guid requestId, [FromServices] IPaymentService gateway, CancellationToken ct)
         {
             if (!SellerSandboxPaymentEnabled) return NotFound();
@@ -266,7 +269,9 @@ namespace EcommerceWebApplication.Controllers
             // Explicit test return URL, never derive it from an untrusted Host header.
             if (!Uri.TryCreate(_configuration["Marketplace:SandboxReturnUrl"], UriKind.Absolute, out var callback) ||
                 callback.Scheme != "https" || callback.IsLoopback || !string.IsNullOrEmpty(callback.UserInfo) ||
-                !string.IsNullOrEmpty(callback.Query) || !string.IsNullOrEmpty(callback.Fragment)) return Conflict("Configure the sandbox return URL.");
+                !string.IsNullOrEmpty(callback.Query) || !string.IsNullOrEmpty(callback.Fragment) ||
+                !callback.AbsolutePath.EndsWith("/WebCheckout/SellerReceipt", StringComparison.OrdinalIgnoreCase))
+                return Conflict("Configure the sandbox receipt return URL.");
             try
             {
                 await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.BeginMarketplacePayment @OrderId={order.OrderId}, @CustomerId={customerId}", ct);
@@ -296,31 +301,80 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> VerifySellerSandboxPayment(Guid requestId, [FromServices] IPaymentService gateway, CancellationToken ct)
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("MarketplacePayment")]
+        public async Task<IActionResult> VerifySellerSandboxPayment(Guid requestId, [FromServices] IPaymentService gateway,
+            CancellationToken ct, string? paymentId = null)
         {
             if (!SellerSandboxPaymentEnabled) return NotFound();
             if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
             var order = await _context.Orders.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(o =>
                 o.CustomerId == customerId && o.MarketplaceRequestId == requestId, ct);
             if (order == null) return NotFound();
-            var invoices = await _context.Database.SqlQuery<long>($"""
-                SELECT InvoiceId AS Value FROM dbo.MarketplacePaymentAttempts
-                WHERE OrderId={order.OrderId} AND MerchantReference={requestId} AND InvoiceId IS NOT NULL AND State IN ('Linked','Paid')
+
+            IActionResult Receipt(string message, bool retainLookup = false)
+            {
+                TempData["SellerOrderMessage"] = message;
+                return RedirectToAction(nameof(SellerReceipt), new
+                {
+                    requestId,
+                    paymentId = retainLookup && MarketplacePaymentEvidence.IsValidLookupId(paymentId) ? paymentId : null
+                });
+            }
+
+            var states = await _context.Database.SqlQuery<string>($"""
+                SELECT State AS Value FROM dbo.MarketplacePaymentAttempts
+                WHERE OrderId={order.OrderId} AND MerchantReference={requestId}
                 """).ToListAsync(ct);
-            if (invoices.Count != 1) return Conflict("No linked invoice. Reconciliation required.");
-            var invoice = invoices[0];
-            var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest { KeyType="InvoiceId",Key=invoice.ToString(CultureInfo.InvariantCulture) });
-            var paymentId = MarketplacePaymentEvidence.VerifiedPaymentId(response, invoice, requestId, order.TotalAmount);
-            if (paymentId == null) return Conflict("Payment not conclusively verified. Stock remains reserved.");
+            if (states.Count != 1 || states[0] is not ("Starting" or "Linked" or "Paid"))
+                return Receipt("No active payment attempt. Contact support. / لا توجد محاولة دفع نشطة.");
+            if (states[0] == "Paid" && order.PaymentStatus == 1)
+                return RedirectToAction(nameof(SellerReceipt), new { requestId });
+
             try
             {
-                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.ConfirmMarketplacePayment @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}, @PaymentId={paymentId}, @Amount={order.TotalAmount}, @Currency={"KWD"}", ct);
+                long invoice;
+                string? verifiedId;
+                if (states[0] == "Starting")
+                {
+                    // A lost invoice-link response may be recovered using a paid transaction
+                    // returned by the gateway, never from unverified callback fields.
+                    if (!MarketplacePaymentEvidence.IsValidLookupId(paymentId))
+                        return Receipt("Enter the gateway payment reference or contact support. / أدخل مرجع الدفع أو اتصل بالدعم.");
+                    var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest { KeyType = "PaymentId", Key = paymentId! });
+                    var recovered = MarketplacePaymentEvidence.VerifiedRecoveryInvoice(response, paymentId, requestId, order.TotalAmount);
+                    if (!recovered.HasValue)
+                        return Receipt("Payment not verified. Do not pay again. / لم يتم التحقق من الدفع.", true);
+                    invoice = recovered.Value;
+                    verifiedId = paymentId;
+                    await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.LinkMarketplaceInvoice @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}", ct);
+                }
+                else
+                {
+                    var invoices = await _context.Database.SqlQuery<long>($"""
+                        SELECT InvoiceId AS Value FROM dbo.MarketplacePaymentAttempts
+                        WHERE OrderId={order.OrderId} AND MerchantReference={requestId} AND InvoiceId IS NOT NULL AND State IN ('Linked','Paid')
+                        """).ToListAsync(ct);
+                    if (invoices.Count != 1)
+                        return Receipt("No linked invoice. Contact support. / الفاتورة غير مرتبطة.");
+                    invoice = invoices[0];
+                    var response = await gateway.GetPaymentStatus(new GetPaymentStatusRequest
+                    {
+                        KeyType = "InvoiceId", Key = invoice.ToString(CultureInfo.InvariantCulture)
+                    });
+                    verifiedId = MarketplacePaymentEvidence.VerifiedPaymentId(response, invoice, requestId, order.TotalAmount);
+                    if (verifiedId == null)
+                        return Receipt("Payment not verified. Do not pay again. / لم يتم التحقق من الدفع.");
+                }
+
+                await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.ConfirmMarketplacePayment @OrderId={order.OrderId}, @InvoiceId={invoice}, @MerchantReference={requestId}, @PaymentId={verifiedId}, @Amount={order.TotalAmount}, @Currency={"KWD"}", ct);
+                return RedirectToAction(nameof(SellerReceipt), new { requestId });
             }
-            catch (SqlException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
-                return Conflict("Payment requires reconciliation. Do not pay again.");
+                HttpContext.RequestServices.GetRequiredService<ILogger<WebCheckoutController>>()
+                    .LogWarning(ex, "Sandbox payment verification requires review for order {OrderId}.", order.OrderId);
+                return Receipt("Payment requires reconciliation. Do not pay again. / يلزم مراجعة الدفع.", true);
             }
-            return RedirectToAction(nameof(SellerReceipt), new { requestId });
         }
 
         private int? CustomerId => User.IsInRole("Customer") && int.TryParse(User.FindFirst("UserId")?.Value, out var id) && HttpContext.Session.GetInt32("UserId") == id ? id : null;

@@ -22,7 +22,17 @@
     }
     else if(Model.AttemptState=="Starting")
     {
-        <p class="text-warning">@T("Invoice initiation uncertain. Contact support; do not pay again.","بدء الفاتورة غير مؤكد. اتصل بالدعم ولا تدفع مجدداً.")</p>
+        <p class="text-warning">@T("Invoice initiation uncertain. Do not pay again.","بدء الفاتورة غير مؤكد. لا تدفع مجدداً.")</p>
+        @if(ViewBag.SandboxPaymentEnabled==true)
+        {
+            <form asp-action="VerifySellerSandboxPayment" method="post" class="mb-2">
+                <input type="hidden" name="requestId" value="@Model.RequestId" />
+                <label for="recoveryPaymentId" class="form-label">@T("Gateway payment reference","مرجع الدفع")</label>
+                <input id="recoveryPaymentId" name="paymentId" value="@ViewBag.PaymentLookupId" maxlength="100" required class="form-control mb-2" autocomplete="off" dir="ltr" />
+                <button class="btn btn-outline-primary" type="submit">@T("Verify existing payment","التحقق من الدفع الحالي")</button>
+            </form>
+        }
+        <p>@T("If you do not have a payment reference, contact support.","إذا لم يكن لديك مرجع الدفع، اتصل بالدعم.")</p>
     }
     else
     {
