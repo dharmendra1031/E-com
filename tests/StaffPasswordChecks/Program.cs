@@ -68,3 +68,34 @@ Check(MarketplacePaymentEvidence.VerifiedPaymentId(evidence,12345,Guid.NewGuid()
 evidence.Data.InvoiceTransactions.Add(tx);
 Check(Verified()==null,"Ambiguous multiple successful transactions accepted.");
 Console.WriteLine("Marketplace payment evidence checks passed.");
+
+
+// Configurable accent colors must be safe CSS values and readable on light or dark backgrounds.
+Check(StoreTheme.From(null).Primary == StoreTheme.DefaultColor, "Missing theme fallback incorrect.");
+Check(StoreTheme.From("#abc").Primary == StoreTheme.DefaultColor, "Invalid theme fallback incorrect.");
+Check(!StoreTheme.IsValid("#123456; color:red"), "CSS injection accepted.");
+Check(StoreTheme.From("#ffffff").Foreground == "#000000", "Light accent text incorrect.");
+Check(StoreTheme.From("#000000").Foreground == "#FFFFFF", "Dark accent text incorrect.");
+Check(StoreTheme.From("#16e2f5").Primary == "#16E2F5", "Saved accent altered.");
+double ThemeLuminance(string color)
+{
+    double Channel(int index)
+    {
+        double n = Convert.ToInt32(color.Substring(index, 2), 16) / 255d;
+        return n <= 0.04045 ? n / 12.92 : Math.Pow((n + 0.055) / 1.055, 2.4);
+    }
+    return 0.2126 * Channel(1) + 0.7152 * Channel(3) + 0.0722 * Channel(5);
+}
+double ThemeContrast(string a, string b)
+{
+    double x = ThemeLuminance(a), y = ThemeLuminance(b);
+    return (Math.Max(x,y) + 0.05) / (Math.Min(x,y) + 0.05);
+}
+foreach (var color in new[] { "#FFFFFF", "#000000", "#16E2F5", "#1569C7", "#F3E5AB", "#E3735E", "#829F82", "#075A96", "#767676" })
+{
+    var theme = StoreTheme.From(color);
+    Check(ThemeContrast(theme.Primary,theme.Foreground) >= 4.5, "Theme foreground contrast insufficient: " + color);
+    Check(ThemeContrast(theme.Hover,theme.HoverForeground) >= 4.5, "Theme hover contrast insufficient: " + color);
+    Check(ThemeContrast(theme.Link,"#FFFFFF") >= 4.5, "Theme link contrast insufficient: " + color);
+}
+Console.WriteLine("Configurable theme checks passed.");
