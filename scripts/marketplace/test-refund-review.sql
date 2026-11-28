@@ -145,3 +145,90 @@ IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceSettlementReview WHERE VendorOrderId=
 ROLLBACK;
 PRINT 'Full refund commission reversal checks passed.';
 GO
+
+:r 17-settlement-approval.sql
+GO
+:r 17-settlement-approval.sql
+GO
+DECLARE @vo int=(SELECT VendorOrderId FROM dbo.VendorOrders WHERE OrderId=11);
+BEGIN TRY
+ EXEC dbo.ReviewVendorSettlementPreview @vo,2,1,'Approve';
+ THROW 52820,'Unauthorized approval accepted.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52801 THROW;
+END CATCH;
+BEGIN TRY
+ EXEC dbo.ReviewVendorSettlementPreview @vo,3,1,'Approve';
+ THROW 52821,'Unsynchronized settlement approved.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52803 THROW;
+END CATCH;
+GO
+BEGIN TRANSACTION;
+DECLARE @vo int=(SELECT VendorOrderId FROM dbo.VendorOrders WHERE OrderId=11),
+        @vendor int=(SELECT VendorId FROM dbo.VendorOrders WHERE OrderId=11),
+        @item int=(SELECT OrderItemId FROM dbo.OrderItems WHERE OrderId=11),
+        @request uniqueidentifier=NEWID(),@refund uniqueidentifier=NEWID(),@returnId int,
+        @version bigint,@approval bigint,@reference uniqueidentifier;
+EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'AwaitingPacking','Packed',1,0;
+EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'Packed','HandedOver',1,0;
+EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'HandedOver','Delivered',1,1;
+EXEC dbo.PostVendorSettlementPreview @vo,3;
+SELECT @version=LedgerVersion FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo;
+EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'Approve';
+EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'Approve';
+SELECT @approval=ApprovalId FROM dbo.VendorSettlementApprovals WHERE VendorOrderId=@vo;
+IF (SELECT COUNT(*) FROM dbo.VendorSettlementApprovals WHERE VendorOrderId=@vo)<>1
+ OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo AND TestPaidAmount=0 AND TestOutstanding=90.900 AND CanRecordTestPayout=1)
+ THROW 52822,'Approval duplicated or treated as payment.',1;
+EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'TestPayout',@approval;
+SELECT @reference=TestPayoutReference FROM dbo.VendorSettlementApprovals WHERE ApprovalId=@approval;
+EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'TestPayout',@approval;
+IF @reference IS NULL OR NOT EXISTS(SELECT 1 FROM dbo.VendorSettlementApprovals WHERE ApprovalId=@approval AND TestPayoutReference=@reference AND TestPayoutBy=3)
+ OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo AND TestPaidAmount=90.900 AND TestOutstanding=0 AND CanRecordTestPayout=0)
+ THROW 52823,'Simulated payout or retry incorrect.',1;
+EXEC dbo.RequestMarketplaceReturn 1,@item,@request,1,N'Late refund after test payout';
+SET @returnId=(SELECT ReturnId FROM dbo.MarketplaceReturnRequests WHERE RequestId=@request);
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo AND SettlementEligible=0 AND CanRecordTestPayout=0)
+ THROW 52824,'Pending return did not hold test payout.',1;
+EXEC dbo.ReviewMarketplaceReturn @returnId,3,'Pending','Approved';
+EXEC dbo.ReviewMarketplaceReturn @returnId,3,'Approved','Received';
+EXEC dbo.BeginMarketplaceRefund @returnId,3,@refund,20;
+EXEC dbo.ConfirmMarketplaceRefund @returnId,3,@refund,12346,20,900004;
+EXEC dbo.PostVendorSettlementPreview @vo,3;
+IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo AND LedgerVersion<>@version
+    AND ApprovalId IS NULL AND TestOutstanding=-18 AND TestPaidAmount=90.900 AND LastTestPayoutReference=@reference AND CanRecordTestPayout=0)
+ THROW 52825,'Late refund recovery balance or stale approval incorrect.',1;
+IF (SELECT COUNT(*) FROM dbo.Payments WHERE OrderId=11)<>1 THROW 52826,'Original customer payment changed.',1;
+ROLLBACK;
+PRINT 'Settlement approval, simulated payout, duplicate and recovery balance checks passed.';
+GO
+
+-- A held approval cannot record payment, including through a direct SQL call.
+DECLARE @vo int=(SELECT VendorOrderId FROM dbo.VendorOrders WHERE OrderId=11),
+        @vendor int=(SELECT VendorId FROM dbo.VendorOrders WHERE OrderId=11),
+        @item int=(SELECT OrderItemId FROM dbo.OrderItems WHERE OrderId=11),
+        @request uniqueidentifier=NEWID(),@version bigint,@approval bigint;
+BEGIN TRY
+    BEGIN TRANSACTION;
+    EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'AwaitingPacking','Packed',1,0;
+    EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'Packed','HandedOver',1,0;
+    EXEC dbo.AdvanceVendorFulfillment @vendor,@vo,3,'HandedOver','Delivered',1,1;
+    EXEC dbo.PostVendorSettlementPreview @vo,3;
+    SELECT @version=LedgerVersion FROM dbo.MarketplaceSettlementApprovalReview WHERE VendorOrderId=@vo;
+    EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'Approve';
+    SELECT @approval=ApprovalId FROM dbo.VendorSettlementApprovals WHERE VendorOrderId=@vo;
+    EXEC dbo.RequestMarketplaceReturn 1,@item,@request,1,N'Hold approval fixture';
+    EXEC dbo.ReviewVendorSettlementPreview @vo,3,@version,'TestPayout',@approval;
+    THROW 52827,'Held approval allowed test payment.',1;
+END TRY
+BEGIN CATCH
+    IF XACT_STATE()<>0 ROLLBACK;
+    IF ERROR_NUMBER()<>52803 THROW;
+END CATCH;
+IF EXISTS(SELECT 1 FROM dbo.VendorSettlementApprovals WHERE VendorOrderId=@vo)
+    THROW 52828,'Failed test payout did not roll back fixture.',1;
+PRINT 'Held approval direct SQL rejection passed.';
+GO

@@ -166,10 +166,14 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
             SELECT VendorOrderId,OrderId,VendorId,VendorName,MerchandiseSubtotal,CommissionRatePercent,
                 CommissionAmount,MerchandiseAfterCommission,FulfillmentStatus,ReviewState,
                 ReceivedReturnQuantity,ReturnedMerchandiseValue,RemainingMerchandiseValue,OpenReturnQuantity,
-                VerifiedRefundValue,LedgerNet,LedgerCommissionReversal,SettlementEligible,LedgerCurrent FROM dbo.MarketplaceSettlementReview
+                VerifiedRefundValue,LedgerNet,LedgerCommissionReversal,SettlementEligible,LedgerCurrent,
+                LedgerVersion,TestPaidAmount,TestOutstanding,ApprovalId,ApprovedAtUtc,TestPayoutReference,CanRecordTestPayout,
+                LastTestPayoutReference,LastTestPayoutAtUtc FROM dbo.MarketplaceSettlementApprovalReview
             """).OrderByDescending(r=>r.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
         ViewBag.Page=page;ViewBag.HasNext=rows.Count>25;
         ViewBag.CanPostSettlement=SettlementPreviewEnabled(environment);
+        ViewBag.CanReviewSettlement=SettlementPreviewEnabled(environment) &&
+            configuration.GetValue("Marketplace:SettlementApprovalPreviewEnabled",false);
         return View(rows.Take(25).ToList());
     }
 
@@ -194,6 +198,31 @@ public class VendorController(EcommerceDbContext db, IConfiguration configuratio
         catch(SqlException ex) when(ex.Number is >=52701 and <=52704)
         {
             TempData["SettlementMessage"]="Ledger unchanged. Review eligibility and evidence. / لم يتغير السجل.";
+        }
+        return RedirectToAction(nameof(FinanceReview),new {page});
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReviewSettlementPreview(int vendorOrderId,long ledgerVersion,string operation,
+        long? approvalId,bool confirmed,int page,[FromServices] IWebHostEnvironment environment,CancellationToken ct)
+    {
+        if(!SettlementPreviewEnabled(environment) ||
+            !configuration.GetValue("Marketplace:SettlementApprovalPreviewEnabled",false)) return NotFound();
+        if(!ModelState.IsValid || !confirmed || vendorOrderId<=0 || ledgerVersion<=0 ||
+            operation is not ("Approve" or "TestPayout") ||
+            !int.TryParse(User.FindFirstValue("UserId"),out var actor)) return BadRequest();
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                EXEC dbo.ReviewVendorSettlementPreview @VendorOrderId={vendorOrderId},@ActorId={actor},
+                    @LedgerVersion={ledgerVersion},@Action={operation},@ApprovalId={approvalId}
+                """,ct);
+            TempData["SettlementMessage"]="Test settlement record saved. No funds transferred. / تم حفظ سجل الاختبار دون تحويل الأموال.";
+        }
+        catch(SqlException ex) when(ex.Number is >=52800 and <=52805)
+        {
+            TempData["SettlementMessage"]="Settlement unchanged. Refresh and review. / لم تتغير التسوية.";
         }
         return RedirectToAction(nameof(FinanceReview),new {page});
     }

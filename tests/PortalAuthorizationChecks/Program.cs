@@ -259,3 +259,8 @@ Check(typeof(VendorController).GetMethod("PostSettlementPreview")!.IsDefined(typ
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController),"PostSettlementPreview","POST"),
     "Settlement preview endpoint authorization boundary failed.");
 Console.WriteLine("Settlement preview authorization checks passed.");
+
+Check(typeof(VendorController).GetMethod("ReviewSettlementPreview")!.IsDefined(typeof(HttpPostAttribute)) &&
+    typeof(VendorController).GetMethod("ReviewSettlementPreview")!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)) &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController),"ReviewSettlementPreview","POST"),
+    "Settlement approval endpoint authorization boundary failed.");

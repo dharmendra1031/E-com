@@ -29,4 +29,13 @@ public class MarketplaceFinanceRow
     public decimal? LedgerCommissionReversal { get; set; }
     public bool SettlementEligible { get; set; }
     public bool LedgerCurrent { get; set; }
+    public long? LedgerVersion { get; set; }
+    public decimal TestPaidAmount { get; set; }
+    public decimal? TestOutstanding { get; set; }
+    public long? ApprovalId { get; set; }
+    public DateTime? ApprovedAtUtc { get; set; }
+    public Guid? TestPayoutReference { get; set; }
+    public bool CanRecordTestPayout { get; set; }
+    public Guid? LastTestPayoutReference { get; set; }
+    public DateTime? LastTestPayoutAtUtc { get; set; }
 }

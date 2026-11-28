@@ -2,7 +2,7 @@
 @{var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;string T(string en,string arabic)=>ar?arabic:en;string Money(decimal? d)=>d.HasValue?"KD "+d.Value.ToString("F3",System.Globalization.CultureInfo.InvariantCulture):"—";}
 <p>@T("Sandbox ledger uses verified merchandise refunds and the original commission rate. It is not a payable or payout.","السجل التجريبي يستخدم استرداد البضائع المؤكد ونسبة العمولة الأصلية. ليس رصيداً مستحقاً أو دفعة.")</p>
 <p>@T("Merchandise reconciliation only. The original commission remains unchanged. Returned value is physical receipt evidence, not an approved refund or payable balance.","مطابقة البضائع فقط. العمولة الأصلية ثابتة. قيمة المرتجع دليل استلام وليست مبلغ استرداد معتمداً أو رصيداً مستحقاً.")</p>
-<div class="table-responsive"><table class="table"><thead><tr><th>@T("Suborder / vendor","الطلب الفرعي / البائع")</th><th>@T("Original merchandise","البضائع الأصلية")</th><th>@T("Original commission","العمولة الأصلية")</th><th>@T("Received returns","المرتجعات المستلمة")</th><th>@T("Remaining merchandise","البضائع المتبقية")</th><th>@T("Open return qty","كمية الإرجاع المفتوحة")</th><th>@T("Fulfillment","التجهيز")</th><th>@T("Review","المراجعة")</th><th>@T("Sandbox ledger","السجل التجريبي")</th></tr></thead><tbody>
+<div class="table-responsive"><table class="table"><thead><tr><th>@T("Suborder / vendor","الطلب الفرعي / البائع")</th><th>@T("Original merchandise","البضائع الأصلية")</th><th>@T("Original commission","العمولة الأصلية")</th><th>@T("Received returns","المرتجعات المستلمة")</th><th>@T("Remaining merchandise","البضائع المتبقية")</th><th>@T("Open return qty","كمية الإرجاع المفتوحة")</th><th>@T("Fulfillment","التجهيز")</th><th>@T("Review","المراجعة")</th><th>@T("Sandbox ledger","السجل التجريبي")</th><th>@T("Test settlement / payment","التسوية / الدفع التجريبي")</th></tr></thead><tbody>
 @foreach(var row in Model)
 {
     <tr><td><bdi>#@row.VendorOrderId</bdi><div>@row.VendorName</div></td><td dir="ltr">@Money(row.MerchandiseSubtotal)</td><td><bdi>@Money(row.CommissionAmount)</bdi>@if(row.CommissionRatePercent.HasValue){<div><bdi>@row.CommissionRatePercent%</bdi></div>}</td>
@@ -22,7 +22,34 @@
                 <button class="btn btn-primary" type="submit">@T("Sync test ledger","مطابقة سجل الاختبار")</button>
             </form>
         }
+    </td>
+    <td>
+        <div>@T("Simulated paid","المدفوع التجريبي"): <bdi>@Money(row.TestPaidAmount)</bdi></div>
+        <div>@T("Test outstanding","الرصيد التجريبي"): <bdi>@Money(row.TestOutstanding)</bdi></div>
+        @if(row.LastTestPayoutReference.HasValue)
+        {
+            <div>@T("Test payment reference","مرجع الدفع التجريبي"): <bdi>@row.LastTestPayoutReference</bdi></div>
+            <div><bdi>@(row.LastTestPayoutAtUtc?.ToString("yyyy-MM-dd HH:mm")) UTC</bdi></div>
+        }
+        @if(!row.SettlementEligible || !row.LedgerCurrent)
+        { <div>@T("On hold","معلق")</div> }
+        else if(row.TestOutstanding<0)
+        { <div>@T("Recovery review required; no automatic deduction","يلزم مراجعة الاسترداد دون خصم آلي")</div> }
+        else if(row.ApprovalId.HasValue && row.ApprovedAtUtc.HasValue)
+        { <div>@T("Test approval","اعتماد تجريبي") #@row.ApprovalId <bdi>@row.ApprovedAtUtc.Value.ToString("yyyy-MM-dd")</bdi></div> }
+        @if(ViewBag.CanReviewSettlement==true && row.SettlementEligible && row.LedgerCurrent &&
+            row.LedgerVersion.HasValue && row.TestOutstanding>0 && (!row.ApprovalId.HasValue || row.CanRecordTestPayout))
+        {
+            <form asp-action="ReviewSettlementPreview" method="post">
+                <input type="hidden" name="vendorOrderId" value="@row.VendorOrderId"/>
+                <input type="hidden" name="ledgerVersion" value="@row.LedgerVersion"/>
+                <input type="hidden" name="approvalId" value="@row.ApprovalId"/>
+                <input type="hidden" name="page" value="@ViewBag.Page"/>
+                <label><input type="checkbox" name="confirmed" value="true" required /> @T("Test only; no money transfer","اختبار فقط دون تحويل أموال")</label>
+                <button type="submit" name="operation" value="@(row.ApprovalId.HasValue?"TestPayout":"Approve")" class="btn btn-primary">@(row.ApprovalId.HasValue?T("Record simulated payout","تسجيل دفع تجريبي"):T("Approve test balance","اعتماد رصيد الاختبار"))</button>
+            </form>
+        }
     </td></tr>
 }
-@if(Model.Count==0){<tr><td colspan="9">@T("No paid seller orders","لا توجد طلبات مدفوعة")</td></tr>}
+@if(Model.Count==0){<tr><td colspan="10">@T("No paid seller orders","لا توجد طلبات مدفوعة")</td></tr>}
 </tbody></table></div>
