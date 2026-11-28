@@ -53,10 +53,13 @@ Check(vendor.GetCustomAttributes<AuthorizeAttribute>(true).Any(a => a.Policy == 
     "Vendor portal policy missing.");
 foreach (var method in vendor.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
 {
-    if (method.IsSpecialName || method.IsDefined(typeof(NonActionAttribute), true) || method.Name == "Login") continue;
+    if (method.IsSpecialName || method.IsDefined(typeof(NonActionAttribute), true) || method.Name is "Login" or "Denied") continue;
     Check(!method.IsDefined(typeof(AllowAnonymousAttribute), true),
         $"Vendor {method.Name} bypasses authorization.");
 }
+var denied = vendor.GetMethod("Denied")!;
+Check(denied.GetParameters().Length == 0 && denied.IsDefined(typeof(HttpGetAttribute)) &&
+    denied.IsDefined(typeof(AllowAnonymousAttribute)), "Vendor denied route must remain a public error response.");
 RequireController(typeof(UserProfileController), role: "Customer");
 Console.WriteLine("Portal authorization metadata regression checks passed.");
 
