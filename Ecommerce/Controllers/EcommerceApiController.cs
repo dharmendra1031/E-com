@@ -4,6 +4,10 @@ using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using MF.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +40,16 @@ namespace EcommerceWebApplication.Controllers
             _env = env;
         }
 
+
+        private int? CurrentCustomerId()
+        {
+            if (!CustomerApiAuth.TryGetUserId(User, out var id)) return null;
+            var hash = _context.Customers.AsNoTracking()
+                .Where(u => u.UserId == id && u.IsActive && u.IsDeleted == 0 &&
+                    u.CustType == "Customer" && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer")
+                .Select(u => u.PasswordHash).SingleOrDefault();
+            return hash != null && CustomerApiAuth.IsCurrent(User, hash) ? id : null;
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetCategories()
@@ -537,7 +551,8 @@ namespace EcommerceWebApplication.Controllers
         {
 
             bool isArabic = lang?.ToLower() == "ar";
-            var user = await _context.Customers.FirstOrDefaultAsync(u => u.Email == model.Email && u.CustType == "Customer" && u.PasswordHash == model.Password && u.IsDeleted == 0);
+            var user = await _context.Customers.FirstOrDefaultAsync(u => u.Email == model.Email && u.CustType == "Customer" &&
+                u.PasswordHash == model.Password && u.IsDeleted == 0 && u.Role != null && u.Role.IsActive && u.Role.RoleName == "Customer");
 
 
             if (user == null)
@@ -578,8 +593,14 @@ namespace EcommerceWebApplication.Controllers
             var totalCartCount = _context.CartItems
                                  .Count(x => x.UserId == user.UserId);
 
+            var tokenOptions = HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<BearerTokenOptions>>()
+                .Get(CustomerApiAuth.Scheme);
+            var ticket = CustomerApiAuth.CreateTicket(user.UserId, user.PasswordHash!, DateTimeOffset.UtcNow, tokenOptions.BearerTokenExpiration);
             return Ok(new
             {
+                accessToken = tokenOptions.BearerTokenProtector.Protect(ticket),
+                tokenType = "Bearer",
+                expiresIn = (int)tokenOptions.BearerTokenExpiration.TotalSeconds,
                 userId = user.UserId,
                 fullName = user.FullName,
                 email = user.Email,
@@ -590,8 +611,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> GetProfile([FromQuery] int userId)
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
             var user = await _context.Customers.FirstOrDefaultAsync(u => u.UserId == userId && u.IsDeleted == 0);
             if (user == null) return NotFound();
 
@@ -620,8 +643,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto model, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || actor != model.UserId) return Unauthorized();
             bool isArabic = lang?.ToLower() == "ar";
 
             var user = await _context.Customers
@@ -650,8 +675,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult ChangePassword([FromBody] ChangePasswordRequest request, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || request == null || actor != request.UserId) return Unauthorized();
             bool isArabic = lang?.ToLower() == "ar";
 
             if (request == null || string.IsNullOrEmpty(request.NewPassword))
@@ -968,8 +995,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> UploadProfilePic([FromForm] IFormFile profilePic, [FromQuery] int userId, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
             //var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
             var currentCulture = lang?.ToLower();
 
@@ -1030,8 +1059,10 @@ namespace EcommerceWebApplication.Controllers
         //    return Ok(addresses);
         //}
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> GetUserAddresses([FromQuery] int userId)
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
             var addresses = await (
                 from ua in _context.UserAddresses
                 join ar in _context.Area on ua.Area equals ar.Id.ToString() into areaJoin
@@ -1071,8 +1102,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> SaveAddress([FromBody] UserAddress model)
         {
+            if (CurrentCustomerId() is not int actor || actor != model.UserId) return Unauthorized();
 
             if (!string.IsNullOrEmpty(model.Phone))
             {
@@ -1113,7 +1146,7 @@ namespace EcommerceWebApplication.Controllers
                     // Update existing
                     //var existing = await _context.UserAddresses.FindAsync(model.AddressId);
                     var existing = await _context.UserAddresses
-           .FirstOrDefaultAsync(a => a.AddressId == model.AddressId && a.isdeleted == 0);
+           .FirstOrDefaultAsync(a => a.AddressId == model.AddressId && a.UserId == actor && a.isdeleted == 0);
                     if (existing == null) return NotFound("Address not found");
 
 
@@ -1141,11 +1174,13 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> DeleteAddress(int id, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor) return Unauthorized();
             var currentCulture = lang?.ToLower();
             //var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-            var addr = await _context.UserAddresses.FindAsync(id);
+            var addr = await _context.UserAddresses.FirstOrDefaultAsync(a => a.AddressId == id && a.UserId == actor && a.isdeleted == 0);
             if (addr == null)
             {
                 if (currentCulture == "ar")
@@ -1177,8 +1212,10 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpGet]
 
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> GetUserOrders([FromQuery] int userId)
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
 
             var orders = await _context.Orders
                 .Where(o => o.CustomerId == userId
@@ -1297,8 +1334,11 @@ namespace EcommerceWebApplication.Controllers
         //    }
         //}
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> GetOrderInvoice(int orderId, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor) return Unauthorized();
+            if (!await _context.Orders.AnyAsync(o => o.OrderId == orderId && o.CustomerId == actor)) return NotFound();
             try
             {
                 bool isArabic = lang?.ToLower() == "ar";
@@ -1367,8 +1407,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> GetUserReturnRequests([FromQuery] int userId)
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
             var requests = await _context.ReturnRequests
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.RequestedAt)
@@ -1391,8 +1433,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> RequestReturnReplace([FromBody] ReturnRequestDto req)
         {
+            if (CurrentCustomerId() is not int actor || req == null || actor != req.UserId) return Unauthorized();
             var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
             if (req == null || req.OrderId <= 0 || req.UserId <= 0 || string.IsNullOrEmpty(req.RequestType))
@@ -1545,6 +1589,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetNotificationCount()
         {
             int unseenCount = await _context.Orders.CountAsync(o => o.NewNotification == 0);
@@ -1555,7 +1600,9 @@ namespace EcommerceWebApplication.Controllers
             });
         }
 
-        [HttpGet]
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> MarkNotificationsAsSeen()
         {
 
@@ -1584,6 +1631,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetNewOrders()
         {
             var newOrders = await _context.Orders
@@ -4088,8 +4136,10 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult AddProductReview([FromBody] ReviewDto dto, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || actor != dto.UserId) return Unauthorized();
             var currentCulture = lang?.ToLower();
 
             if (dto.Rating < 1 || dto.Rating > 5)
@@ -4148,7 +4198,7 @@ namespace EcommerceWebApplication.Controllers
         //public async Task<IActionResult> CancelOrder(int orderId)
         //{
         //    var currentCulture = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-        //    var order = await _context.Orders.FindAsync(orderId);
+        //    var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == actor);
 
         //    if (order == null)
         //    {
@@ -4183,8 +4233,10 @@ namespace EcommerceWebApplication.Controllers
         //        return Ok(new { message = "Order cancelled" });
         //}
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public async Task<IActionResult> CancelOrder(int orderId, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor) return Unauthorized();
             bool isArabic = lang?.ToLower() == "ar";
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -4296,8 +4348,10 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult SoftDeleteUser(int userId, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor || actor != userId) return Unauthorized();
             var currentCulture = lang?.ToLower();
             var user = _context.Customers.FirstOrDefault(u => u.UserId == userId && u.IsDeleted == 0);
 
@@ -4334,8 +4388,10 @@ namespace EcommerceWebApplication.Controllers
 
         }
         [HttpGet]
+        [Authorize(AuthenticationSchemes = CustomerApiAuth.Scheme, Roles = "Customer")]
         public IActionResult GetOrderDetails(int orderid, string lang = "en")
         {
+            if (CurrentCustomerId() is not int actor) return Unauthorized();
             try
             {
                 bool isArabic = lang?.ToLower() == "ar";
@@ -4357,7 +4413,7 @@ namespace EcommerceWebApplication.Controllers
                              join b in _context.Block on ad.Block equals b.Id.ToString() into blockGroup
                              from b in blockGroup.DefaultIfEmpty()
 
-                             where o.OrderId == orderid
+                             where o.OrderId == orderid && o.CustomerId == actor
 
                              select new
                              {

@@ -697,7 +697,11 @@
             try {
                 loadNotifications();
                 // Mark all as seen but don't reload notification list immediately
-                await fetch('/api/EcommerceApi/MarkNotificationsAsSeen');
+                const seenResponse = await fetch('/api/EcommerceApi/MarkNotificationsAsSeen', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value }
+                });
+                if (!seenResponse.ok) throw new Error('Notification update failed');
                 document.getElementById('notificationCountBadge').innerText = '';
                 // Dropdown content should remain visible — so no loadNotifications() here
             } catch (err) {
@@ -732,7 +736,11 @@
 
         // When bell icon clicked, mark as seen
         document.getElementById('notificationDropdown').addEventListener('click', async () => {
-            await fetch('/api/EcommerceApi/MarkNotificationsAsSeen');
+            const seenResponse = await fetch('/api/EcommerceApi/MarkNotificationsAsSeen', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value }
+                });
+                if (!seenResponse.ok) throw new Error('Notification update failed');
             document.getElementById('notificationCountBadge').innerText = '';
         });
     </script> *@

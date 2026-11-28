@@ -4,6 +4,7 @@ using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using MF.Models;
 using MF.Service;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -122,6 +123,7 @@ try
                 context.RejectPrincipal();
         };
     })
+    .AddBearerToken(CustomerApiAuth.Scheme, options => options.BearerTokenExpiration = TimeSpan.FromHours(3))
     .AddCookie(VendorPortalAuth.Scheme, options =>
     {
         VendorPortalAuth.ConfigureCookie(options);

@@ -1,11 +1,14 @@
 ﻿using EcommerceWebApplication.Service;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EcommerceWebApplication.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
+    [AutoValidateAntiforgeryToken]
     public class SmsController : ControllerBase
     {
 

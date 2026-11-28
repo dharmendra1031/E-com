@@ -59,3 +59,26 @@ foreach (var method in vendor.GetMethods(BindingFlags.Public | BindingFlags.Inst
 }
 RequireController(typeof(UserProfileController), role: "Customer");
 Console.WriteLine("Portal authorization metadata regression checks passed.");
+
+RequireController(typeof(SmsController), role: "Admin");
+var customerApi = typeof(EcommerceApiController);
+foreach (var action in new[] { "GetProfile", "UpdateProfile", "ChangePassword", "UploadProfilePic", "GetUserAddresses", "SaveAddress", "DeleteAddress", "GetUserOrders", "GetOrderInvoice", "GetUserReturnRequests", "RequestReturnReplace", "AddProductReview", "CancelOrder", "SoftDeleteUser", "GetOrderDetails" })
+{
+    var method = customerApi.GetMethods().Single(m => m.Name == action);
+    Check(method.GetCustomAttributes<AuthorizeAttribute>().Any(a =>
+        a.AuthenticationSchemes == "CustomerApi" && a.Roles == "Customer"), $"Missing customer API authorization: {action}");
+}
+foreach (var action in new[] { "GetNotificationCount", "GetNewOrders", "MarkNotificationsAsSeen" })
+{
+    var method = customerApi.GetMethods().Single(m => m.Name == action);
+    Check(method.GetCustomAttributes<AuthorizeAttribute>().Any(a => a.Roles == "Admin"), $"Missing admin notification authorization: {action}");
+}
+var markSeen = customerApi.GetMethod("MarkNotificationsAsSeen")!;
+Check(markSeen.IsDefined(typeof(HttpPostAttribute)) && markSeen.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
+    "Notification mutation must require POST and antiforgery.");
+var ticket = EcommerceWebApplication.Helper.CustomerApiAuth.CreateTicket(41, "test-credential", DateTimeOffset.UtcNow, TimeSpan.FromHours(3));
+Check(EcommerceWebApplication.Helper.CustomerApiAuth.TryGetUserId(ticket.Principal, out int customerId) && customerId == 41, "Customer identity missing.");
+Check(EcommerceWebApplication.Helper.CustomerApiAuth.IsCurrent(ticket.Principal, "test-credential") &&
+    !EcommerceWebApplication.Helper.CustomerApiAuth.IsCurrent(ticket.Principal, "changed"), "Customer token credential invalidation failed.");
+Check(!EcommerceWebApplication.Helper.CustomerApiAuth.TryGetUserId(new System.Security.Claims.ClaimsPrincipal(), out _), "Anonymous identity accepted.");
+Console.WriteLine("Customer API and notification authorization metadata checks passed.");
