@@ -19,6 +19,7 @@
                     @if (Model.Addresses.Count == 0)
                     {
                         <p>@T("Add an address using your customer account before checkout.","أضف عنواناً في حساب العميل قبل الدفع.")</p>
+                        <a asp-controller="UserProfile" asp-action="Profile" asp-route-section="addresses" class="btn btn-outline-primary">@T("Add delivery address","إضافة عنوان التوصيل")</a>
                     }
                     else
                     {
@@ -55,7 +56,7 @@
                         <dt>@T("VAT","ضريبة القيمة المضافة") (@Model.Quote.VatPercent%)</dt><dd dir="ltr">@Money(Model.Quote.VatAmount)</dd>
                         <dt>@T("Total","الإجمالي")</dt><dd dir="ltr"><strong>@Money(Model.Quote.Total)</strong></dd>
                     </dl>
-                    <p class="small">@T("Quote valid for 10 minutes. No coupons or payment in this test.","العرض صالح لمدة 10 دقائق. لا توجد قسائم أو دفع في الاختبار.")</p>
+                    <p class="small">@T("Quote valid for 10 minutes. Coupons are not supported. Sandbox payment may be available after order creation.","العرض صالح لمدة 10 دقائق. القسائم غير متاحة. قد يتوفر الدفع التجريبي بعد إنشاء الطلب.")</p>
                     <button class="btn btn-primary w-100" type="submit" disabled="@(Model.Addresses.Count == 0)">@T("Create unpaid test order","إنشاء طلب اختبار غير مدفوع")</button>
                     <a class="d-block mt-2" asp-controller="WebCart" asp-action="Cart">@T("Back to cart","العودة إلى السلة")</a>
                 </div>

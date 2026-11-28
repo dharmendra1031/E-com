@@ -19,7 +19,7 @@ using System.Text;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = AdminStaffAccess.Roles)]
+    [Authorize(Roles = AdminStaffAccess.Roles + ",Customer")]
     public class ReportController : Controller
     {
         private readonly EcommerceDbContext _context;
@@ -37,6 +37,7 @@ namespace EcommerceWebApplication.Controllers
         #region Daily sale report
 
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> Index()
 
         {
@@ -75,6 +76,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> ReportPrint(ReportViewModel rptParameters, string format = "PDF")
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -331,6 +333,7 @@ namespace EcommerceWebApplication.Controllers
 
         #region Category Wise Sales 
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> CategoryWiseSalereport()
 
         {
@@ -359,6 +362,7 @@ namespace EcommerceWebApplication.Controllers
 
         }
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> CategoryReportPrint(int? categoryId, string format = "PDF")
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -578,12 +582,14 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> Customers()
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
             return View();
         }
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> CustomersReport(DateTime? from, DateTime? to, bool? isActive, string? keyword, string format = "PDF")
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -722,6 +728,7 @@ namespace EcommerceWebApplication.Controllers
 
         #region StockReport
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> StockReport()
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -730,6 +737,7 @@ namespace EcommerceWebApplication.Controllers
             return View();
         }
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> StockReportPrint(string? productName, string? status, string? searchCode, string format = "PDF")
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -905,6 +913,7 @@ namespace EcommerceWebApplication.Controllers
 
         #region ItemReport
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> ItemReport()
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -912,6 +921,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> ItemfileReport(string? name, decimal? salePrice, string? status,
                                           bool showCategory = false, bool showStock = false,
                                           string format = "PDF")
@@ -1082,6 +1092,7 @@ namespace EcommerceWebApplication.Controllers
 
         #region Suggetion Product
         [HttpGet]
+        [Authorize(Roles = AdminStaffAccess.Roles)]
         public async Task<IActionResult> AutoCompleteSql(string term)
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Reports, HttpContext.RequestAborted)).View) return Forbid();
@@ -1154,13 +1165,16 @@ namespace EcommerceWebApplication.Controllers
 
         }
 
-        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        [Authorize(Roles = "Admin,Customer")]
         public async Task<IActionResult> OrderInvoicePrint(int orderId, string format = "PDF")
         {
             if (!User.IsInRole("Admin") &&
                 (!User.IsInRole("Customer") || !int.TryParse(User.FindFirst("UserId")?.Value, out var customerId) ||
-                 !await _context.Orders.AnyAsync(o => o.OrderId == orderId && o.CustomerId == customerId)))
+                 SellerCartAccess.CustomerId(HttpContext)!=customerId ||
+                 !await _context.Orders.AnyAsync(o => o.OrderId == orderId && o.CustomerId == customerId && o.PaymentStatus==1 && o.MarketplaceRequestId==null)))
                 return Forbid();
+            if (!await _context.Orders.AnyAsync(o=>o.OrderId==orderId && o.MarketplaceRequestId==null)) return NotFound();
             try
             {
                 var culture = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;

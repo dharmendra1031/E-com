@@ -30,18 +30,11 @@
         <div class="col-lg-6">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="mb-0">@_localizer["Checkout"]</h3>
-                @if (Model.UserId == null)
-                {
-                    <a href="/UserAccount/Login" class="btn btn-sm btn-outline-dark">
-                        @_localizer["Login"]
-                    </a>
-                }
             </div>
 
             <h5 class="mb-3"> @_localizer["Billing Details"]</h5>
 
-            @if (Model.UserId != null)
-            {
+
                 <!-- ✅ USER LOGGED IN → READONLY DETAILS -->
                 <input class="form-control mb-3"
                        placeholder="@_localizer["Full Name"]"
@@ -97,75 +90,6 @@
                     </button>
 
                 </div>
-
-            }
-            else
-            {
-                <!-- ❌ USER NOT LOGGED IN → NEW ADDRESS FORM -->
-                <form id="guestAddressForm" onsubmit="return false;">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Full Name"]</label>
-                            <input id="fullName" autocomplete="name" class="form-control" placeholder="@_localizer["Full Name"]">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Email"]</label>
-                            <input id="email" type="email" autocomplete="email" class="form-control" placeholder="@_localizer["Email"]">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Mobile No"]</label>
-                            <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" class="form-control" maxlength="8" pattern="[0-9]{8}">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Area"]</label>
-                            <select class="form-control" id="ddlArea"></select>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Block"]</label>
-                            <select class="form-control" id="ddlBlock"></select>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label required"> @_localizer["Street"]</label>
-                            <input id="street" class="form-control">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label> @_localizer["House No"]</label>
-                            <input id="houseNo" class="form-control">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label> @_localizer["Floor"]</label>
-                            <input id="floor" class="form-control">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label>@_localizer["Apartment No"]</label>
-                            <input id="apartmentNo" class="form-control">
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label>@_localizer["Shareholder No"]</label>
-                            <input id="shareholderNo" class="form-control">
-                        </div>
-
-                        <div class="col-12 mb-3">
-                            <label> @_localizer["NoInstruction"]</label>
-                            <textarea id="instruction" class="form-control"></textarea>
-                        </div>
-                    </div>
-                </form>
-
-
-
-            }
-
-
 
             <h5 class="mb-3 mt-4">@_localizer["Payment Method"]</h5>
 
@@ -450,8 +374,7 @@
             area.disabled = false;
         } catch { Swal.fire({icon:"error",text:checkoutError}); }
     }
-    const guestArea = document.getElementById("ddlArea");
-    if (guestArea) setupAreaFields(guestArea, document.getElementById("ddlBlock"));
+
 
     function openAddressModal() {
         const modal = document.getElementById("addAddressModal");
@@ -486,49 +409,6 @@
     });
 </script>
 <script>
-    const isGuestUser = @(Model.UserId == null ? "true" : "false");
-</script>
-
-<script>
-    function validateGuestForm() {
-        let isValid = true;
-
-        // remove old errors
-        document.querySelectorAll('#guestAddressForm .is-invalid')
-            .forEach(el => el.classList.remove('is-invalid'));
-
-        // required fields list
-        const requiredFields = [
-            'fullName',
-            'email',
-            'mobile',
-            'ddlArea',
-            'ddlBlock',
-            'street'
-        ];
-
-        requiredFields.forEach(id => {
-            const field = document.getElementById(id);
-            if (!field || !field.value || field.value.trim() === '') {
-                field?.classList.add('is-invalid');
-                isValid = false;
-            }
-        });
-
-        // mobile length check
-        const mobile = document.getElementById('mobile');
-        if (mobile && !/^[0-9]{8}$/.test(mobile.value)) {
-            mobile.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        const email = document.getElementById('email');
-        if (email && !email.checkValidity()) { email.classList.add('is-invalid'); isValid = false; }
-        if (!isValid) document.querySelector('#guestAddressForm .is-invalid')?.focus();
-        return isValid;
-    }
-</script>
-<script>
     $('#payNowBtn').click(function () {
         if (orderPending || couponPending) return;
         let items = [];
@@ -553,41 +433,12 @@
             items: items
         };
 
-        // 🔹 CASE 1: GUEST USER
-        if (isGuestUser) {
-
-            if (!validateGuestForm()) {
-                alert('Please fill all required billing details');
-                return;
-            }
-
-            // 🔹 DIRECT DTO FIELDS
-            orderData.fullName = $('#fullName').val();
-            orderData.email = $('#email').val();
-            orderData.mobile = $('#mobile').val();
-            orderData.areaId = parseInt($('#ddlArea').val());
-            orderData.blockId = parseInt($('#ddlBlock').val());
-            orderData.street = $('#street').val();
-            orderData.houseNo = $('#houseNo').val();
-            orderData.floor = $('#floor').val();
-            orderData.apartmentNo = $('#apartmentNo').val();
-            orderData.shareholderNo = $('#shareholderNo').val();
-            orderData.instruction = $('#instruction').val();
-
-            // Guest ke liye addressId nahi
-            orderData.deliveryAddress = 0;
-
+        const addressId=$('#addressDropdown').val();
+        if(!addressId){
+            Swal.fire({icon:"warning",text:checkoutArabic?"اختر عنوان التوصيل":"Please select a delivery address"});
+            return;
         }
-        else {
-            // 🔹 CASE 2: LOGGED-IN USER
-            let addressId = $('#addressDropdown').val();
-            if (!addressId) {
-                alert('Please select delivery address');
-                return;
-            }
-
-            orderData.deliveryAddress = parseInt(addressId);
-        }
+        orderData.deliveryAddress=parseInt(addressId);
 
         // Prevent duplicate clicks while the server processes the order.
         orderPending = true;

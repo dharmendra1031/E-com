@@ -230,6 +230,7 @@
 </head>
 
 <body dir="@direction" class="storefront">
+    <div id="storeCartToken" hidden>@Html.AntiForgeryToken()</div>
 	<div class="fixed-header" id="siteHeader">
 		<div class="store-maintenance" role="status">
 			<div class="container text-center">
@@ -278,7 +279,7 @@
                     </form>
                     <div class="header-actions">
 						@{
-							var userId = Context.Session.GetInt32("UserId");
+							var userId = EcommerceWebApplication.Helper.SellerCartAccess.CustomerId(Context);
 							var fullName = Context.Session.GetString("FullName");
 							var profileImage = Context.Session.GetString("ProfileImage") ?? "/images/default-user.png";
 						}
@@ -945,7 +946,7 @@
         if (button.prop("disabled")) return;
         const arabic = document.documentElement.lang === "ar";
         button.prop("disabled", true);
-        $.post('/WebCart/AddOrUpdateCart', { productId: button.data("productid"), qty: Number(button.attr("data-quantity") || 1) })
+        $.post('/WebCart/AddOrUpdateCart', { productId: button.data("productid"), qty: Number(button.attr("data-quantity") || 1), __RequestVerificationToken: document.querySelector("#storeCartToken input").value })
             .done(function (res) {
                 if (res.success) {
                     loadCartCount();

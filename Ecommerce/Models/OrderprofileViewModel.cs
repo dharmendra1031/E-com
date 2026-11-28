@@ -3,6 +3,8 @@
     public class OrderprofileViewModel
     {
         public int? OrderId { get; set; }
+        public Guid? MarketplaceRequestId { get; set; }
+        public bool Paid { get; set; }
         public DateTime CreatedAt { get; set; }
 
         public string? OrderStatusName { get; set; }

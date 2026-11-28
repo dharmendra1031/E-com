@@ -14,11 +14,15 @@ public static class SellerCartAccess
         environment.IsDevelopment() && Enabled(configuration) &&
         configuration.GetValue("Marketplace:SellerCheckoutTestEnabled", false);
 
+    public static int? CustomerId(HttpContext context) =>
+        context.User.Identity?.IsAuthenticated == true && context.User.IsInRole("Customer") &&
+        int.TryParse(context.User.FindFirst("UserId")?.Value,out var id) && id>0 &&
+        context.Session.GetInt32("UserId")==id ? id : null;
+
     public static async Task<int?> CustomerAsync(EcommerceDbContext db, HttpContext context, CancellationToken ct)
     {
-        if (!context.User.IsInRole("Customer") || !int.TryParse(context.User.FindFirst("UserId")?.Value, out var id) ||
-            id <= 0 || context.Session.GetInt32("UserId") != id) return null;
-        return await db.Customers.AnyAsync(c => c.UserId == id && c.IsActive && c.IsDeleted == 0 &&
+        if (CustomerId(context) is not int id) return null;
+        return await db.Customers.AnyAsync(c => c.UserId == id && c.IsActive && c.IsDeleted == 0 && c.CustType == "Customer" &&
             c.Role != null && c.Role.IsActive && c.Role.RoleName == "Customer", ct) ? id : null;
     }
 

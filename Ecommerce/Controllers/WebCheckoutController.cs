@@ -8,6 +8,7 @@ using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
@@ -66,7 +67,7 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> Seller(CancellationToken ct)
         {
             if (!SellerCheckoutEnabled) return NotFound();
-            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return RedirectToAction("Login","UserAccount",new {returnUrl=Request.Path.ToString()+Request.QueryString.ToString()});
             if (await _context.CartItems.AnyAsync(c => c.UserId == customerId, ct))
             {
                 TempData["SellerCartMessage"] = "Remove or review old cart items before checkout. / راجع عناصر السلة القديمة قبل الدفع.";
@@ -155,7 +156,7 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> SellerReceipt(Guid requestId, CancellationToken ct, string? paymentId = null)
         {
             if (!SellerCheckoutEnabled) return NotFound();
-            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return Unauthorized();
+            if (await SellerCartAccess.CustomerAsync(_context, HttpContext, ct) is not int customerId) return RedirectToAction("Login","UserAccount",new {returnUrl=Request.Path.ToString()+Request.QueryString.ToString()});
             var receipt = await CustomerSellerOrders(customerId).SingleOrDefaultAsync(o => o.RequestId == requestId, ct);
             if (receipt == null) return NotFound();
             ViewBag.SandboxPaymentEnabled = SellerSandboxPaymentEnabled;
@@ -179,7 +180,7 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> SellerOrders(int page=1,CancellationToken ct=default)
         {
             if (!SellerCheckoutEnabled) return NotFound();
-            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return RedirectToAction("Login","UserAccount",new {returnUrl=Request.Path.ToString()+Request.QueryString.ToString()});
             page=Math.Clamp(page,1,100000);
             var rows=await CustomerSellerOrders(customerId).OrderByDescending(o=>o.OrderId)
                 .Skip((page-1)*25).Take(26).ToListAsync(ct);
@@ -212,7 +213,7 @@ namespace EcommerceWebApplication.Controllers
         public async Task<IActionResult> SellerReturns(Guid requestId,CancellationToken ct)
         {
             if (!SellerCheckoutEnabled || !_configuration.GetValue("Marketplace:ReturnWorkflowEnabled",false)) return NotFound();
-            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return Unauthorized();
+            if (await SellerCartAccess.CustomerAsync(_context,HttpContext,ct) is not int customerId) return RedirectToAction("Login","UserAccount",new {returnUrl=Request.Path.ToString()+Request.QueryString.ToString()});
             if (!await CustomerSellerOrders(customerId).AnyAsync(o=>o.RequestId==requestId,ct)) return NotFound();
             ViewBag.OrderRequestId=requestId;
             ViewBag.Requests=await _context.Database.SqlQuery<MarketplaceReturnRow>($"""
@@ -354,17 +355,17 @@ namespace EcommerceWebApplication.Controllers
             }
         }
 
-        private int? CustomerId => User.IsInRole("Customer") && int.TryParse(User.FindFirst("UserId")?.Value, out var id) && HttpContext.Session.GetInt32("UserId") == id ? id : null;
+        private int? CustomerId => SellerCartAccess.CustomerId(HttpContext);
 
-        private IQueryable<CartItem> CheckoutCart(int? userId, string deviceId) => _context.CartItems.Where(c =>
-            userId.HasValue ? c.UserId == userId.Value : c.UserId == 0 && c.DeviceId == deviceId);
+        private IQueryable<CartItem> CheckoutCart(int customerId) => _context.CartItems.Where(c => c.UserId == customerId);
 
-        public IActionResult Index(string Usertype)
+        [HttpGet]
+        public IActionResult Index()
         {
-            if (SellerCheckoutEnabled) return RedirectToAction("Cart", "WebCart");
             int? userId = CustomerId;
-            string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
-            var cartItemCount = CheckoutCart(userId, deviceId).Count();
+            if (!userId.HasValue) return RedirectToAction("Login","UserAccount",new {returnUrl="/WebCheckout/Index"});
+            if (SellerCheckoutEnabled) return RedirectToAction(nameof(Seller));
+            var cartItemCount = CheckoutCart(userId.Value).Count();
 
             // ❌ cart empty
             if (cartItemCount == 0)
@@ -372,15 +373,6 @@ namespace EcommerceWebApplication.Controllers
                 TempData["CartMessage"] = "Please purchase at least one item";
                 return RedirectToAction("Index", "WebCategory");
             }
-            if (!userId.HasValue && Usertype == null)
-            {
-                return RedirectToAction(
-                    "Login",
-                    "UserAccount",
-                    new { returnUrl = "/WebCheckout/Index" }
-                );
-            }
-
             var model = new CheckoutviewModel
             {
                 AddressList = new List<UserAddress>(),
@@ -400,9 +392,8 @@ namespace EcommerceWebApplication.Controllers
                 model.VatPercentage = company.Vat;
                 model.DeliveryCharge = company.DeliveryCharge;
             }
-            if (userId.HasValue)
             {
-                // 🔹 Customer Info
+                // Registered customer information
                 var customer = _context.Customers
                     .Where(x => x.UserId == userId.Value)
                     .Select(x => new
@@ -414,13 +405,11 @@ namespace EcommerceWebApplication.Controllers
                     })
                     .FirstOrDefault();
 
-                if (customer != null)
-                {
-                    model.UserId = customer.UserId;
-                    model.FullName = customer.FullName;
-                    model.Email = customer.Email;
-                    model.Phone = customer.Phone;
-                }
+                if (customer == null) return Unauthorized();
+                model.UserId = customer.UserId;
+                model.FullName = customer.FullName;
+                model.Email = customer.Email;
+                model.Phone = customer.Phone;
 
               
                 // 🔹 Address List
@@ -434,17 +423,12 @@ namespace EcommerceWebApplication.Controllers
 
                 // ✅ Selected Address (View ko bhejne ke liye)
                 model.SelectedAddressId = addressList.Any()
-       ? addressList.OrderByDescending(x => x.AddressId).First().AddressId
+       ? addressList.First().AddressId
        : 0;
 
 
-                // 🔹 Cart Items
-                //model.CartItems = _context.CartItems
-                //    .Where(c => c.UserId == userId.Value)
-                //    .Select(c => new OrderSummaryItemViewModel
-
             }
-            model.CartItems = (from c in CheckoutCart(userId, deviceId)
+            model.CartItems = (from c in CheckoutCart(userId.Value)
                                join p in _context.Products
                                on c.ProductId equals p.ProductId
                                where p.IsActive
@@ -508,6 +492,7 @@ namespace EcommerceWebApplication.Controllers
                 string.IsNullOrWhiteSpace(model.Street) || string.IsNullOrWhiteSpace(model.Phone))
                 return BadRequest(new { success = false, message = "Invalid address details." });
 
+            if (model.AddressId != 0) return BadRequest(new {success=false,message="Invalid address."});
             model.UserId = userId.Value;
             model.CreatedAt = DateTime.Now;
 
@@ -518,7 +503,6 @@ namespace EcommerceWebApplication.Controllers
             model.Landmark ??= "";
             model.Governorate ??= "";
             model.isdeleted = 0;
-            model.Phone =  model.Phone;
 
             _context.UserAddresses.Add(model);
             _context.SaveChanges();
@@ -564,7 +548,7 @@ namespace EcommerceWebApplication.Controllers
                 return Unauthorized(new { message = "Sign in to use a coupon." });
             if (request == null || string.IsNullOrWhiteSpace(request.Code) || request.Code.Length > 50)
                 return BadRequest(new { message = "Enter a valid coupon code." });
-            var subtotal = await (from c in CheckoutCart(userId, DeviceIdHelper.GetOrCreateDeviceId(HttpContext))
+            var subtotal = await (from c in CheckoutCart(userId.Value)
                                   join p in _context.Products on c.ProductId equals p.ProductId
                                   where p.IsActive && c.Quantity > 0
                                   select (decimal?)(p.Price * c.Quantity)).SumAsync() ?? 0m;
@@ -576,6 +560,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Customer")]
         public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto request)
         {
             if (SellerCheckoutEnabled) return Conflict(new { message = "Use the seller checkout in this test environment." });
@@ -589,12 +574,12 @@ namespace EcommerceWebApplication.Controllers
                 return BadRequest(new { message = "Unsupported payment method." });
 
             var sessionUserId = CustomerId;
-            var deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
+            if (!sessionUserId.HasValue) return Unauthorized(new {message="Sign in to place an order."});
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                // Limit this website path to the current customer's or anonymous device's actual basket.
-                var cart = await CheckoutCart(sessionUserId, deviceId).ToListAsync();
+                // Limit this website path to the signed-in customer’s actual basket.
+                var cart = await CheckoutCart(sessionUserId.Value).ToListAsync();
                 var quantities = cart.GroupBy(c => c.ProductId).ToDictionary(g => g.Key, g => g.Sum(c => (long)c.Quantity));
                 if (quantities.Count != request.Items.Count || request.Items.Any(i => !quantities.TryGetValue(i.ProductId, out var qty) || qty != i.Quantity))
                     return Conflict(new { message = "Your cart has changed. Refresh checkout and review your order." });
@@ -630,50 +615,11 @@ namespace EcommerceWebApplication.Controllers
                     return Conflict(new { message = "Order total has changed. Refresh checkout and review your order." });
 
                 var now = DateTime.Now;
-                int userId;
-                if (sessionUserId.HasValue)
-                {
-                    userId = sessionUserId.Value;
-                    if (!await _context.Customers.AnyAsync(c => c.UserId == userId && c.IsActive && c.IsDeleted == 0))
-                        return Unauthorized(new { message = "Customer session is invalid." });
-                    if (!await _context.UserAddresses.AnyAsync(a => a.AddressId == request.DeliveryAddress && a.UserId == userId && a.isdeleted == 0))
-                        return BadRequest(new { message = "Invalid delivery address." });
-                }
-                else
-                {
-                    var email = request.Email?.Trim();
-                    var phone = request.Mobile?.Trim();
-                    if (string.IsNullOrWhiteSpace(request.FullName) || request.FullName.Length > 100 ||
-                        string.IsNullOrWhiteSpace(email) || email.Length > 150 || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email) ||
-                        phone == null || !System.Text.RegularExpressions.Regex.IsMatch(phone, @"\A[0-9]{8}\z") ||
-                        string.IsNullOrWhiteSpace(request.Street) || !request.AreaId.HasValue || !request.BlockId.HasValue ||
-                        !await _context.Block.AnyAsync(b => b.Id == request.BlockId.Value && b.AreaId == request.AreaId.Value))
-                        return BadRequest(new { message = "Invalid guest or delivery details." });
-
-                    // Never attach an anonymous checkout to an existing account using email or phone.
-                    if (await _context.Customers.AnyAsync(c => (c.IsDeleted == 0 || c.IsDeleted == null) &&
-                        (c.Email == email || c.Phone == phone)))
-                        return Conflict(new { message = "These contact details already exist. Sign in or contact support before placing an order." });
-
-                    var guest = new Customers
-                    {
-                        FullName = request.FullName.Trim(), Email = email, Phone = phone, RoleId = 2,
-                        IsActive = true, IsDeleted = 0, CustType = "Guest", ShareholderNo = request.ShareholderNo,
-                        PasswordHash = CustomerPassword.Hash(Guid.NewGuid().ToString("N")), CreatedAt = now, UpdatedAt = now
-                    };
-                    _context.Customers.Add(guest);
-                    await _context.SaveChangesAsync();
-                    userId = guest.UserId;
-                    var address = new UserAddress
-                    {
-                        UserId = userId, Title = "Home", Area = request.AreaId.Value.ToString(), Block = request.BlockId.Value.ToString(),
-                        Street = request.Street, HouseNo = request.HouseNo, Floor = request.Floor, Phone = phone,
-                        CreatedAt = now, IsDefault = true, isdeleted = 0
-                    };
-                    _context.UserAddresses.Add(address);
-                    await _context.SaveChangesAsync();
-                    request.DeliveryAddress = address.AddressId;
-                }
+                int userId=sessionUserId.Value;
+                if (await SellerCartAccess.CustomerAsync(_context,HttpContext,HttpContext.RequestAborted)!=userId)
+                    return Unauthorized(new {message="Customer session is invalid."});
+                if (!await ValidSellerAddress(userId,request.DeliveryAddress,HttpContext.RequestAborted))
+                    return BadRequest(new {message="Invalid delivery address."});
 
                 var order = new OrderModel
                 {

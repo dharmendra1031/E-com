@@ -13,7 +13,14 @@
                 <div><div class="small text-secondary">@_localizer["Status"]</div><strong>@order.OrderStatusName</strong></div>
                 <div><div class="small text-secondary">@_localizer["Pay Status"]</div>@order.PaymentStatusName</div>
                 <div><div class="small text-secondary">@_localizer["Total"]</div><strong dir="ltr">KD @order.TotalAmount.ToString("F3",CultureInfo.InvariantCulture)</strong></div>
-                <a class="btn btn-outline-primary" href="@Url.Action("OrderInvoicePrint","Report",new { orderId=order.OrderId,format="PDF" })" target="_blank" rel="noopener">@(ar ? "الفاتورة" : "Invoice")</a>
+                @if(order.MarketplaceRequestId.HasValue)
+                {
+                    <a class="btn btn-outline-primary" asp-controller="WebCheckout" asp-action="SellerReceipt" asp-route-requestId="@order.MarketplaceRequestId">@(ar?"تتبع الطلب":"Track order")</a>
+                }
+                else if(order.Paid)
+                {
+                    <a class="btn btn-outline-primary" href="@Url.Action("OrderInvoicePrint","Report",new { orderId=order.OrderId,format="PDF" })" target="_blank" rel="noopener">@(ar ? "الفاتورة" : "Invoice")</a>
+                }
             </article>
         }
     </div>

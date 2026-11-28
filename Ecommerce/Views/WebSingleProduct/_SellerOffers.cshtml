@@ -42,7 +42,7 @@
                             }
                             @if (unified && !User.IsInRole("Customer"))
                             {
-                                <a class="btn btn-outline-primary" asp-controller="UserAccount" asp-action="Login">@(ar ? "تسجيل الدخول للشراء" : "Sign in to buy")</a>
+                                <a class="btn btn-outline-primary" asp-controller="UserAccount" asp-action="Login" asp-route-returnUrl="@Url.Action("SingleProduct","WebSingleProduct",new {id=Model.ProductId,sellerPage=Model.SellerPage,listingId=offer.ListingId})">@(ar ? "تسجيل الدخول للشراء" : "Sign in to buy")</a>
                             }
                             @if (selected) { <strong>@(ar ? "محدد" : "Selected")</strong> }
                             else { <a class="btn btn-sm btn-outline-primary" asp-action="SingleProduct" asp-route-id="@Model.ProductId" asp-route-sellerPage="@Model.SellerPage" asp-route-listingId="@offer.ListingId" asp-fragment="sellerOffers">@(ar ? "اختيار" : "Select")</a> }

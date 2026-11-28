@@ -17,7 +17,7 @@
     }
     @if (unified && ViewBag.SellerCart == null)
     {
-        <p class="store-cart-panel p-3">@(ar ? "سجل الدخول لاختيار عروض البائعين." : "Sign in to select seller offers.") <a asp-controller="UserAccount" asp-action="Login">@(ar ? "تسجيل الدخول" : "Sign in")</a></p>
+        <p class="store-cart-panel p-3">@(ar ? "سجل الدخول لاختيار عروض البائعين." : "Sign in to select seller offers.") <a asp-controller="UserAccount" asp-action="Login" asp-route-returnUrl="/WebCart/Cart">@(ar ? "تسجيل الدخول" : "Sign in")</a></p>
     }
     @if (!unified || recovery)
     {
@@ -169,9 +169,9 @@
         const id = button.closest("[data-productid]").dataset.productid;
         busy = true; message.textContent = ""; syncControls();
         try {
-            if (button.dataset.action === "remove") await $.post("/WebCart/RemoveFromCart", { productId: id });
+            if (button.dataset.action === "remove") await $.post("/WebCart/RemoveFromCart", { productId: id, __RequestVerificationToken:document.querySelector("#storeCartToken input").value });
             else {
-                const result = await $.post("/WebCart/AddOrUpdateCart", {productId: id, qty: button.dataset.action === "plus" ? 1 : -1});
+                const result = await $.post("/WebCart/AddOrUpdateCart", {productId: id, qty: button.dataset.action === "plus" ? 1 : -1, __RequestVerificationToken:document.querySelector("#storeCartToken input").value});
                 if (!result.success) { message.textContent = result.message || failure; return; }
             }
             loaded = false;

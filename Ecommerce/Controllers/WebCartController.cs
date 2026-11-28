@@ -34,7 +34,7 @@ namespace EcommerceWebApplication.Controllers
                 ViewBag.SellerCart = await SellerCartAccess.ReadAsync(_context, customerId, ct);
             if (UnifiedTestCart)
             {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                int userId = SellerCartAccess.CustomerId(HttpContext) ?? 0;
                 string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
                 ViewBag.LegacyRecovery = await _context.CartItems.AnyAsync(c =>
                     (userId > 0 && c.UserId == userId) ||
@@ -96,6 +96,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult AddOrUpdateCart(int productId, int qty = 1)
         {
             if (UnifiedTestCart)
@@ -107,29 +108,22 @@ namespace EcommerceWebApplication.Controllers
                 var sessionFeature = HttpContext.Features.Get<ISessionFeature>();
                 if (sessionFeature != null)
                 {
-                    userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    userId = SellerCartAccess.CustomerId(HttpContext) ?? 0;
                 }
 
                 string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
 
-                var product = _context.Products.FirstOrDefault(p => p.ProductId == productId);
+                if (!ModelState.IsValid || productId<=0 || qty==0 || qty < -1000000 || qty > 1000000) return BadRequest(new {success=false,message="Invalid quantity."});
+                var product = _context.Products.FirstOrDefault(p => p.ProductId == productId && p.IsActive);
 
                 if (product == null)
                     return BadRequest("Product not found");
 
                 // check stocks
 
-                var stockRows = _context.ProductStocks
-                        .Where(s => s.ProductId == productId)
-                        .OrderBy(s => s.CreatedAt)
-                        .ToList();
-
-                int totalStock = stockRows.Sum(s => Convert.ToInt32(s.StockQty));
-
-                var orderedQty = _context.OrderItems.Where(o => o.ProductId == productId).Sum(o => (int?)o.Quantity) ?? 0;
-
-                int availableStock = totalStock - orderedQty;
-
+                var totalStock = _context.ProductStocks.Where(x=>x.ProductId==productId).Sum(x=>(long?)x.StockQty)??0;
+                var orderedQty = _context.OrderItems.Where(x=>x.ProductId==productId).Sum(x=>(long?)x.Quantity)??0;
+                var availableStock = totalStock-orderedQty;
 
                 int existingQtyInCart = 0;
 
@@ -148,11 +142,11 @@ namespace EcommerceWebApplication.Controllers
                         .FirstOrDefault();
                 }
 
-                int requestedQty = existingQtyInCart + qty;
+                long requestedQty = (long)existingQtyInCart + qty;
 
 
 
-                if (requestedQty > availableStock)
+                if (requestedQty > availableStock || requestedQty > 1000000 || (existingQtyInCart==0 && qty<0))
                 {
                     return Json(new
                     {
@@ -224,7 +218,8 @@ namespace EcommerceWebApplication.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                HttpContext.RequestServices.GetRequiredService<ILogger<WebCartController>>().LogError(ex,"Cart update failed.");
+                return StatusCode(500,new {success=false,message="Unable to update cart."});
             }
         }
 
@@ -232,8 +227,7 @@ namespace EcommerceWebApplication.Controllers
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> GetCartCount(CancellationToken ct)
         {
-            int userId = HttpContext.Features.Get<ISessionFeature>() != null
-                ? HttpContext.Session.GetInt32("UserId") ?? 0 : 0;
+            int userId = SellerCartAccess.CustomerId(HttpContext) ?? 0;
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
             int count = _context.CartItems
                 .Where(c => (userId > 0 && c.UserId == userId) ||
@@ -256,7 +250,7 @@ namespace EcommerceWebApplication.Controllers
 
             if (sessionFeature != null)
             {
-                userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                userId = SellerCartAccess.CustomerId(HttpContext) ?? 0;
             }
 
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
@@ -277,6 +271,7 @@ namespace EcommerceWebApplication.Controllers
             return Ok(cart);
         }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult RemoveFromCart(int productId)
         {
             int userId = 0;
@@ -286,7 +281,7 @@ namespace EcommerceWebApplication.Controllers
 
             if (sessionFeature != null)
             {
-                userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                userId = SellerCartAccess.CustomerId(HttpContext) ?? 0;
             }
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
 

@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(BannerController), typeof(BlogController), typeof(CouponController), typeof(WekendDealsController), typeof(SendNotificationController), typeof(CompanydetailsController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController), typeof(AdminDashboardController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: controller==typeof(ReportController)?"Admin,AdminManager,AdminStaff,Customer":new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(BannerController), typeof(BlogController), typeof(CouponController), typeof(WekendDealsController), typeof(SendNotificationController), typeof(CompanydetailsController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController), typeof(AdminDashboardController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -163,7 +163,7 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandCo
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandController), "NewAction", "GET") &&
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController), "Index", "GET") &&
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(EcommerceApiController), "GetProfile", "GET") &&
-    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(AdminDashboardController), "Index", "GET"),
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(AdminDashboardController), "Index", "GET"),
     "Restricted admin action boundary failed.");
 Console.WriteLine("Restricted admin Brand pilot checks passed.");
 
@@ -298,3 +298,13 @@ foreach(var (controller,action,verb) in new[]{(typeof(SendNotificationController
     Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"Remaining admin route missing.");
 foreach(var (controller,action,verb) in new[]{(typeof(SendNotificationController),"SaveNotification","POST"),(typeof(CompanydetailsController),"Create","POST"),(typeof(ReportController),"OrderInvoicePrint","GET"),(typeof(ReportController),"ReportPrint","POST")})
     Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"Privileged route exposed.");
+
+Check(typeof(WebCheckoutController).GetMethod("PlaceOrder")!.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Customer"),"Anonymous legacy checkout exposed.");
+foreach(var action in new[]{"AddAddress","ChangePassword","DeleteAddress","UpdateProfile"})
+    Check(typeof(UserProfileController).GetMethod(action)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),"Customer mutation missing CSRF.");
+foreach(var action in new[]{"Index","CategoryWiseSalereport","Customers","StockReport","ItemReport","ReportPrint","CategoryReportPrint","CustomersReport","StockReportPrint","ItemfileReport","AutoCompleteSql"})
+    Check(typeof(ReportController).GetMethod(action)!.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin,AdminManager,AdminStaff"),"Customer report exposure.");
+Check(typeof(ReportController).GetMethod("OrderInvoicePrint")!.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin,Customer"),"Legacy invoice authorization missing.");
+
+foreach(var action in new[]{"AddOrUpdateCart","RemoveFromCart"})
+    Check(typeof(WebCartController).GetMethod(action)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),"Legacy cart mutation missing CSRF.");

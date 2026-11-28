@@ -21,8 +21,8 @@ namespace EcommerceWebApplication.Controllers
         }
         public override void OnActionExecuting(ActionExecutingContext context)
         {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue || User.FindFirst("UserId")?.Value != userId.Value.ToString())
+            var userId = SellerCartAccess.CustomerId(HttpContext);
+            if (!userId.HasValue)
                 context.Result = RedirectToAction("Login", "UserAccount", new { returnUrl = "/UserProfile/Profile" });
             base.OnActionExecuting(context);
         }
@@ -150,6 +150,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult AddAddress(UserAddress model)
         {
             var userId = HttpContext.Session.GetInt32("UserId");
@@ -158,7 +159,9 @@ namespace EcommerceWebApplication.Controllers
                 return Json(new { success = false, message = "User not logged in." });
 
             // 🔴 Required fields validation
-            if (string.IsNullOrWhiteSpace(model.Area) ||
+            if (model.AddressId<0 || !int.TryParse(model.Area,out var area) || !int.TryParse(model.Block,out var block) ||
+                !_context.Block.Any(x=>x.Id==block && x.AreaId==area) ||
+                string.IsNullOrWhiteSpace(model.Area) ||
                 string.IsNullOrWhiteSpace(model.Block) ||
                 string.IsNullOrWhiteSpace(model.Street) ||
                 string.IsNullOrWhiteSpace(model.Phone))
@@ -182,7 +185,7 @@ namespace EcommerceWebApplication.Controllers
             {
                 // 🔹 UPDATE
                 var dbAddress = _context.UserAddresses
-                    .FirstOrDefault(x => x.AddressId == model.AddressId && x.UserId == userId.Value);
+                    .FirstOrDefault(x => x.AddressId == model.AddressId && x.UserId == userId.Value && x.isdeleted==0);
 
                 if (dbAddress == null)
                     return Json(new { success = false, message = "Address not found." });
@@ -238,20 +241,21 @@ namespace EcommerceWebApplication.Controllers
 
 
 
-        public IActionResult MyOrdersPartial(int page = 1)
+        public IActionResult MyOrdersPartial([FromServices] IConfiguration configuration,[FromServices] IWebHostEnvironment environment,int page = 1)
         {
             const int pageSize = 10;
             var userId = HttpContext.Session.GetInt32("UserId");
             bool ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
-            var query = from o in _context.Orders.AsNoTracking()
+            var source=SellerCartAccess.CheckoutEnabled(configuration,environment)?_context.Orders.IgnoreQueryFilters():_context.Orders.AsQueryable();
+            var query = from o in source.AsNoTracking()
                         join os in _context.OrderStatus on o.Status equals os.OrderstatusId
                         join ps in _context.PaymentStatus on o.PaymentStatus equals ps.PaymentstatusId
                         where o.CustomerId == userId
                         orderby o.CreatedAt descending, o.OrderId descending
                         select new OrderprofileViewModel
                         {
-                            OrderId = o.OrderId, CreatedAt = o.CreatedAt,
-                            OrderStatusName = ar ? os.OrderStatusNameArb : os.OrderstatusName,
+                            OrderId = o.OrderId, CreatedAt = o.CreatedAt, MarketplaceRequestId=o.MarketplaceRequestId, Paid=o.PaymentStatus==1,
+                            OrderStatusName = o.MarketplaceRequestId!=null ? (ar?"تتبع طلبات البائعين":"See seller tracking") : (ar ? os.OrderStatusNameArb : os.OrderstatusName),
                             PaymentStatusName = ar ? ps.PaymentStatusNameArb : ps.PaymentstatusName,
                             TotalAmount = o.TotalAmount, paytype = o.PaymentType
                         };
@@ -292,6 +296,7 @@ namespace EcommerceWebApplication.Controllers
 
         // Update Password POST
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ChangePassword(string CurrentPassword, string NewPassword, string ConfirmPassword)
         {
             int userId = int.Parse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value);
@@ -318,6 +323,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DeleteAddress(int id)
         {
             var userId = HttpContext.Session.GetInt32("UserId");
@@ -340,6 +346,7 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult UpdateProfile(Customers model)
         {
             var userId = HttpContext.Session.GetInt32("UserId");

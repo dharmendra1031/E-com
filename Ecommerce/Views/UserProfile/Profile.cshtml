@@ -30,6 +30,7 @@
     const content=document.getElementById("rightContent"), nav=document.querySelector(".store-account-nav");
     const routes={orders:"MyOrdersPartial",profile:"PersonalInformation",addresses:"ManageAddressesPartial",password:"ChangePasswordPartial"};
     const failure=ar?"تعذر التحميل. حاول مرة أخرى.":"Unable to complete request. Try again.";
+    const token=document.querySelector("[name=__RequestVerificationToken]").value;
     let request,section="orders",busy=false;
     function notify(text,success){Swal.fire({icon:success?"success":"error",text:text||failure});}
     async function load(key,page=1) {
@@ -86,7 +87,7 @@
             try{
                 const result=await Swal.fire({icon:"warning",text:ar?"حذف هذا العنوان؟":"Remove this address?",showCancelButton:true});
                 if(!result.isConfirmed)return;
-                const data=await $.post("/UserProfile/DeleteAddress",{id:button.dataset.removeAddress});
+                const data=await $.post("/UserProfile/DeleteAddress",{id:button.dataset.removeAddress,__RequestVerificationToken:token});
                 if(!data.success)throw new Error(data.message||failure);
                 busy=false;load("addresses");
             }catch(e){notify(e.message||failure,false);}finally{busy=false;}
@@ -97,7 +98,7 @@
         const action=actions[form.id];if(!action)return;e.preventDefault();if(busy)return;
         busy=true;const button=form.querySelector("button[type=submit]");button.disabled=true;
         try{
-            const data=await $.post("/UserProfile/"+action,$(form).serialize());
+            const data=await $.post("/UserProfile/"+action,$(form).serialize()+"&"+new URLSearchParams({__RequestVerificationToken:token}).toString());
             if(!data.success)throw new Error(data.message||failure);
             if(form.id==="profileForm")document.getElementById("username").textContent=form.elements.FullName.value;
             if(form.id==="changePasswordForm")form.reset();
@@ -114,6 +115,6 @@
             location.href="/UserAccount/Logout";
         }catch(e){notify(e.message||failure,false);}finally{busy=false;}
     });
-    load("orders");
+    load(new URLSearchParams(location.search).get("section")==="addresses"?"addresses":"orders");
 })();
 </script>
