@@ -107,6 +107,7 @@
 
     var pageTitle = pageTitleMap.ContainsKey(pageKey) ? pageTitleMap[pageKey] : currentAction;
 }
+@{ var branding = await EcommerceWebApplication.Helper.CompanyBranding.ReadAsync(BrandingDb, isArabic); }
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName" dir="@layoutDirection">
 
@@ -116,7 +117,6 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    @{ var branding = await EcommerceWebApplication.Helper.CompanyBranding.ReadAsync(BrandingDb, isArabic); }
     <title>@pageTitle · @branding.Name @(isArabic ? "الإدارة" : "Admin")</title>
     <!-- ================= Favicon ================== -->
     <!-- Standard -->
