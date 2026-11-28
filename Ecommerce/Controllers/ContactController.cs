@@ -8,7 +8,7 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ContactController : Controller
     {
         private readonly EcommerceDbContext _context;

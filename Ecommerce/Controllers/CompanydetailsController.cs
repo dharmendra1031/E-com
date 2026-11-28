@@ -8,7 +8,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class CompanydetailsController : Controller
     {
         private readonly EcommerceDbContext _context;

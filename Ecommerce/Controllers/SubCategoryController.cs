@@ -12,7 +12,7 @@ using System.Drawing.Imaging;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class SubCategoryController : Controller
     {
         private readonly EcommerceDbContext _context;

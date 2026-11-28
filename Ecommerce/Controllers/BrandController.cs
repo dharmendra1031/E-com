@@ -11,7 +11,7 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BrandController : Controller
     {
         private readonly EcommerceDbContext _context;

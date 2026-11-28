@@ -3,12 +3,14 @@ using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class WekendDealsController : Controller
     {
         private readonly EcommerceDbContext _context;

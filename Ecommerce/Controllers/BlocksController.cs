@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BlocksController : Controller
     {
         private readonly EcommerceDbContext _context;

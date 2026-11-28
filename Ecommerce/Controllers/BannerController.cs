@@ -7,7 +7,7 @@ using System.Drawing;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BannerController : Controller
     {
         private readonly EcommerceDbContext _context;
