@@ -52,7 +52,11 @@ namespace EcommerceWebApplication.Controllers
                 .Where(u => u.Email == model.Email && u.IsActive).Take(2).ToListAsync();
             var user = candidates.Count == 1 ? candidates[0] : null;
             var allowLegacy = _configuration.GetValue("Authentication:AllowLegacyStaffPasswords", false);
-            if (user?.Role is not { IsActive: true, RoleName: "Admin" } ||
+            var role = user?.Role?.RoleName;
+            var restricted = AdminStaffAccess.IsRestricted(role);
+            var allowedRole = role == "Admin" || restricted &&
+                HttpContext.RequestServices.GetRequiredService<AdminStaffAccess>().Enabled;
+            if (user?.Role is not { IsActive: true } || !allowedRole ||
                 !StaffPassword.Verify(user.PasswordHash, model.Password, allowLegacy, out var upgrade))
             {
                 ViewBag.Error = "Invalid email or password";
@@ -64,13 +68,14 @@ namespace EcommerceWebApplication.Controllers
                 var newHash = StaffPassword.Hash(model.Password);
                 var updated = await _context.Users.Where(u => u.UserId == user.UserId && u.IsActive &&
                     u.RoleId == user.RoleId && u.PasswordHash == oldPassword &&
-                    u.Role != null && u.Role.IsActive && u.Role.RoleName == "Admin")
+                    u.Role != null && u.Role.IsActive && u.Role.RoleName == role)
                     .ExecuteUpdateAsync(u => u.SetProperty(x => x.PasswordHash, newHash));
                 if (updated != 1)
                 {
                     ViewBag.Error = "Login details changed. Please try again.";
                     return View(model);
                 }
+                user.PasswordHash = newHash;
             }
 
             // ✅ Create claims
@@ -82,6 +87,11 @@ namespace EcommerceWebApplication.Controllers
                 new Claim("UserId", user.UserId.ToString())
             };
 
+            if (restricted)
+            {
+                claims.Add(new Claim(AdminStaffAccess.CredentialClaim, VendorPortalAuth.CredentialVersion(user.PasswordHash!)));
+                claims.Add(new Claim(AdminStaffAccess.RoleIdClaim, user.RoleId.ToString()));
+            }
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
@@ -92,13 +102,20 @@ namespace EcommerceWebApplication.Controllers
                 AllowRefresh = true
             };
 
+            if (restricted && !(await HttpContext.RequestServices.GetRequiredService<AdminStaffAccess>()
+                .BrandRightsAsync(principal, HttpContext.RequestAborted)).View)
+            {
+                ViewBag.Error = "No available Admin page permissions.";
+                return View(model);
+            }
+
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 principal,
                 authProperties
             );
 
-            return RedirectToAction("Index", "AdminDashboard");
+            return RedirectToAction("Index", restricted ? "Brand" : "AdminDashboard");
         }
 
 

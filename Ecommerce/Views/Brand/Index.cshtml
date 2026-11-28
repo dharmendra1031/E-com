@@ -1,13 +1,15 @@
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BrandViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var rights = await StaffAccess.BrandRightsAsync(User, Context.RequestAborted);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Brands","العلامات التجارية");
 }
 <div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("Index","Brand")" data-suggest-url="@Url.Action("AutoCompleteSubCategory","Brand")">
     <section class="admin-panel">
-        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2><a asp-action="CreateBrand" class="btn btn-primary">@T("Add brand","إضافة علامة تجارية")</a></div>
+        <div class="admin-section-heading"><h2>@ViewData["Title"]</h2>@if(rights.Create){<a asp-action="CreateBrand" class="btn btn-primary">@T("Add brand","إضافة علامة تجارية")</a>}</div>
         <form id="masterFilters" method="get" asp-action="Index" class="admin-register-filters">
             
             <div class="form-group"><label for="name">@T("Search by name","بحث بالاسم")</label>

@@ -11,18 +11,22 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class BrandController : Controller
     {
         private readonly EcommerceDbContext _context;
 
-        public BrandController(EcommerceDbContext context)
+        private readonly AdminStaffAccess _access;
+
+        public BrandController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
         [HttpGet]
-        public IActionResult Index(string? name, int page = 1, int pageSize = 10, bool partial = false)
+        public async Task<IActionResult> Index(string? name, int page = 1, int pageSize = 10, bool partial = false)
         {
+            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).View) return Forbid();
             // Check current culture (Arabic or English)
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabicCulture = culture.TextInfo.IsRightToLeft;
@@ -76,8 +80,11 @@ namespace EcommerceWebApplication.Controllers
             return partial ? PartialView("_RegisterRows", pagedModel) : View(pagedModel);
         }
 
-        public IActionResult CreateBrand(int? id)
+        [HttpGet]
+        public async Task<IActionResult> CreateBrand(int? id)
         {
+            var rights = await _access.BrandRightsAsync(User, HttpContext.RequestAborted);
+            if (id.HasValue ? !rights.Edit : !rights.Create) return Forbid();
             if (id == null)
             {
                 return View(new BrandModel());  
@@ -94,8 +101,11 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateBrand(BrandModel model, IFormFile Brandlogo)
+        public async Task<IActionResult> CreateBrand(BrandModel model, IFormFile Brandlogo)
         {
+            var rights = await _access.BrandRightsAsync(User, HttpContext.RequestAborted);
+            if (model.BrandId > 0 ? !rights.Edit : !rights.Create) return Forbid();
+            if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             try
             {
                 //byte[] compressedBytes = null;
@@ -145,7 +155,7 @@ namespace EcommerceWebApplication.Controllers
                     brand.DiscountPersent = model.DiscountPersent;
                     brand.Discriptionar = model.Discriptionar;
                     brand.Discriptionen = model.Discriptionen;
-                    brand.Updatedby = 1;
+                    brand.Updatedby = actor;
                     brand.UpdatedAt = DateTime.Now;
 
                     if (compressedBytes != null)
@@ -159,7 +169,7 @@ namespace EcommerceWebApplication.Controllers
                     if (compressedBytes != null)
                         model.BrandLogo = compressedBytes;
 
-                    model.Createdby = 1;
+                    model.Createdby = actor;
                     model.CreatedAt = DateTime.Now;
 
                     _context.Brand.Add(model);
@@ -181,8 +191,9 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
+            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).Delete) return Forbid();
             try
             {
                 var WekendDeals1 = _context.Brand.FirstOrDefault(c => c.BrandId == id);
@@ -203,8 +214,9 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSubCategory(string term)
+        public async Task<IActionResult> AutoCompleteSubCategory(string term)
         {
+            if (!(await _access.BrandRightsAsync(User, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

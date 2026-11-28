@@ -1,9 +1,11 @@
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 ﻿@using System.Security.Claims
 @inject Microsoft.Extensions.Configuration.IConfiguration MarketplaceConfiguration
 @inject EcommerceWebApplication.Data.EcommerceDbContext BrandingDb
 
 @{
    
+    var restrictedAdmin = EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted(User);
     var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
     var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
     var adminEmail = "admin@gmail.com";
@@ -277,6 +279,8 @@
         <div class="nano">
             <div class="nano-content">
                 <ul>
+                    @if (!restrictedAdmin)
+                    {
                     <li class="label">@(isArabic ? "العمليات" : "Operations")</li>
                     <li class="@activeClass("AdminDashboard", "Index")"><a href="@Url.Action("Index", "AdminDashboard")" title="@_localizer["Dashboard"]"><i class="ti-home" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Dashboard"]</span></a></li>
                     <li class="@activeClass("ManageOrders", "PendingOrder")"><a href="@Url.Action("PendingOrder", "ManageOrders")" title="@_localizer["Orders"]"><i class="ti-receipt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Orders"]</span></a></li>
@@ -347,6 +351,11 @@
                     {
                     <li class="@activeClass("User", "UserList")"><a href="@Url.Action("UserList", "User")" title="@_localizer["Users"]"><i class="ti-user" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Users"]</span></a></li>
                     <li class="@activeClass("RolePermission", "RoleIndex")"><a href="@Url.Action("RoleIndex", "RolePermission")" title="@_localizer["Role Permission"]"><i class="ti-lock" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Role Permission"]</span></a></li>
+                    }
+                    }
+                    else if ((await StaffAccess.BrandRightsAsync(User, Context.RequestAborted)).View)
+                    {
+                    <li class="@activeClass("Brand", "Index")"><a href="@Url.Action("Index", "Brand")" title="@_localizer["Brand"]"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Brand"]</span></a></li>
                     }
                     <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>
@@ -432,6 +441,8 @@
                         </div>
                     </div>
                 </li>  *@
+                @if (!restrictedAdmin)
+                {
                 <li class="header-icon dib" id="notificationDropdown">
                     <div style="position: relative; display: inline-block;">
                         <i class="ti-bell" style="font-size: 24px; color: #333;"></i>
@@ -497,6 +508,7 @@
                     </div>
                 </li>
 
+                }
                 <!-- ✅ Language Dropdown -->
                 <li class="header-icon dib toggleRTL" style="cursor: pointer;">
                     <i class="fa fa-language"></i>
@@ -585,6 +597,8 @@
     <script src="/AdminTheame/assets/js/scripts.js"></script>
     <script src="/js/Navigation.js"></script>
 
+    @if (!restrictedAdmin)
+    {
     <script>
 
         async function loadNotificationCount() {
@@ -721,6 +735,8 @@
 
        
     </script>
+    }
+
 
 @*     <script>
         // Function to just fetch unseen notification count

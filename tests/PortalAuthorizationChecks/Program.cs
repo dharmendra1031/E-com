@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: controller == typeof(BrandController) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -148,3 +148,21 @@ Check(CheckSignature(signedBody.Replace("\"Code\":1","\"Code\":1,\"Code\":1"), t
     CheckSignature(signedBody.Replace("PAYMENT_STATUS_CHANGED","REFUND_STATUS_CHANGED"), testSignature, testSecret) == null,
     "Ambiguous or unsupported webhook accepted.");
 Console.WriteLine("MyFatoorah V2 webhook signature regression checks passed.");
+
+var noView = EcommerceWebApplication.Helper.AdminPageRights.From(false, true, true, true);
+Check(!noView.View && !noView.Create && !noView.Edit && !noView.Delete, "Write access without list permission.");
+var readOnlyBrand = EcommerceWebApplication.Helper.AdminPageRights.From(true, false, false, false);
+Check(readOnlyBrand.View && !readOnlyBrand.Create && !readOnlyBrand.Edit && !readOnlyBrand.Delete, "Read-only brand permission expanded.");
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted("AdminManager") &&
+    EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted("AdminStaff") &&
+    !EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted("Admin") &&
+    !EcommerceWebApplication.Helper.AdminStaffAccess.IsRestricted("VendorStaff"), "Staff roles overlap.");
+Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandController), "Index", "GET") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandController), "CreateBrand", "POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandController), "Delete", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(BrandController), "NewAction", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController), "Index", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(EcommerceApiController), "GetProfile", "GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(AdminDashboardController), "Index", "GET"),
+    "Restricted admin action boundary failed.");
+Console.WriteLine("Restricted admin Brand pilot checks passed.");

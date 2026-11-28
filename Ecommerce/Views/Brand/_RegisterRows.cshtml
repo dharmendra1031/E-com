@@ -1,6 +1,8 @@
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BrandViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @{
+    var rights = await StaffAccess.BrandRightsAsync(User, Context.RequestAborted);
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     int serial = (Model.PageNumber-1)*Model.PageSize+1;
@@ -18,14 +20,14 @@
             <th class="text-center">@_localizer["Created Date"]</th>
             <th class="text-center">@_localizer["BrandLogo"]</th>
 
-            <th class="text-center">@_localizer["Action"]</th>
+            @if(rights.Edit || rights.Delete){<th class="text-center">@_localizer["Action"]</th>}
         </tr>
     </thead>
 
     <tbody>
             @if (!Model.Items.Any())
             {
-                <tr><td colspan="7" class="admin-empty-state">@_localizer["No records found"]</td></tr>
+                <tr><td colspan="@(rights.Edit || rights.Delete ? 7 : 6)" class="admin-empty-state">@_localizer["No records found"]</td></tr>
             }
         @foreach (var item in Model.Items)
         {
@@ -50,17 +52,23 @@
 
 
 
+                @if(rights.Edit || rights.Delete)
+                {
                 <td class="text-center">
-
+                    @if(rights.Edit)
+                    {
                     <a asp-action="CreateBrand" asp-controller="Brand" asp-route-id="@item.BrandId" class="btn btn-sm btn-primary me-1" aria-label="@_localizer["Edit"]">
                         <i class="ti-pencil"></i>
                     </a>
-
+                    }
+                    @if(rights.Delete)
+                    {
                     <button type="button" class="btn btn-sm btn-danger" aria-label="@_localizer["Delete"]" data-delete-url="@Url.Action("Delete","Brand",new { id=item.BrandId })">
                         <i class="ti-trash"></i>
                     </button>
-
+                    }
                 </td>
+                }
             </tr>
             serial++;
         }

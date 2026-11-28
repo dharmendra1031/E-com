@@ -48,7 +48,7 @@ try
     //});
 
     builder.Services.AddLocalization(options => options.ResourcesPath = "Resource");
-    builder.Services.AddControllersWithViews()
+    builder.Services.AddControllersWithViews(options => options.Filters.Add<RestrictedAdminFilter>())
         .AddViewLocalization()
         .AddDataAnnotationsLocalization();
     builder.Services.AddDbContext<EcommerceDbContext>(options =>
@@ -61,6 +61,7 @@ try
     builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddScoped<IMFClient, MFClient>();
     builder.Services.AddScoped<VendorPortalAccess>();
+    builder.Services.AddScoped<AdminStaffAccess>();
     if (SellerCartAccess.CheckoutEnabled(builder.Configuration, builder.Environment) &&
         (builder.Configuration.GetValue("Marketplace:ReservationExpiryWorkerEnabled", false) ||
          (MarketplacePaymentReconciliation.SandboxEnabled(builder.Configuration, builder.Environment) &&
@@ -127,6 +128,28 @@ try
         options.Cookie.IsEssential = true;
         options.Events.OnValidatePrincipal = async context =>
         {
+            if (AdminStaffAccess.IsRestricted(context.Principal))
+            {
+                var staff = context.Principal!;
+                var access = context.HttpContext.RequestServices.GetRequiredService<AdminStaffAccess>();
+                var staffDb = context.HttpContext.RequestServices.GetRequiredService<EcommerceDbContext>();
+                if (!access.Enabled || !int.TryParse(staff.FindFirst("UserId")?.Value, out var staffId) ||
+                    !int.TryParse(staff.FindFirst(AdminStaffAccess.RoleIdClaim)?.Value, out var roleId))
+                {
+                    context.RejectPrincipal();
+                    return;
+                }
+                var role = staff.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                var staffEmail = staff.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                var credential = await staffDb.Users.AsNoTracking().Where(u => u.UserId == staffId &&
+                    u.RoleId == roleId && u.Email == staffEmail && u.IsActive &&
+                    u.Role != null && u.Role.IsActive && u.Role.RoleName == role)
+                    .Select(u => u.PasswordHash).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+                if (credential == null || !credential.StartsWith(StaffPassword.Prefix, StringComparison.Ordinal) ||
+                    staff.FindFirst(AdminStaffAccess.CredentialClaim)?.Value != VendorPortalAuth.CredentialVersion(credential))
+                    context.RejectPrincipal();
+                return;
+            }
             if (context.Principal?.IsInRole("Admin") != true) return;
             var principal = context.Principal;
             var email = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
