@@ -1,6 +1,7 @@
 @model List<EcommerceWebApplication.Models.ViewModels.VendorOrderLine>
-@{ Layout="_VendorPortalLayout"; var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; ViewData["Title"]=ar?"تفاصيل الطلب":"Order details"; }
-<section class="seller-panel"><div class="seller-section-heading"><h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2><a class="btn btn-default" asp-action="Orders" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a></div>
+@{ var adminOrders=ViewData["AdminOrders"] is true; Layout=adminOrders?"_Layout":"_VendorPortalLayout";
+    var backAction=adminOrders?"MarketplaceOrders":"Orders"; var advanceAction=adminOrders?"AdvanceMarketplaceFulfillment":"AdvanceFulfillment"; var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft; ViewData["Title"]=ar?"تفاصيل الطلب":"Order details"; }
+<section class="@(adminOrders?"admin-panel":"seller-panel")"><div class="@(adminOrders?"admin-section-heading":"seller-section-heading")"><h2>@ViewData["Title"] #@ViewBag.VendorOrderId</h2><a class="btn btn-default" asp-action="@backAction" asp-route-id="@ViewBag.VendorId">@(ar?"العودة إلى الطلبات":"Back to orders")</a></div>
 <div class="table-responsive"><table class="table"><thead><tr><th>@(ar?"المنتج":"Product")</th><th>SKU</th><th>@(ar?"الكمية":"Qty")</th><th>@(ar?"السعر":"Price")</th></tr></thead><tbody>
 @foreach(var row in Model){<tr><td>@(ar&&!string.IsNullOrWhiteSpace(row.ProductNameArb)?row.ProductNameArb:row.ProductName)</td><td>@row.SellerSku</td><td>@row.Quantity</td><td dir="ltr">KD @row.Price.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)</td></tr>}
 </tbody></table></div>
@@ -8,17 +9,27 @@
 
 @{
     var status = Model.First().FulfillmentStatus;
-    var next = status == "AwaitingPacking" ? "Packed" : status == "Packed" ? "HandedOver" : null;
+    var next = status == "AwaitingPacking" ? "Packed" : status == "Packed" ? "HandedOver" : adminOrders && status=="HandedOver" ? "Delivered" : null;
 }
 <p>@(ar?"حالة التجهيز":"Fulfillment status"): @(status switch { "AwaitingPacking"=>ar?"بانتظار التجهيز":"Awaiting packing","Packed"=>ar?"تم التجهيز":"Packed","HandedOver"=>ar?"تم التسليم للناقل":"Handed over","Delivered"=>ar?"تم التوصيل":"Delivered",_=>status })</p>
 @if (TempData["FulfillmentMessage"] is string message) { <p role="status">@message</p> }
 @if (ViewBag.CanAdvance == true && next != null)
 {
-    <form asp-action="AdvanceFulfillment" asp-route-id="@ViewBag.VendorId" asp-route-vendorOrderId="@ViewBag.VendorOrderId" method="post" data-seller-save>
+    <form asp-action="@advanceAction" asp-route-id="@ViewBag.VendorId" asp-route-vendorOrderId="@ViewBag.VendorOrderId" method="post" data-seller-save="@(!adminOrders?"true":null)">
         <input type="hidden" name="expectedStatus" value="@status" />
         <input type="hidden" name="newStatus" value="@next" />
-        <button class="btn btn-primary" type="submit">@(next=="Packed"?(ar?"تأكيد التجهيز":"Confirm packing"):(ar?"تأكيد التسليم للناقل":"Confirm carrier handover"))</button>
+        @if(next=="Delivered")
+        {
+            <label><input type="checkbox" name="deliveryConfirmed" value="true" required /> @(ar?"تحققت من استلام العميل للطلب":"I have verified customer receipt of this order")</label>
+        }
+        <button class="btn btn-primary" type="submit">@(next=="Packed"?(ar?"تأكيد التجهيز":"Confirm packing"):next=="Delivered"?(ar?"تأكيد التوصيل":"Confirm delivery"):(ar?"تأكيد التسليم للناقل":"Confirm carrier handover"))</button>
     </form>
 }
 <p class="text-muted">@(ar?"التسليم للناقل ليس تأكيد التوصيل للعميل.":"Carrier handover is not proof of customer delivery.")</p>
+@if(ViewBag.FulfillmentHistory is List<EcommerceWebApplication.Models.ViewModels.VendorFulfillmentHistoryRow> history && history.Count>0)
+{
+    <h3>@(ar?"سجل التجهيز":"Fulfillment history")</h3>
+    <div class="table-responsive"><table class="table"><thead><tr><th>@(ar?"الحالة السابقة":"Previous")</th><th>@(ar?"الحالة الجديدة":"New status")</th>@if(adminOrders){<th>@(ar?"رقم المستخدم":"Actor ID")</th>}<th>@(ar?"التاريخ (UTC)":"Date (UTC)")</th></tr></thead>
+    <tbody>@foreach(var entry in history){<tr><td>@entry.PreviousStatus</td><td>@entry.NewStatus</td>@if(adminOrders){<td>@entry.ChangedBy</td>}<td><bdi>@entry.ChangedAtUtc.ToString("yyyy-MM-dd HH:mm")</bdi></td></tr>}</tbody></table></div>
+}
 </section>

@@ -47,3 +47,60 @@ IF (SELECT COUNT(*) FROM dbo.VendorOrderFulfillmentHistory WHERE VendorOrderId=@
     THROW 52024,'Fulfillment audit or isolation incorrect.',1;
 PRINT 'Marketplace vendor fulfillment checks passed.';
 GO
+
+-- Reuse the restricted admin fixture from test-listing-inventory.sql.
+DECLARE @a int=(SELECT VendorId FROM dbo.Vendors WHERE VendorCode='A'),
+        @b int=(SELECT VendorId FROM dbo.Vendors WHERE VendorCode='B'),
+        @role int=(SELECT RoleId FROM dbo.[Role] WHERE RoleName='AdminStaff');
+DECLARE @vo int=(SELECT VendorOrderId FROM dbo.VendorOrders WHERE OrderId=9 AND VendorId=@b),@page int;
+INSERT dbo.PageMaster(PageNameEng,PageNameArb,CreatedAt,PageCode,PortalScope)
+VALUES(N'Orders fixture',N'اختبار',SYSUTCDATETIME(),N'admin.orders',N'Admin');
+SET @page=SCOPE_IDENTITY();
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @b,@vo,99,'HandedOver','Delivered',1,1;
+    THROW 52025,'Missing admin grant accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52001 THROW;
+END CATCH;
+INSERT dbo.RolePermission(RoleId,PageId,ListPage,UpdatePage) VALUES(@role,@page,1,1);
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @b,@vo,1,'HandedOver','Delivered';
+    THROW 52026,'Vendor delivery confirmation accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52000 THROW;
+END CATCH;
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @b,@vo,99,'HandedOver','Delivered',1,0;
+    THROW 52027,'Unconfirmed delivery accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52000 THROW;
+END CATCH;
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @a,@vo,99,'HandedOver','Delivered',1,1;
+    THROW 52028,'Wrong vendor order pair accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52002 THROW;
+END CATCH;
+EXEC dbo.AdvanceVendorFulfillment @b,@vo,99,'HandedOver','Delivered',1,1;
+EXEC dbo.AdvanceVendorFulfillment @b,@vo,99,'HandedOver','Delivered',1,1;
+IF (SELECT COUNT(*) FROM dbo.VendorOrderFulfillmentHistory WHERE VendorOrderId=@vo)<>3
+    OR NOT EXISTS(SELECT 1 FROM dbo.VendorOrderFulfillmentHistory WHERE VendorOrderId=@vo AND NewStatus='Delivered' AND ChangedBy=99)
+    OR NOT EXISTS(SELECT 1 FROM dbo.VendorOrders WHERE VendorOrderId=@vo AND FulfillmentStatus='Delivered')
+    OR NOT EXISTS(SELECT 1 FROM dbo.VendorOrders WHERE VendorId=@a AND OrderId=9 AND FulfillmentStatus='AwaitingPacking')
+    THROW 52029,'Admin fulfillment audit or isolation failed.',1;
+UPDATE dbo.RolePermission SET UpdatePage=0 WHERE RoleId=@role AND PageId=@page;
+BEGIN TRY
+    EXEC dbo.AdvanceVendorFulfillment @b,@vo,99,'HandedOver','Delivered',1,1;
+    THROW 52030,'Revoked permission accepted.',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>52001 THROW;
+END CATCH;
+DELETE dbo.RolePermission WHERE RoleId=@role AND PageId=@page;
+DELETE dbo.PageMaster WHERE PageId=@page;
+PRINT 'Admin delivery confirmation, audit and isolation checks passed.';
+GO

@@ -311,16 +311,8 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             !VendorPortalAuth.TryGetUserId(User, out var userId) ||
             !await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct)) return NotFound();
         page = Math.Clamp(page, 1, 100000);
-        if (status is not ("AwaitingPacking" or "Packed" or "HandedOver" or "Delivered")) status = null;
-        var query = db.Database.SqlQuery<VendorOrderRow>($"""
-            SELECT v.VendorOrderId,v.OrderId,v.MerchandiseSubtotal,o.CreatedAt,v.FulfillmentStatus,
-                   (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
-            FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
-            WHERE v.VendorId={id} AND o.PaymentStatus=1
-                AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
-            """);
-        if (status != null) query = query.Where(o => o.FulfillmentStatus == status);
-        var rows = await query.OrderByDescending(o => o.VendorOrderId).Skip((page-1)*25).Take(26).ToListAsync(ct);
+        if (!VendorOrderQueries.ValidStatus(status)) status=null;
+        var rows=await VendorOrderQueries.ReadPageAsync(db,id,status,page,ct);
         ViewBag.VendorId=id; ViewBag.Page=page; ViewBag.HasNext=rows.Count>25; ViewBag.Status=status;
         return partial ? PartialView("_OrdersRegister", rows.Take(25).ToList()) : View(rows.Take(25).ToList());
     }
@@ -331,16 +323,10 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!access.Enabled || !configuration.GetValue("Marketplace:VendorOrdersEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User, out var userId) ||
             !await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct)) return NotFound();
-        var rows=await db.Database.SqlQuery<VendorOrderLine>($"""
-            SELECT i.ProductNameSnapshot AS ProductName,i.ProductNameArbSnapshot AS ProductNameArb,
-                   i.SellerSkuSnapshot AS SellerSku,i.Quantity,i.Price,v.FulfillmentStatus
-            FROM dbo.OrderItems i JOIN dbo.VendorOrders v ON v.VendorOrderId=i.VendorOrderId AND v.OrderId=i.OrderId
-            JOIN dbo.Orders o ON o.OrderId=v.OrderId
-            WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId} AND o.PaymentStatus=1
-                AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
-            """).ToListAsync(ct);
+        var rows=await VendorOrderQueries.ReadLinesAsync(db,id,vendorOrderId,ct);
         if(rows.Count==0) return NotFound();
         ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
+        ViewBag.FulfillmentHistory=await VendorOrderQueries.ReadHistoryAsync(db,id,vendorOrderId,ct);
         ViewBag.CanAdvance = configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) &&
             await access.CanAsync(id, userId, VendorPermissionPages.Orders, ct, update: true);
         return View(rows);
@@ -353,8 +339,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             !configuration.GetValue("Marketplace:VendorFulfillmentEnabled", false) ||
             !VendorPortalAuth.TryGetUserId(User,out var actor) ||
             !await access.CanAsync(id, actor, VendorPermissionPages.Orders, ct, update: true)) return NotFound();
-        if (!ModelState.IsValid || !((expectedStatus=="AwaitingPacking" && newStatus=="Packed") ||
-            (expectedStatus=="Packed" && newStatus=="HandedOver"))) return BadRequest();
+        if (!ModelState.IsValid || !VendorOrderQueries.CanAdvance(expectedStatus,newStatus)) return BadRequest();
         try
         {
             await db.Database.ExecuteSqlInterpolatedAsync($"""

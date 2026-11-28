@@ -7,7 +7,7 @@
 }
 <div class="admin-orders" id="orderWorkspace" data-register-url="@Url.Action("PendingOrder","ManageOrders")">
     <section class="admin-panel" id="orderRegister">
-        <div class="admin-section-heading"><h2>@T("Orders","الطلبات")</h2></div>
+        <div class="admin-section-heading"><h2>@T("Orders","الطلبات")</h2>@if(ViewBag.MarketplaceOrdersEnabled==true){<a asp-action="MarketplaceOrders" class="btn btn-primary">@T("Vendor orders","طلبات البائعين")</a>}</div>
         <form id="orderFilters" method="get" asp-action="PendingOrder" class="admin-register-filters">
             <div class="form-group"><label for="status">@T("Order status","حالة الطلب")</label>
                 <select name="status" id="status" class="form-control"><option value="">@T("All","الكل")</option>

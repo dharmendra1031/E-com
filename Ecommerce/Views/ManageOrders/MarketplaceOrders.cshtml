@@ -1,0 +1,9 @@
+@model List<EcommerceWebApplication.Models.ViewModels.VendorOrderRow>
+@{
+    var ar=System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
+    ViewData["Title"]=ar?"طلبات البائعين":"Vendor orders";
+}
+<section class="admin-panel">
+    <a asp-action="PendingOrder" class="btn btn-default">@(ar?"الطلبات السابقة":"Legacy orders")</a>
+    <partial name="~/Views/VendorPortal/_OrdersRegister.cshtml" model="Model" />
+</section>

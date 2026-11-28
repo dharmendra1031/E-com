@@ -208,3 +208,20 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(stockControlle
 Check(stockController.GetMethods().Single(m=>m.Name=="MarketplaceMovements" && m.IsDefined(typeof(HttpPostAttribute)))
     .IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), "Marketplace adjustment missing antiforgery.");
 Console.WriteLine("Marketplace admin inventory endpoint checks passed.");
+
+Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController),"MarketplaceOrders","GET") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController),"MarketplaceOrderDetails","GET") &&
+    EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController),"AdvanceMarketplaceFulfillment","POST") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController),"AdvanceMarketplaceFulfillment","GET") &&
+    !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(ManageOrdersController),"UpdatePaymentStatus","POST"),
+    "Marketplace order action boundary failed.");
+Check(typeof(ManageOrdersController).GetMethod("AdvanceMarketplaceFulfillment")!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),
+    "Marketplace fulfillment missing antiforgery.");
+Check(EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("AwaitingPacking","Packed") &&
+    EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("Packed","HandedOver") &&
+    EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("HandedOver","Delivered",true,true) &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("HandedOver","Delivered") &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("HandedOver","Delivered",true,false) &&
+    !EcommerceWebApplication.Helper.VendorOrderQueries.CanAdvance("AwaitingPacking","Delivered",true,true),
+    "Fulfillment transitions are incorrect.");
+Console.WriteLine("Admin marketplace order authorization and transition checks passed.");

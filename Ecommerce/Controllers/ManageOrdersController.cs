@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 
@@ -18,18 +19,26 @@ namespace EcommerceWebApplication.Controllers
         private readonly AdminStaffAccess _access;
 
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
+        private bool MarketplaceOrdersEnabled => _environment.IsDevelopment() &&
+            _configuration.GetValue("Marketplace:VendorMasterEnabled",false) &&
+            _configuration.GetValue("Marketplace:VendorOrdersEnabled",false);
+        private bool MarketplaceFulfillmentEnabled => MarketplaceOrdersEnabled &&
+            _configuration.GetValue("Marketplace:VendorFulfillmentEnabled",false);
 
-        public ManageOrdersController(EcommerceDbContext context, IConfiguration configuration, AdminStaffAccess access)
+        public ManageOrdersController(EcommerceDbContext context, IConfiguration configuration, AdminStaffAccess access, IWebHostEnvironment environment)
         {
             _context = context;
             _access = access;
             _configuration = configuration;
+            _environment = environment;
         }
 
         [HttpGet]
         public async Task<IActionResult> PendingOrder(int? status, string? startDate, string? paymenttype, string? endDate, int? paymentstatus, int page = 1, int pageSize = 10, bool partial = false)
         {
             if (!(await _access.RightsAsync(User, AdminStaffAccess.Orders, HttpContext.RequestAborted)).View) return Forbid();
+            ViewBag.MarketplaceOrdersEnabled = MarketplaceOrdersEnabled;
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabic = culture.TextInfo.IsRightToLeft;
 
@@ -131,6 +140,62 @@ namespace EcommerceWebApplication.Controllers
             return partial ? PartialView("_OrderRegister", pagedModel) : View(pagedModel);
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> MarketplaceOrders(int? id, string? status, int page=1, CancellationToken ct=default)
+        {
+            if(!MarketplaceOrdersEnabled) return NotFound();
+            if(!(await _access.RightsAsync(User,AdminStaffAccess.Orders,ct)).View) return Forbid();
+            if(id is <=0) return BadRequest();
+            page=Math.Clamp(page,1,100000);
+            if(!VendorOrderQueries.ValidStatus(status)) status=null;
+            var rows=await VendorOrderQueries.ReadPageAsync(_context,id,status,page,ct);
+            ViewBag.VendorId=id; ViewBag.Page=page; ViewBag.HasNext=rows.Count>25; ViewBag.Status=status;
+            ViewData["AdminOrders"]=true;
+            return View(rows.Take(25).ToList());
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> MarketplaceOrderDetails(int id,int vendorOrderId,CancellationToken ct)
+        {
+            if(!MarketplaceOrdersEnabled) return NotFound();
+            var rights=await _access.RightsAsync(User,AdminStaffAccess.Orders,ct);
+            if(!rights.View) return Forbid();
+            var rows=await VendorOrderQueries.ReadLinesAsync(_context,id,vendorOrderId,ct);
+            if(rows.Count==0) return NotFound();
+            ViewData["AdminOrders"]=true;
+            ViewBag.VendorId=id; ViewBag.VendorOrderId=vendorOrderId;
+        ViewBag.FulfillmentHistory=await VendorOrderQueries.ReadHistoryAsync(_context,id,vendorOrderId,ct);
+            ViewBag.CanAdvance=MarketplaceFulfillmentEnabled && rights.Edit;
+            return View("~/Views/VendorPortal/OrderDetails.cshtml",rows);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdvanceMarketplaceFulfillment(int id,int vendorOrderId,string expectedStatus,
+            string newStatus,bool deliveryConfirmed,CancellationToken ct)
+        {
+            if(!MarketplaceFulfillmentEnabled) return NotFound();
+            if(!(await _access.RightsAsync(User,AdminStaffAccess.Orders,ct)).Edit ||
+                !int.TryParse(User.FindFirst("UserId")?.Value,out var actor)) return Forbid();
+            if(!ModelState.IsValid || !VendorOrderQueries.CanAdvance(expectedStatus,newStatus,true,deliveryConfirmed))
+                return BadRequest();
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                    EXEC dbo.AdvanceVendorFulfillment @VendorId={id},@VendorOrderId={vendorOrderId},
+                        @ActorId={actor},@ExpectedStatus={expectedStatus},@NewStatus={newStatus},
+                        @AdminPortal=1,@DeliveryConfirmed={deliveryConfirmed}
+                    """,ct);
+                TempData["FulfillmentMessage"]="Order status saved. / تم حفظ حالة الطلب.";
+            }
+            catch(SqlException ex) when(ex.Number==52001) { return Forbid(); }
+            catch(SqlException ex) when(ex.Number is 52000 or 52002 or 52003)
+            {
+                TempData["FulfillmentMessage"]="Order status not changed. Refresh and review. / لم تتغير حالة الطلب.";
+            }
+            return RedirectToAction(nameof(MarketplaceOrderDetails),new {id,vendorOrderId});
+        }
 
         [HttpGet]
         [Authorize(Roles = "Admin")]

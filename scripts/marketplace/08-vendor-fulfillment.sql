@@ -22,18 +22,31 @@ IF OBJECT_ID(N'dbo.VendorOrderFulfillmentHistory',N'U') IS NULL
 GO
 CREATE OR ALTER PROCEDURE dbo.AdvanceVendorFulfillment
     @VendorId int,@VendorOrderId int,@ActorId int,
-    @ExpectedStatus varchar(20),@NewStatus varchar(20)
+    @ExpectedStatus varchar(20),@NewStatus varchar(20),@AdminPortal bit=0,@DeliveryConfirmed bit=0
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
-    IF @ExpectedStatus IS NULL OR @NewStatus IS NULL OR NOT (
+    IF @AdminPortal IS NULL OR @DeliveryConfirmed IS NULL OR @ExpectedStatus IS NULL OR @NewStatus IS NULL OR NOT (
         (@ExpectedStatus='AwaitingPacking' AND @NewStatus='Packed') OR
-        (@ExpectedStatus='Packed' AND @NewStatus='HandedOver'))
+        (@ExpectedStatus='Packed' AND @NewStatus='HandedOver') OR
+        (@AdminPortal=1 AND @DeliveryConfirmed=1 AND @ExpectedStatus='HandedOver' AND @NewStatus='Delivered'))
         THROW 52000,'Invalid fulfillment transition.',1;
     BEGIN TRY
         BEGIN TRANSACTION;
-        IF NOT EXISTS(SELECT 1 FROM dbo.VendorUsers m WITH(HOLDLOCK)
+        IF @AdminPortal=1
+        BEGIN
+            IF NOT EXISTS(SELECT 1 FROM dbo.Users u WITH(HOLDLOCK)
+                JOIN dbo.[Role] r WITH(HOLDLOCK) ON r.RoleId=u.RoleId
+                WHERE u.UserId=@ActorId AND u.IsActive=1 AND r.IsActive=1
+                  AND (r.RoleName='Admin' OR (r.RoleName IN ('AdminManager','AdminStaff')
+                    AND EXISTS(SELECT 1 FROM dbo.RolePermission rp WITH(HOLDLOCK)
+                      JOIN dbo.PageMaster pm WITH(HOLDLOCK) ON pm.PageId=rp.PageId
+                      WHERE rp.RoleId=u.RoleId AND pm.PortalScope='Admin' AND pm.PageCode='admin.orders'
+                        AND rp.ListPage=1 AND rp.UpdatePage=1))))
+                THROW 52001,'Admin fulfillment permission denied.',1;
+        END
+        ELSE IF NOT EXISTS(SELECT 1 FROM dbo.VendorUsers m WITH(HOLDLOCK)
             JOIN dbo.Users u WITH(HOLDLOCK) ON u.UserId=m.UserId
             JOIN dbo.[Role] r WITH(HOLDLOCK) ON r.RoleId=u.RoleId
             JOIN dbo.Vendors v WITH(HOLDLOCK) ON v.VendorId=m.VendorId
