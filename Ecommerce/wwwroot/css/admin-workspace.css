@@ -217,3 +217,10 @@
 .admin-workspace .company-save {display:flex;justify-content:flex-end;margin-top:16px;}
 @media(max-width:991px) {.admin-workspace .company-fields-4 {grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:575px) {.admin-workspace .company-fields {grid-template-columns:minmax(0,1fr);}}
+
+.theme-logo-section {border-bottom:1px solid var(--admin-border);padding-bottom:12px;margin-bottom:12px;}
+.theme-logo-section h3,.theme-preset-title {font-size:15px;font-weight:600;margin:0 0 10px;}
+.theme-logo-row {display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
+.theme-logo-row img {width:140px;height:60px;object-fit:contain;background:#fff;border:1px solid var(--admin-border);border-radius:4px;}
+#logoPalette {grid-template-columns:repeat(auto-fill,minmax(44px,64px));}
+#logoPalette[hidden] {display:none;}

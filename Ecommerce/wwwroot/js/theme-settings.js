@@ -5,6 +5,74 @@
     const input=document.getElementById("selectedColor"),picker=document.getElementById("colorPicker"),preview=document.getElementById("themePreview");
     const ar=document.documentElement.dir==="rtl",valid=value=>/^#[0-9a-f]{6}$/i.test(value);
     let busy=false;
+    const match=document.getElementById("matchLogoColor");
+    if(match){
+        const logo=document.getElementById("themeCompanyLogo");
+        const palette=document.getElementById("logoPalette");
+        const message=document.getElementById("logoColorMessage");
+        match.addEventListener("click",async ()=>{
+            if(busy)return;
+            match.disabled=true;
+            palette.hidden=true;palette.replaceChildren();
+            message.textContent=ar?"جارٍ تحليل الشعار…":"Analyzing logo…";
+            try{
+                await logo.decode();
+                if(!logo.naturalWidth||!logo.naturalHeight)throw Error();
+                const canvas=document.createElement("canvas");
+                const scale=Math.min(1,128/Math.max(logo.naturalWidth,logo.naturalHeight));
+                canvas.width=Math.max(1,Math.round(logo.naturalWidth*scale));
+                canvas.height=Math.max(1,Math.round(logo.naturalHeight*scale));
+                const context=canvas.getContext("2d");
+                context.drawImage(logo,0,0,canvas.width,canvas.height);
+                const colors=extractLogoColors(context.getImageData(0,0,canvas.width,canvas.height).data);
+                if(!colors.length){
+                    message.textContent=ar?"لم يتم العثور على ألوان مناسبة.":"No usable logo colors found.";
+                    return;
+                }
+                for(const color of colors){
+                    const button=document.createElement("button");
+                    button.type="button";button.className="theme-swatch";
+                    button.dataset.color=color;button.style.background=color;
+                    button.title=color;button.setAttribute("aria-label",color);
+                    button.setAttribute("aria-pressed",String(input.value.toUpperCase()===color));
+                    palette.append(button);
+                }
+                palette.hidden=false;
+                message.textContent=ar?"اختر لوناً للمعاينة ثم احفظه.":"Choose a matching color to preview, then save it.";
+            }catch{
+                message.textContent=ar?"تعذر تحليل الشعار. تحقق من الصورة المحفوظة.":"Unable to analyze the logo. Check the saved image.";
+            }finally{match.disabled=false;}
+        });
+    }
+
+    function extractLogoColors(pixels){
+        const groups=new Map();
+        for(let i=0;i+3<pixels.length;i+=4){
+            const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+            if(pixels[i+3]<128)continue;
+            const max=Math.max(r,g,b),min=Math.min(r,g,b);
+            if(min>=240)continue; // Ignore white background.
+            const key=[r>>5,g>>5,b>>5].join(",");
+            let group=groups.get(key);
+            if(!group){group={count:0,r:0,g:0,b:0};groups.set(key,group);}
+            group.count++;group.r+=r;group.g+=g;group.b+=b;
+        }
+        const ranked=Array.from(groups.values()).map(g=>{
+            const rgb=[g.r,g.g,g.b].map(v=>Math.round(v/g.count));
+            return {rgb,count:g.count,chroma:Math.max(...rgb)-Math.min(...rgb)};
+        });
+        const colorful=ranked.filter(g=>g.chroma>=35);
+        const candidates=colorful.length?colorful:ranked;
+        candidates.sort((a,b)=>b.count-a.count);
+        const selected=[];
+        for(const candidate of candidates){
+            if(candidate.count<Math.max(1,candidates[0].count*0.025))continue;
+            if(selected.some(rgb=>rgb.reduce((sum,v,i)=>sum+(v-candidate.rgb[i])**2,0)<55**2))continue;
+            selected.push(candidate.rgb);
+            if(selected.length===5)break;
+        }
+        return selected.map(rgb=>"#"+rgb.map(v=>v.toString(16).padStart(2,"0")).join("").toUpperCase());
+    }
     function select(value){
         if(!valid(value))return;
         input.value=value.toUpperCase();picker.value=value;

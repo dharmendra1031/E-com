@@ -16,9 +16,14 @@ namespace EcommerceWebApplication.Controllers
             _context = context;
         }
         [Authorize(Roles = "Admin")]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View(StoreTheme.From(_context.colors.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Colorcode).FirstOrDefault()));
+            var branding = await CompanyBranding.ReadAsync(_context, System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft);
+            ViewBag.CompanyLogoUrl = branding.HasLogo
+                ? Url.Action("CompanyLogo", "StoreImage", new { id = branding.CompanyId })
+                : null;
+            var saved = await _context.colors.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Colorcode).FirstOrDefaultAsync();
+            return View(StoreTheme.From(saved));
         }
         [HttpPost]
         [Authorize(Roles = "Admin")]

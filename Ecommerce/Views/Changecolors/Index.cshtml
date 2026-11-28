@@ -4,12 +4,30 @@
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Theme color","لون الواجهة");
+    string? logoUrl = ViewBag.CompanyLogoUrl as string;
     var colors = new[] { "#6E7F80", "#837E7C", "#C0C6C7", "#3A5F0B", "#829F82", "#16E2F5", "#12E193", "#C2E5D3", "#81D8D0", "#8E7618", "#F5DEB3", "#5E7D7E", "#1569C7", "#387C44", "#8FB31D", "#AF9B60", "#F3E5AB", "#9F8C76", "#DF73D4", "#E3735E", "#FBBBB9", "#997070", "#064b7c" };
 }
 <section class="admin-panel theme-settings">
     <div class="admin-section-heading"><h2>@T("Project theme","لون المشروع")</h2></div>
     <p>@T("Choose the shared accent color for the customer website, admin panel and vendor portal. Content surfaces stay white and text stays readable.","اختر اللون المشترك لموقع العملاء ولوحة الإدارة وبوابة البائع. تبقى الخلفيات بيضاء والنصوص واضحة.")</p>
     <form id="themeForm" method="post" asp-action="SaveUpdate" data-feedback="off" data-read-url="@Url.Action("GetColor")">
+        <section class="theme-logo-section" aria-labelledby="logoThemeTitle">
+            <h3 id="logoThemeTitle">@T("Match company logo", "مطابقة شعار الشركة")</h3>
+            @if (logoUrl != null)
+            {
+                <div class="theme-logo-row">
+                    <img id="themeCompanyLogo" src="@logoUrl" alt="@T("Saved company logo", "شعار الشركة المحفوظ")" />
+                    <button type="button" id="matchLogoColor" class="btn btn-primary">@T("Match logo colors", "مطابقة ألوان الشعار")</button>
+                </div>
+                <div id="logoPalette" class="theme-swatches" aria-label="@T("Suggested logo colors", "ألوان الشعار المقترحة")" hidden></div>
+                <p id="logoColorMessage" role="status" class="admin-muted"></p>
+            }
+            else
+            {
+                <p>@T("Save your company logo first to get matching colors.", "احفظ شعار الشركة أولاً للحصول على الألوان المطابقة.") <a asp-controller="Companydetails" asp-action="Index">@T("Company settings", "إعدادات الشركة")</a></p>
+            }
+        </section>
+        <h3 class="theme-preset-title">@T("Preset colors", "الألوان الجاهزة")</h3>
         <div class="theme-swatches" aria-label="@T("Preset colors","الألوان الجاهزة")">
             @foreach(var color in colors)
             {
