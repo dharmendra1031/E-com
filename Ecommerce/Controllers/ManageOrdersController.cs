@@ -170,7 +170,7 @@ namespace EcommerceWebApplication.Controllers
                 FROM dbo.Orders o JOIN dbo.VendorOrders v ON v.OrderId=o.OrderId
                 WHERE v.VendorId={id} AND v.VendorOrderId={vendorOrderId}
                     AND o.MarketplaceRequestId IS NOT NULL AND o.PaymentStatus=1
-                    AND EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+                    AND EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=o.OrderId)
                 """).SingleOrDefaultAsync(ct);
             ViewData["SellerDeliverySnapshot"]=SellerDeliverySnapshot.Read(deliveryJson);
             ViewBag.FulfillmentHistory=await VendorOrderQueries.ReadHistoryAsync(_context,id,vendorOrderId,ct);

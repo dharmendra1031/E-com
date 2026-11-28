@@ -83,6 +83,11 @@ BEGIN
         IF NOT EXISTS(SELECT 1 FROM dbo.Users u WITH(HOLDLOCK) JOIN dbo.[Role] r WITH(HOLDLOCK) ON r.RoleId=u.RoleId
             WHERE u.UserId=@ActorId AND u.IsActive=1 AND r.IsActive=1 AND r.RoleName='Admin')
             THROW 52601,'Admin required.',1;
+        DECLARE @order int=(SELECT OrderId FROM dbo.MarketplaceRefundAttempts WHERE ReturnId=@ReturnId);
+        IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@order)
+           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceRefundReview WHERE ReturnId=@ReturnId
+               AND OrderId=@order AND InvoiceId=@InvoiceId AND ReturnedMerchandiseValue>=@Amount)
+            THROW 52605,'Original payment or return evidence requires reconciliation.',1;
         IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceRefundAttempts WITH(UPDLOCK,HOLDLOCK)
             WHERE ReturnId=@ReturnId AND MerchantReference=@Reference AND InvoiceId=@InvoiceId AND Amount=@Amount
                 AND (GatewayRefundId IS NULL OR GatewayRefundId=@GatewayRefundId))

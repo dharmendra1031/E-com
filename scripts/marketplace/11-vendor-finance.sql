@@ -104,7 +104,7 @@ SELECT vo.VendorOrderId,vo.OrderId,vo.VendorId,vo.VendorName,vo.MerchandiseSubto
               THEN 'Return review required'
             ELSE 'Financial review required' END AS ReviewState
 FROM dbo.VendorOrders vo JOIN dbo.Orders o ON o.OrderId=vo.OrderId
-JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId AND p.State='Paid'
+JOIN dbo.VerifiedMarketplacePaidOrders p ON p.OrderId=o.OrderId
 OUTER APPLY (
     SELECT SUM(CONVERT(bigint,rr.Quantity)) AS Qty,
            CONVERT(decimal(18,3),SUM(rr.Quantity*i.Price)) AS Amount

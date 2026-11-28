@@ -57,6 +57,22 @@ END TRY
 BEGIN CATCH
  IF ERROR_NUMBER()<>52605 THROW;
 END CATCH;
+UPDATE dbo.Payments SET AmountPaid=290 WHERE OrderId=9;
+IF EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId=9)
+ OR EXISTS(SELECT 1 FROM dbo.MarketplaceRefundReview WHERE OrderId=9)
+ OR EXISTS(SELECT 1 FROM dbo.MarketplaceFinanceReview WHERE OrderId=9)
+ OR NOT EXISTS(SELECT 1 FROM dbo.MarketplaceCustomerOrders WHERE OrderId=9 AND AttemptState='Review')
+ THROW 52627,'Inconsistent payment remained eligible in read models.',1;
+BEGIN TRY
+ EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,10,900001;
+ THROW 52625,'Refund confirmed on inconsistent original payment.',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>52605 THROW;
+END CATCH;
+UPDATE dbo.Payments SET AmountPaid=291 WHERE OrderId=9;
+IF EXISTS(SELECT 1 FROM dbo.MarketplaceRefundAttempts WHERE ReturnId=@ret AND GatewayRefundId IS NOT NULL)
+ THROW 52626,'Rejected refund changed gateway evidence.',1;
 EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,10,900001;
 EXEC dbo.ConfirmMarketplaceRefund @ret,3,@ref,12345,10,900001;
 IF NOT EXISTS(SELECT 1 FROM dbo.MarketplaceRefundAttempts WHERE ReturnId=@ret AND Amount=10 AND GatewayRefundId=900001 AND VerifiedBy=3)

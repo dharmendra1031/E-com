@@ -219,3 +219,19 @@ WHERE p.State='Linked' AND p.InvoiceId IS NOT NULL AND p.InvoiceId>0
   AND p.Currency='KWD' AND p.ExpectedAmount=o.TotalAmount AND o.PaymentStatus=2
   AND NOT EXISTS(SELECT 1 FROM dbo.Payments x WHERE x.OrderId=o.OrderId);
 GO
+
+-- Shared persisted payment evidence; not a new gateway verification request.
+CREATE OR ALTER VIEW dbo.VerifiedMarketplacePaidOrders
+AS
+SELECT o.OrderId,p.InvoiceId,p.PaymentId
+FROM dbo.Orders o JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
+WHERE o.MarketplaceRequestId IS NOT NULL AND o.PaymentStatus=1
+  AND p.State='Paid' AND p.InvoiceId>0 AND p.PaymentId IS NOT NULL AND LEN(p.PaymentId)>0
+  AND p.MerchantReference=o.MarketplaceRequestId AND p.ExpectedAmount=o.TotalAmount AND p.Currency='KWD'
+  AND o.OrderTransaction=CONVERT(nvarchar(30),p.InvoiceId)
+  AND (SELECT COUNT_BIG(*) FROM dbo.Payments x WHERE x.OrderId=o.OrderId)=1
+  AND EXISTS(SELECT 1 FROM dbo.Payments x WHERE x.OrderId=o.OrderId AND x.PaymentStatus=1
+      AND x.AmountPaid=o.TotalAmount AND x.TransactionId=CONVERT(nvarchar(30),p.InvoiceId))
+  AND EXISTS(SELECT 1 FROM dbo.InventoryReservations r WHERE r.OrderId=o.OrderId)
+  AND NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations r WHERE r.OrderId=o.OrderId AND r.Status<>'Consumed');
+GO

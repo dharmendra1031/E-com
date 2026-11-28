@@ -49,9 +49,7 @@ SELECT f.*,
         AND NOT EXISTS(SELECT 1 FROM dbo.OrderItems i JOIN dbo.MarketplaceReturnRequests q ON q.OrderItemId=i.OrderItemId
             WHERE i.VendorOrderId=f.VendorOrderId AND i.OrderId=f.OrderId AND q.Status='Received'
                 AND NOT EXISTS(SELECT 1 FROM dbo.VerifiedSettlementRefunds vr WHERE vr.ReturnId=q.ReturnId AND vr.VendorOrderId=f.VendorOrderId))
-        AND EXISTS(SELECT 1 FROM dbo.Orders o JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId
-            WHERE o.OrderId=f.OrderId AND p.State='Paid' AND p.InvoiceId IS NOT NULL AND p.PaymentId IS NOT NULL
-                AND p.ExpectedAmount=o.TotalAmount AND p.MerchantReference=o.MarketplaceRequestId AND p.Currency='KWD')
+        AND EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=f.OrderId)
         AND EXISTS(SELECT 1 FROM dbo.VendorOrderFulfillmentHistory h WHERE h.VendorOrderId=f.VendorOrderId AND h.NewStatus='Delivered')
         THEN 1 ELSE 0 END) AS SettlementEligible,
     CONVERT(bit,CASE WHEN ledger.SaleCount=1 AND COALESCE(ledger.RefundTotal,0)=COALESCE(refunds.Amount,0)

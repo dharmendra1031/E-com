@@ -35,7 +35,7 @@ BEGIN
         DECLARE @order int,@sold int;
         SELECT @order=i.OrderId FROM dbo.OrderItems i WHERE i.OrderItemId=@OrderItemId AND i.VendorListingId IS NOT NULL;
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@order AND CustomerId=@CustomerId AND MarketplaceRequestId IS NOT NULL AND PaymentStatus=1)
-           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@order AND State='Paid')
+           OR NOT EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId=@order)
             THROW 52301,'Paid owned order required.',1;
         SELECT @sold=i.Quantity FROM dbo.OrderItems i WITH(UPDLOCK,HOLDLOCK)
             JOIN dbo.InventoryReservations r ON r.OrderId=i.OrderId AND r.VendorListingId=i.VendorListingId
@@ -82,7 +82,7 @@ BEGIN
         DECLARE @order int,@item int,@request uniqueidentifier,@qty int,@reason nvarchar(200),@status varchar(12);
         SELECT @order=i.OrderId FROM dbo.MarketplaceReturnRequests q JOIN dbo.OrderItems i ON i.OrderItemId=q.OrderItemId WHERE q.ReturnId=@ReturnId;
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@order AND PaymentStatus=1 AND MarketplaceRequestId IS NOT NULL)
-           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@order AND State='Paid')
+           OR NOT EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId=@order)
             THROW 52306,'Paid order required.',1;
         SELECT @item=OrderItemId,@request=RequestId,@qty=Quantity,@reason=Reason,@status=Status
         FROM dbo.MarketplaceReturnRequests WITH(UPDLOCK,HOLDLOCK) WHERE ReturnId=@ReturnId;
@@ -116,7 +116,7 @@ SELECT i.OrderItemId,o.CustomerId,o.MarketplaceRequestId AS OrderRequestId,i.Pro
        i.ProductNameArbSnapshot AS ProductNameArb,i.Quantity AS PurchasedQuantity,
        CONVERT(int,i.Quantity-COALESCE(r.Qty,0)-COALESCE(q.Qty,0)) AS RemainingQuantity
 FROM dbo.OrderItems i JOIN dbo.Orders o ON o.OrderId=i.OrderId
-JOIN dbo.MarketplacePaymentAttempts p ON p.OrderId=o.OrderId AND p.State='Paid'
+JOIN dbo.VerifiedMarketplacePaidOrders p ON p.OrderId=o.OrderId
 JOIN dbo.InventoryReservations ir ON ir.OrderId=i.OrderId AND ir.VendorListingId=i.VendorListingId AND ir.Status='Consumed' AND ir.Quantity=i.Quantity
 OUTER APPLY(SELECT SUM(CONVERT(bigint,Quantity)) Qty FROM dbo.VendorReturnReceipts WHERE OrderItemId=i.OrderItemId) r
 OUTER APPLY(SELECT SUM(CONVERT(bigint,Quantity)) Qty FROM dbo.MarketplaceReturnRequests WHERE OrderItemId=i.OrderItemId AND Status IN ('Pending','Approved')) q

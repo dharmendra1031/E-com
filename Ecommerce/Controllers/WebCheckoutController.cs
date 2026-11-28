@@ -346,8 +346,14 @@ namespace EcommerceWebApplication.Controllers
                 """).ToListAsync(ct);
             if (states.Count != 1 || states[0] is not ("Starting" or "Linked" or "Paid"))
                 return Receipt("No active payment attempt. Contact support. / لا توجد محاولة دفع نشطة.");
-            if (states[0] == "Paid" && order.PaymentStatus == 1)
-                return RedirectToAction(nameof(SellerReceipt), new { requestId });
+            if (states[0] == "Paid")
+            {
+                var verified = await _context.Database.SqlQuery<int>($"""
+                    SELECT OrderId AS Value FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId={order.OrderId}
+                    """).AnyAsync(ct);
+                return verified ? RedirectToAction(nameof(SellerReceipt), new { requestId })
+                    : Receipt("Payment records require review. Do not pay again. / يلزم مراجعة سجلات الدفع.");
+            }
 
             try
             {

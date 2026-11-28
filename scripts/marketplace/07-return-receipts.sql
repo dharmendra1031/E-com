@@ -40,7 +40,7 @@ BEGIN
         SELECT @listing=VendorListingId,@sold=Quantity FROM dbo.OrderItems WITH(UPDLOCK,HOLDLOCK)
             WHERE OrderItemId=@OrderItemId AND OrderId=@order;
         IF @listing IS NULL OR @sold IS NULL OR @sold<=0
-           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@order AND State='Paid')
+           OR NOT EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId=@order)
            OR NOT EXISTS(SELECT 1 FROM dbo.InventoryReservations WHERE OrderId=@order AND VendorListingId=@listing AND Status='Consumed' AND Quantity=@sold)
             THROW 51901,'Consumed listing required.',1;
         IF EXISTS(SELECT 1 FROM dbo.VendorReturnReceipts WITH(UPDLOCK,HOLDLOCK) WHERE ReceiptRequestId=@ReceiptRequestId)

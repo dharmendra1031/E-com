@@ -21,7 +21,7 @@ public static class VendorOrderQueries
                 (SELECT COUNT(*) FROM dbo.OrderItems i WHERE i.VendorOrderId=v.VendorOrderId) AS ItemCount
             FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
              WHERE o.PaymentStatus=1 AND o.MarketplaceRequestId IS NOT NULL
-                AND EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+                AND EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=o.OrderId)
             """);
         if(vendorId.HasValue) query=query.Where(o=>o.VendorId==vendorId.Value);
         if(ValidStatus(status)) query=query.Where(o=>o.FulfillmentStatus==status);
@@ -43,6 +43,6 @@ public static class VendorOrderQueries
             JOIN dbo.Orders o ON o.OrderId=v.OrderId
             WHERE v.VendorId={vendorId} AND v.VendorOrderId={vendorOrderId} AND o.PaymentStatus=1
                 AND o.MarketplaceRequestId IS NOT NULL
-                AND EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+                AND EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=o.OrderId)
             """).ToListAsync(ct);
 }

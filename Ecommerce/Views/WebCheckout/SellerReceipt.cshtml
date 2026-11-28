@@ -17,6 +17,10 @@
     {
         <p class="text-success">@T("Sandbox payment verified","تم التحقق من دفع الاختبار")</p>
     }
+    else if(Model.AttemptState=="Review")
+    {
+        <p class="text-warning" role="status">@T("Payment records require review. Do not pay again. Contact support.","يلزم مراجعة سجلات الدفع. لا تدفع مجدداً. اتصل بالدعم.")</p>
+    }
     else if(Model.ReservationState=="Released")
     {
         <p>@T("Reservation released. No further payment can be started.","تم تحرير الحجز ولا يمكن بدء دفع جديد.")</p>

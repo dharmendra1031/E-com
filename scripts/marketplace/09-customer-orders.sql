@@ -5,7 +5,9 @@ GO
 CREATE OR ALTER VIEW dbo.MarketplaceCustomerOrders
 AS
 SELECT o.OrderId,o.CustomerId,o.MarketplaceRequestId AS RequestId,o.TotalAmount AS Total,
-       o.PaymentStatus,o.CreatedAt,COALESCE(p.State,'NotStarted') AS AttemptState,
+       o.PaymentStatus,o.CreatedAt,CASE WHEN (o.PaymentStatus=1 OR p.State='Paid')
+            AND NOT EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders paid WHERE paid.OrderId=o.OrderId)
+            THEN 'Review' ELSE COALESCE(p.State,'NotStarted') END AS AttemptState,
        CASE WHEN r.LineCount=0 THEN 'Missing'
             WHEN r.ReleasedCount=r.LineCount THEN 'Released'
             WHEN r.ConsumedCount=r.LineCount THEN 'Consumed'

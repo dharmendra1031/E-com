@@ -111,7 +111,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
             ViewBag.ToPack = await db.Database.SqlQuery<int>($"""
                 SELECT COUNT(*) AS Value FROM dbo.VendorOrders v JOIN dbo.Orders o ON o.OrderId=v.OrderId
                 WHERE v.VendorId={id} AND o.PaymentStatus=1 AND v.FulfillmentStatus='AwaitingPacking'
-                    AND EXISTS (SELECT 1 FROM dbo.MarketplacePaymentAttempts p WHERE p.OrderId=o.OrderId AND p.State='Paid')
+                    AND EXISTS (SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders p WHERE p.OrderId=o.OrderId)
                 """).SingleAsync(ct);
         return View(store);
     }

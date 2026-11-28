@@ -57,7 +57,7 @@ BEGIN
             THROW 52001,'Vendor permission denied.',1;
         DECLARE @orderId int=(SELECT OrderId FROM dbo.VendorOrders WHERE VendorOrderId=@VendorOrderId AND VendorId=@VendorId);
         IF NOT EXISTS(SELECT 1 FROM dbo.Orders WITH(UPDLOCK,HOLDLOCK) WHERE OrderId=@orderId AND PaymentStatus=1 AND MarketplaceRequestId IS NOT NULL)
-           OR NOT EXISTS(SELECT 1 FROM dbo.MarketplacePaymentAttempts WHERE OrderId=@orderId AND State='Paid')
+           OR NOT EXISTS(SELECT 1 FROM dbo.VerifiedMarketplacePaidOrders WHERE OrderId=@orderId)
             THROW 52002,'Paid vendor order required.',1;
         UPDATE dbo.VendorOrders SET FulfillmentStatus=@NewStatus,FulfillmentUpdatedAtUtc=SYSUTCDATETIME()
         WHERE VendorOrderId=@VendorOrderId AND VendorId=@VendorId AND FulfillmentStatus=@ExpectedStatus;
