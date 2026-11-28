@@ -7,6 +7,7 @@ public sealed class RolePermissionForm
     [Range(1, int.MaxValue)]
     public int RoleId { get; set; }
     public string? PortalScope { get; set; }
+    public bool IsVendorOwner { get; set; }
     public List<PermissionRow> Rows { get; set; } = new();
 
     public bool HasExactPages(IEnumerable<int> pageIds)

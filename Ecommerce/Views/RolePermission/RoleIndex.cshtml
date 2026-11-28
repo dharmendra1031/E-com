@@ -27,6 +27,10 @@
             @if (Model.RoleId > 0 && Model.Rows.Count > 0)
             {
                 <p>@(Model.PortalScope == "Vendor" ? _localizer["Vendor Portal"] : _localizer["Admin Panel"])</p>
+                @if (Model.PortalScope == "Vendor")
+                {
+                    <p class="text-muted">@(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" ? "تتطلب صلاحية المخزون عرض المنتجات. تتطلب الإضافة والتعديل صلاحية العرض." : "Stock requires listing access. Create and edit require view access.")</p>
+                }
                 <form asp-action="CreateOrUpdatePermission" method="post">
                     <input type="hidden" asp-for="RoleId" />
                     <div class="admin-table-scroll">
@@ -53,7 +57,7 @@
                                             <input type="hidden" asp-for="Rows[i].PageId" />
                                             @name
                                         </th>
-                                        <td class="text-center"><input asp-for="Rows[i].ListPage" aria-label="@($"{name}: {_localizer["List"].Value}")" /></td>
+                                        <td class="text-center">@if (!vendor || code != VendorPermissionPages.Finance || Model.IsVendorOwner) { <input asp-for="Rows[i].ListPage" aria-label="@($"{name}: {_localizer["List"].Value}")" /> } else { <span>—</span> }</td>
                                         <td class="text-center">@if (!vendor || VendorPermissionPages.SupportsCreate(code)) { <input asp-for="Rows[i].CreatePage" aria-label="@($"{name}: {_localizer["Create"].Value}")" /> } else { <span>—</span> }</td>
                                         <td class="text-center">@if (!vendor || VendorPermissionPages.SupportsUpdate(code)) { <input asp-for="Rows[i].UpdatePage" aria-label="@($"{name}: {_localizer["Edit"].Value}")" /> } else { <span>—</span> }</td>
                                         <td class="text-center">@if (!vendor) { <input asp-for="Rows[i].DeletePage" aria-label="@($"{name}: {_localizer["Delete"].Value}")" /> } else { <span>—</span> }</td>

@@ -1,5 +1,12 @@
 -- Run on a restored backup first, before deploying the new application and procedures.
 -- No roles or permissions are automatically granted. Existing admin page IDs and rights remain unchanged.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 IF OBJECT_ID(N'dbo.PageMaster',N'U') IS NULL OR OBJECT_ID(N'dbo.RolePermission',N'U') IS NULL

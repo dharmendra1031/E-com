@@ -38,6 +38,7 @@ namespace EcommerceWebApplication.Controllers
             if (selectedRole == null) return NotFound();
             var scope = VendorPermissionPages.ScopeFor(selectedRole.RoleName);
             model.PortalScope = scope;
+            model.IsVendorOwner = selectedRole.RoleName == VendorRoles.Owner;
 
             var existing = _context.RolePermission.AsNoTracking()
                 .Where(p => p.RoleId == roleId.Value).ToList();
@@ -120,7 +121,9 @@ namespace EcommerceWebApplication.Controllers
             if (scope == "Vendor")
             {
                 var codes = pages.ToDictionary(p => p.PageId, p => p.PageCode);
-                if (model.Rows.Any(row => !row.IsValidVendorGrant(codes[row.PageId], selectedRole.RoleName)))
+                if (model.Rows.Any(row => !row.IsValidVendorGrant(codes[row.PageId], selectedRole.RoleName)) ||
+                    (model.Rows.Any(row => codes[row.PageId] == VendorPermissionPages.Stock && row.HasRights) &&
+                     !model.Rows.Any(row => codes[row.PageId] == VendorPermissionPages.Listings && row.ListPage)))
                 {
                     TempData["Error"] = "Unsupported vendor permission.";
                     return RedirectToAction(nameof(RoleIndex), new { roleId = model.RoleId });

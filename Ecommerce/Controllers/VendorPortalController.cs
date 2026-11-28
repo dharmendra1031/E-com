@@ -125,7 +125,7 @@ public class VendorPortalController(EcommerceDbContext db, VendorPortalAccess ac
         if (!access.Enabled || !VendorPortalAuth.TryGetUserId(User, out var userId)) return NotFound();
         if (!await access.CanAsync(id, userId, VendorPermissionPages.Listings, ct)) return NotFound();
         var canStock = InventoryEnabled && await access.CanAsync(id, userId, VendorPermissionPages.Stock, ct);
-        var store = await StoreMembership(id, userId).Select(m => new { m.Vendor.Name, m.User.Role!.RoleName })
+        var store = await StoreMembership(id, userId).Select(m => new { m.Vendor.Name })
             .SingleOrDefaultAsync(ct);
         if (store == null) return NotFound();
         if (filter is not ("Approved" or "Pending" or "Inactive" or "OutOfStock") ||

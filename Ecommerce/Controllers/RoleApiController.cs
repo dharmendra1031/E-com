@@ -37,10 +37,15 @@ namespace EcommerceWebApplication.Controllers
             return role;
         }
 
+        private static bool ReservedVendorName(string? name) =>
+            new[] { VendorRoles.Owner, VendorRoles.Manager, VendorRoles.Staff }
+                .Any(r => string.Equals(r, name?.Trim(), StringComparison.OrdinalIgnoreCase));
+
         // POST: api/RoleApi
         [HttpPost]
         public async Task<ActionResult<Role>> CreateRole(Role role)
         {
+            if (ReservedVendorName(role.RoleName)) return BadRequest("Vendor roles are managed by the role seed.");
             _context.Roles.Add(role);
             await _context.SaveChangesAsync();
 
@@ -58,6 +63,9 @@ namespace EcommerceWebApplication.Controllers
             if (existingRole == null)
                 return NotFound();
 
+            if ((ReservedVendorName(existingRole.RoleName) || ReservedVendorName(role.RoleName)) &&
+                !string.Equals(existingRole.RoleName, role.RoleName, StringComparison.Ordinal))
+                return BadRequest("Reserved vendor role names cannot be changed.");
             existingRole.RoleName = role.RoleName;
             existingRole.RoleNameArb = role.RoleNameArb;
             existingRole.IsActive = role.IsActive;
@@ -76,6 +84,7 @@ namespace EcommerceWebApplication.Controllers
             if (role == null)
                 return NotFound();
 
+            if (ReservedVendorName(role.RoleName)) return BadRequest("Deactivate vendor roles instead of deleting them.");
             _context.Roles.Remove(role);
             await _context.SaveChangesAsync();
             return NoContent();
