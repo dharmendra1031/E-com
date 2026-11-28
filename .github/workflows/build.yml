@@ -77,5 +77,24 @@ jobs:
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-first-party-listings.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-opening-stock.sql
           export MARKETPLACE_TEST_CONNECTION="Server=127.0.0.1,1433;Database=MarketplaceMigrationTest;User Id=sa;Password=$password;Encrypt=True;TrustServerCertificate=True"
+          export MARKETPLACE_HTTP_TEST_PASSWORD="$(openssl rand -hex 24)"
+          export MARKETPLACE_HTTP_TEST_IDS="$RUNNER_TEMP/vendor-http-ids.json"
           dotnet run --project tests/PortalAuthorizationChecks/PortalAuthorizationChecks.csproj --configuration Release
+          export ConnectionStrings__DefaultConnection="$MARKETPLACE_TEST_CONNECTION"
+          export ASPNETCORE_ENVIRONMENT=Development
+          export ASPNETCORE_URLS=https://127.0.0.1:5443
+          export ASPNETCORE_Kestrel__Certificates__Default__Path="$RUNNER_TEMP/vendor-http.pfx"
+          export ASPNETCORE_Kestrel__Certificates__Default__Password="$MARKETPLACE_HTTP_TEST_PASSWORD"
+          dotnet dev-certs https -ep "$ASPNETCORE_Kestrel__Certificates__Default__Path" -p "$ASPNETCORE_Kestrel__Certificates__Default__Password"
+          for flag in VendorMasterEnabled VendorPortalEnabled VendorInventoryEnabled VendorOrdersEnabled VendorFulfillmentEnabled ReturnWorkflowEnabled FinancePreviewEnabled; do
+            export "Marketplace__${flag}=true"
+          done
+          export Marketplace__SellerCheckoutTestEnabled=false Marketplace__ReservationExpiryWorkerEnabled=false Marketplace__PaymentReconciliationWorkerEnabled=false
+          (cd Ecommerce && exec dotnet run --configuration Release --no-build --no-launch-profile) > "$RUNNER_TEMP/vendor-http.log" 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true; docker rm -f inventory-ci >/dev/null 2>&1 || true' EXIT
+          if ! python3 tests/PortalAuthorizationChecks/vendor_http_smoke.py; then
+            tail -100 "$RUNNER_TEMP/vendor-http.log"
+            exit 1
+          fi
           exit "$inventory_result"

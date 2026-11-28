@@ -103,5 +103,38 @@ internal static class VendorDatabaseChecks
             await owner.Orders(b,ct:ct) is NotFoundResult, "Revoked vendor membership still accepted.");
         await tx.RollbackAsync();
         Console.WriteLine("Vendor SQL/EF controller integration: inventory, orders, returns, reports, profile and authorization passed.");
+        if (Environment.GetEnvironmentVariable("MARKETPLACE_HTTP_TEST_PASSWORD") is { Length: > 0 } password &&
+            Environment.GetEnvironmentVariable("MARKETPLACE_HTTP_TEST_IDS") is { Length: > 0 } idsPath)
+            await PrepareHttpFixtureAsync(db,a,b,password,idsPath);
+    }
+
+    private static async Task PrepareHttpFixtureAsync(EcommerceDbContext db,int a,int b,string password,string idsPath)
+    {
+        // Complete only the legacy columns needed to start the real web application.
+        // The caller already verified the disposable loopback database.
+        await db.Database.ExecuteSqlRawAsync("""
+            IF DB_NAME()<>N'MarketplaceMigrationTest' THROW 52900,'Disposable database required.',1;
+            ALTER TABLE dbo.Users ADD FullName nvarchar(100) NULL,FullNameArb nvarchar(100) NULL,
+                Email nvarchar(150) NULL,Phone nvarchar(12) NULL,PasswordHash nvarchar(max) NULL,
+                CreatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME(),UpdatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                UpdatedBy int NULL,ProfileImage varbinary(max) NULL;
+            ALTER TABLE dbo.[Role] ADD CreatedBy int NULL,UpdatedBy int NULL;
+            CREATE TABLE dbo.CompanyDetails(CompanyId int PRIMARY KEY,CompanyName nvarchar(200),CompanyNameArabic nvarchar(200),Logo varbinary(max));
+            INSERT dbo.CompanyDetails VALUES(1,N'CI Store',N'متجر الاختبار',NULL);
+            CREATE TABLE dbo.colors(Id int PRIMARY KEY,Colorcode nvarchar(50));
+            """);
+        var hash=StaffPassword.Hash(password);
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE dbo.Users SET FullName=N'CI Vendor',FullNameArb=N'بائع الاختبار',
+                Email=CASE WHEN UserId=1 THEN N'owner@example.test' ELSE N'staff@example.test' END,
+                Phone=N'00000000',PasswordHash={hash} WHERE UserId IN (1,2);
+            UPDATE dbo.VendorUsers SET IsActive=CASE WHEN VendorId={b} THEN 1 ELSE 0 END WHERE UserId IN (1,2);
+            INSERT dbo.RolePermission(RoleId,PageId,ListPage)
+            SELECT r.RoleId,p.PageId,1 FROM dbo.[Role] r CROSS JOIN dbo.PageMaster p
+            WHERE r.RoleName='VendorStaff' AND p.PageCode IN ('vendor.dashboard','vendor.orders','vendor.finance')
+                AND NOT EXISTS(SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId=r.RoleId AND rp.PageId=p.PageId);
+            """);
+        await File.WriteAllTextAsync(idsPath,System.Text.Json.JsonSerializer.Serialize(new { a,b }));
+        Console.WriteLine("Disposable HTTP vendor fixtures prepared.");
     }
 }
