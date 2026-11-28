@@ -1,6 +1,6 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
-using EcommerceWebApplication.Models.ViewModels;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -10,20 +10,23 @@ using System.Globalization;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class WekendDealsController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public WekendDealsController(EcommerceDbContext context)
+        public WekendDealsController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
 
         [HttpGet]
-        public IActionResult WekendDealsList(string? name, int page = 1, int pageSize = 10)
+        public async Task<IActionResult> WekendDealsList(string? name, int page = 1, int pageSize = 10)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Deals, HttpContext.RequestAborted)).View) return Forbid();
             // Check current culture (Arabic or English)
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             bool isArabicCulture = culture.TextInfo.IsRightToLeft;
@@ -47,7 +50,10 @@ namespace EcommerceWebApplication.Controllers
             }
 
             // Convert to ViewModel
-            var deals = dealsQuery
+            pageSize = Math.Clamp(pageSize,1,100);
+            int totalItems = await dealsQuery.CountAsync();
+            page = Math.Clamp(page,1,Math.Max(1,(int)Math.Ceiling((double)totalItems/pageSize)));
+            var pagedData = await dealsQuery.AsNoTracking().OrderByDescending(x=>x.WdId).Skip((page-1)*pageSize).Take(pageSize)
                 .Select(d => new WekendDealsViewModel
                 {
                     WdId = d.WdId,
@@ -58,15 +64,7 @@ namespace EcommerceWebApplication.Controllers
                     ToDate = d.ToDate,
                     MaxQuantity = d.MaxQuantity
                 })
-                .ToList();
-
-            // Pagination
-            int totalItems = deals.Count;
-
-            var pagedData = deals
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                .ToListAsync();
 
             var pagedModel = new PagedResult<WekendDealsViewModel>
             {
@@ -83,6 +81,7 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public JsonResult GetProductPrice(int id)
         {
             var price = _context.Products
@@ -93,6 +92,8 @@ namespace EcommerceWebApplication.Controllers
             return Json(price);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
         public IActionResult CreateDeals(int? id)
         {
             // Dropdown Products
@@ -128,8 +129,10 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult CreateDealssave(WekendDealsModel model)
         {
+            if (!int.TryParse(User.FindFirst("UserId")?.Value,out var actor) || actor <= 0) return Forbid();
             try
             {
                 if (!string.IsNullOrEmpty(model.FromDateStr))
@@ -166,14 +169,14 @@ namespace EcommerceWebApplication.Controllers
                     coupon.FromDate = model.FromDate;
                     coupon.ToDate = model.ToDate;
                     coupon.MaxQuantity = model.MaxQuantity;
-                    coupon.UpdatedBy = 1;
+                    coupon.UpdatedBy = actor;
                     coupon.UpdatedAt = DateTime.Now;
 
 
                 }
                 else  // Save
                 {
-                    model.CreatedBy = 1;
+                    model.CreatedBy = actor;
                     model.CreatedAt = DateTime.Now;
 
                     _context.WekendDeals.Add(model);
@@ -195,6 +198,8 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
         {
             try
@@ -216,8 +221,9 @@ namespace EcommerceWebApplication.Controllers
             }
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompletedeal(string term)
+        public async Task<IActionResult> AutoCompletedeal(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Deals, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

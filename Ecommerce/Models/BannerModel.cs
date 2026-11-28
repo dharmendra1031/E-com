@@ -14,7 +14,7 @@ namespace EcommerceWebApplication.Models
         public int? DisplayOrder { get; set; } = 0;
 
         [NotMapped]
-        public string BannerImageBase64 => BannerImage != null
+        public string? BannerImageBase64 => BannerImage != null
         ? $"data:image/jpeg;base64,{Convert.ToBase64String(BannerImage)}"
         : null;
     }

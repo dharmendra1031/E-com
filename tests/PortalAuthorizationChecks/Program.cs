@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(BannerController), typeof(BlogController), typeof(CouponController), typeof(WekendDealsController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -183,7 +183,7 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(Categor
 foreach (var name in new[] { "Create", "Edit", "DeleteProduct", "DeleteProductImage" })
     foreach (var action in typeof(ProductsController).GetMethods().Where(m => m.Name == name && m.IsDefined(typeof(HttpPostAttribute))))
         Check(action.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), $"Missing Product antiforgery: {name}");
-Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 10,
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 14,
     "Unexpected catalog permission mapping.");
 Console.WriteLine("Catalog restricted-admin action and antiforgery checks passed.");
 
@@ -278,3 +278,18 @@ foreach(var (controller,action) in new[] { (typeof(ManageCustomerController),"Ch
     Check(method.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin") &&
         method.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),"Privileged modification protection missing.");
 }
+
+foreach(var (controller,action,verb) in new[]{
+    (typeof(BannerController),"AddBanner","GET"),(typeof(BannerController),"AddBanner","POST"),
+    (typeof(BannerController),"EditBanner","POST"),(typeof(BlogController),"BlogList","GET"),
+    (typeof(BlogController),"CreateOrUpdate","POST"),(typeof(BlogController),"Delete","POST"),
+    (typeof(CouponController),"Index","GET"),(typeof(WekendDealsController),"WekendDealsList","GET"),
+    (typeof(WekendDealsController),"AutoCompletedeal","GET")})
+    Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"Marketing permission route missing.");
+foreach(var controller in new[]{typeof(BannerController),typeof(BlogController),typeof(CouponController),typeof(WekendDealsController)})
+    foreach(var method in controller.GetMethods().Where(m=>m.DeclaringType==controller && m.IsDefined(typeof(HttpPostAttribute))))
+        Check(method.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), "Marketing POST missing CSRF.");
+foreach(var controller in new[]{typeof(CouponController),typeof(WekendDealsController)})
+    foreach(var method in controller.GetMethods().Where(m=>m.DeclaringType==controller && m.IsDefined(typeof(HttpPostAttribute))))
+        Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,method.Name,"POST") &&
+            method.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin"),"Restricted pricing mutation exposed.");

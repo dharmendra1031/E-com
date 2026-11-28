@@ -1,173 +1,89 @@
-﻿using EcommerceWebApplication.Data;
+using System.Data;
+using System.Drawing;
+using EcommerceWebApplication.Data;
 using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Drawing;
+using Microsoft.EntityFrameworkCore;
 
-namespace EcommerceWebApplication.Controllers
+namespace EcommerceWebApplication.Controllers;
+
+[Authorize(Roles = AdminStaffAccess.Roles)]
+public class BannerController(EcommerceDbContext context, AdminStaffAccess access) : Controller
 {
-    [Authorize(Roles = "Admin")]
-    public class BannerController : Controller
+    [HttpGet]
+    public async Task<IActionResult> AddBanner(int? id)
     {
-        private readonly EcommerceDbContext _context;
+        var rights = await access.RightsAsync(User, AdminStaffAccess.Banners, HttpContext.RequestAborted);
+        if (!rights.View || (id.HasValue && !rights.Edit)) return Forbid();
+        var model = id.HasValue ? await context.Banner.AsNoTracking().FirstOrDefaultAsync(b => b.BannerId == id) : new BannerModel();
+        if (model == null) return NotFound();
+        var banners = await context.Banner.AsNoTracking().OrderBy(b => b.DisplayOrder).ThenBy(b => b.BannerId).ToListAsync();
+        ViewBag.BannerCount = banners.Count;
+        ViewBag.BannerList = banners;
+        return View(model);
+    }
 
-        public BannerController(EcommerceDbContext context)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(12_000_000)]
+    public async Task<IActionResult> AddBanner(BannerModel model, IFormFile? BannerFile)
+    {
+        var rights = await access.RightsAsync(User, AdminStaffAccess.Banners, HttpContext.RequestAborted);
+        if (model.BannerId == 0 ? !rights.Create : !rights.Edit) return Forbid();
+        if (!ModelState.IsValid || model.BannerId < 0 || string.IsNullOrWhiteSpace(model.Title) ||
+            string.IsNullOrWhiteSpace(model.TitleArabic) || model.DisplayOrder < 0 ||
+            (model.BannerId == 0 && (BannerFile == null || BannerFile.Length == 0)) || BannerFile?.Length > 10_000_000)
+            return BadRequest("Invalid banner details.");
+
+        byte[]? bytes = null;
+        if (BannerFile is { Length: > 0 })
         {
-            _context = context;
-        }
-      
-        [HttpGet]
-        public IActionResult AddBanner(int? id)
-        {
-            BannerModel? model = new BannerModel();
-
-            if (id != null)
-            {
-                model = _context.Banner.FirstOrDefault(x => x.BannerId == id);
-                if (model == null)
-                    return NotFound();
-            }
-            ViewBag.BannerCount = _context.Banner.Count();
-            ViewBag.BannerList = _context.Banner.OrderBy(x => x.DisplayOrder).ToList();
-            return View(model);
-        }
-
-
-
-
-
-        [HttpPost]
-        public async Task<IActionResult> AddBanner(BannerModel model, IFormFile BannerFile)
-        {
-            if (model.BannerId == 0)
-            {
-                // ADD NEW BANNER
-                BannerModel newBanner = new BannerModel
-                {
-                    Title = model.Title,
-                    TitleArabic = model.TitleArabic,
-                    DisplayOrder = model.DisplayOrder
-                };
-
-                if (BannerFile != null)
-                {
-                    using var stream = BannerFile.OpenReadStream();
-                    using var image = Image.FromStream(stream);
-
-                    bool hasAlpha = Image.IsAlphaPixelFormat(image.PixelFormat);
-
-                    byte[] finalImage;
-
-                    if (hasAlpha && Path.GetExtension(BannerFile.FileName).ToLower() == ".png")
-                    {
-                        // ✅ Transparent PNG
-                        finalImage = ImageHelper.CompressPng(image, 800, 800);
-                    }
-                    else
-                    {
-                        // ✅ Normal image
-                        finalImage = ImageHelper.CompressImage(image, 800, 800, 70L);
-                    }
-
-                    newBanner.BannerImage = finalImage;
-                }
-
-                _context.Banner.Add(newBanner);
-
-            }
-            else
-            {
-                // UPDATE BANNER
-                var banner = _context.Banner.FirstOrDefault(x => x.BannerId == model.BannerId);
-                if (banner == null)
-                {
-                    TempData["Error"] = "Banner not found.";
-                    return RedirectToAction("AddBanner");
-                }
-
-                banner.Title = model.Title;
-                banner.TitleArabic = model.TitleArabic;
-                banner.DisplayOrder = model.DisplayOrder;
-
-                if (BannerFile != null)
-                {
-                    using var stream = BannerFile.OpenReadStream();
-                    using var image = Image.FromStream(stream);
-
-                    bool hasAlpha = Image.IsAlphaPixelFormat(image.PixelFormat);
-
-                    byte[] finalImage;
-
-                    if (hasAlpha && Path.GetExtension(BannerFile.FileName).ToLower() == ".png")
-                    {
-                        finalImage = ImageHelper.CompressPng(image, 800, 800);
-                    }
-                    else
-                    {
-                        finalImage = ImageHelper.CompressImage(image, 800, 800, 70L);
-                    }
-
-                    banner.BannerImage = finalImage;
-                }
-
-
-            }
-
-            await _context.SaveChangesAsync();
-            TempData["Success"] = "Banner saved successfully.";
-            return RedirectToAction("AddBanner");
-        }
-
-        [HttpGet]
-        public IActionResult EditBanner(int id)
-        {
-            var banner = _context.Banner.FirstOrDefault(x => x.BannerId == id);
-            if (banner == null)
-                return NotFound();
-
-            return View(banner);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> EditBanner(BannerModel model, IFormFile BannerFile)
-        {
-            var banner = _context.Banner.FirstOrDefault(x => x.BannerId == model.BannerId);
-            if (banner == null)
-                return NotFound();
-
-            banner.Title = model.Title;
-            banner.TitleArabic = model.TitleArabic;
-            banner.DisplayOrder = model.DisplayOrder;
-
-           
-            if (BannerFile != null && BannerFile.Length > 0)
+            try
             {
                 using var stream = BannerFile.OpenReadStream();
                 using var image = Image.FromStream(stream);
-
-                bool hasAlpha = Image.IsAlphaPixelFormat(image.PixelFormat);
-
-                byte[] finalImage;
-
-                if (hasAlpha && Path.GetExtension(BannerFile.FileName).ToLower() == ".png")
-                {
-                    finalImage = ImageHelper.CompressPng(image, 800, 800);
-                }
-                else
-                {
-                    finalImage = ImageHelper.CompressImage(image, 800, 800, 70L);
-                }
-
-                banner.BannerImage = finalImage;
+                if (image.Width > 8000 || image.Height > 8000 || (long)image.Width * image.Height > 25_000_000)
+                    return BadRequest("Image dimensions are too large.");
+                bytes = Image.IsAlphaPixelFormat(image.PixelFormat) && Path.GetExtension(BannerFile.FileName).Equals(".png", StringComparison.OrdinalIgnoreCase)
+                    ? ImageHelper.CompressPng(image, 800, 800) : ImageHelper.CompressImage(image, 800, 800, 70L);
             }
-
-            _context.Update(banner);
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Banner updated successfully!";
-            return RedirectToAction("AddBanner");
+            catch (ArgumentException) { return BadRequest("Invalid image."); }
         }
-
+        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var banner = model.BannerId == 0 ? new BannerModel() : await context.Banner.FindAsync(model.BannerId);
+        if (banner == null) return NotFound();
+        if (model.BannerId == 0)
+        {
+            if (await context.Banner.CountAsync() >= 3)
+            {
+                TempData["Error"] = "Maximum 3 banners allowed.";
+                return RedirectToAction(nameof(AddBanner));
+            }
+            context.Banner.Add(banner);
+        }
+        banner.Title = model.Title.Trim();
+        banner.TitleArabic = model.TitleArabic.Trim();
+        banner.DisplayOrder = model.DisplayOrder ?? banner.DisplayOrder;
+        if (bytes != null) banner.BannerImage = bytes;
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        TempData["Success"] = "Banner saved successfully.";
+        return RedirectToAction(nameof(AddBanner));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> EditBanner(int id)
+    {
+        if (!(await access.RightsAsync(User, AdminStaffAccess.Banners, HttpContext.RequestAborted)).Edit) return Forbid();
+        var banner = await context.Banner.AsNoTracking().FirstOrDefaultAsync(b => b.BannerId == id);
+        return banner == null ? NotFound() : View(banner);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(12_000_000)]
+    public Task<IActionResult> EditBanner(BannerModel model, IFormFile? BannerFile) =>
+        model.BannerId > 0 ? AddBanner(model, BannerFile) : Task.FromResult<IActionResult>(BadRequest());
 }

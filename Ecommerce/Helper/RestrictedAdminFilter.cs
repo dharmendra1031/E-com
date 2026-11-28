@@ -44,6 +44,12 @@ public sealed class RestrictedAdminFilter(AdminStaffAccess access) : IAsyncAutho
         controller == typeof(BlocksController) && (
             method == "GET" && action is "BlockList" or "Create" or "Edit" or "AutoCompleteArea" ||
             method == "POST" && action is "Create" or "Edit") ||
+        controller == typeof(BannerController) && (method is "GET" or "POST") && (action is "AddBanner" or "EditBanner") ||
+        controller == typeof(BlogController) && (
+            method == "GET" && action is "BlogList" or "Add_Blog" ||
+            method == "POST" && action is "CreateOrUpdate" or "Delete") ||
+        controller == typeof(CouponController) && method == "GET" && action == "Index" ||
+        controller == typeof(WekendDealsController) && method == "GET" && action is "WekendDealsList" or "AutoCompletedeal" ||
         method == "GET" && (
             controller == typeof(AccountController) && action is "Logout" or "AccessDenied" ||
             controller == typeof(HomeController) && action == "SetLanguage");

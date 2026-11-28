@@ -1,4 +1,9 @@
 ﻿@model EcommerceWebApplication.Models.BannerModel
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
+@{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Banners, Context.RequestAborted);
+    bool canSave = Model.BannerId == 0 ? rights.Create : rights.Edit;
+}
 
 <div id="main-content">
     <div class="row">
@@ -11,9 +16,10 @@
 
                 <div class="card-body" id="NavigationKey">
 
-                    <form asp-action="AddBanner" method="post" enctype="multipart/form-data" id="bannerForm">
+                    @if(canSave){<form asp-action="AddBanner" method="post" enctype="multipart/form-data" id="bannerForm">
 
                         <input type="hidden" asp-for="BannerId" />
+                        <input type="hidden" asp-for="DisplayOrder" />
 
                         <div class="row">
 
@@ -83,7 +89,7 @@
                             </div>
 
                         </div>
-                    </form>
+                    </form>}
 
                    @*  @if (TempData["msg"] != null)
                     {
@@ -127,9 +133,9 @@
                                     </td>
 
                                     <td class="text-center">
-                                        <a class="btn btn-sm btn-primary" href="/Banner/AddBanner/@item.BannerId">
+                                        @if(rights.Edit){<a class="btn btn-sm btn-primary" href="/Banner/AddBanner/@item.BannerId">
                                             <i class="ti-pencil"></i>
-                                        </a>
+                                        </a>}
                                     </td>
 
                                 </tr>
@@ -156,7 +162,7 @@
    
 </script>
 <script>
-    document.getElementById("bannerForm").addEventListener("submit", function (e) {
+    document.getElementById("bannerForm")?.addEventListener("submit", function (e) {
 
         let isValid = true;
 

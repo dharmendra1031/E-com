@@ -1,7 +1,9 @@
 ﻿@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.WekendDealsViewModel>
 
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Deals, Context.RequestAborted);
     ViewData["Title"] = "Weekend Deals List";
 }
 
@@ -53,9 +55,9 @@
                         </div>
                         <div class="col-md-6 d-flex justify-content-end">
                             <div class="card-header-right-icon">
-                                <a asp-controller="WekendDeals" asp-action="CreateDeals" class="btn btn-primary">
+                                @if(rights.Create){<a asp-controller="WekendDeals" asp-action="CreateDeals" class="btn btn-primary">
                                     <i class="ti-bar-chart-alt me-1"></i> @_localizer["Add Wekend Deals"]
-                                </a>
+                                </a>}
                             </div>
                         </div>
 
@@ -100,13 +102,13 @@
 
                                     <td class="text-center">
 
-                                        <a asp-action="CreateDeals" asp-controller="WekendDeals" asp-route-id="@item.WdId" class="btn btn-sm btn-primary me-1">
+                                        @if(rights.Edit){<a asp-action="CreateDeals" asp-controller="WekendDeals" asp-route-id="@item.WdId" class="btn btn-sm btn-primary me-1">
                                             <i class="ti-pencil"></i>
-                                        </a>
+                                        </a>}
 
-                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteDeal(@item.WdId)">
+                                        @if(rights.Delete){<button type="button" class="btn btn-sm btn-danger" onclick="deleteDeal(@item.WdId)">
                                             <i class="ti-trash"></i>
-                                        </button>
+                                        </button>}
 
                                     </td>
                                 </tr>

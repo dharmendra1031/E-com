@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -10,52 +11,23 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class CouponController : Controller
     {
 
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public CouponController(EcommerceDbContext context)
+        public CouponController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
-        //public ActionResult Index(int page = 1, int pageSize = 10)
-        //{
-        //    var query = _context.Coupons.Select(c => new CouponViewModel
-        //    {
-        //        CouponId = c.CouponId,
-        //        Code = c.Code,
-        //        DiscountType = c.DiscountType,
-        //        DiscountValue = c.DiscountValue, // 🔧 Include this if needed in View
-        //        MinOrderAmount = c.MinOrderAmount,
-        //        MaxDiscountAmount = c.MaxDiscountAmount,
-        //        ValidFrom =  c.ValidFrom,
-        //        ValidTo = c.ValidTo,
-        //        IsActive = c.IsActive
-        //    });
-
-        //    var totalRecords = query.Count();
-
-        //    var items = query
-        //        .Skip((page - 1) * pageSize)
-        //        .Take(pageSize)
-        //        .ToList();
-
-        //    var result = new PagedResult<CouponViewModel>
-        //    {
-        //        Items = items,
-        //        PageNumber = page,
-        //        PageSize = pageSize,
-        //        TotalItems = totalRecords
-        //        // = (int)Math.Ceiling((double)totalRecords / pageSize)
-        //    };
-
-        //    return View(result);
-        //}
-        public ActionResult Index(string discountType, bool? isActive, int page = 1, int pageSize = 10)
+        [HttpGet]
+        public async Task<IActionResult> Index(string discountType, bool? isActive, int page = 1, int pageSize = 10)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Coupons, HttpContext.RequestAborted)).View) return Forbid();
             var coupons = _context.Coupons.AsQueryable();
 
             bool isFilterApplied = !string.IsNullOrEmpty(discountType) || isActive.HasValue;
@@ -77,7 +49,10 @@ namespace EcommerceWebApplication.Controllers
                 ? coupons.OrderBy(c => c.CouponId)        
                 : coupons.OrderByDescending(c => c.CouponId); 
 
-            var couponList = coupons.Select(c => new CouponViewModel
+            pageSize = Math.Clamp(pageSize,1,100);
+            int totalItems = await coupons.CountAsync();
+            page = Math.Clamp(page,1,Math.Max(1,(int)Math.Ceiling((double)totalItems/pageSize)));
+            var pagedData = await coupons.AsNoTracking().Skip((page-1)*pageSize).Take(pageSize).Select(c => new CouponViewModel
             {
                 CouponId = c.CouponId,
                 Code = c.Code,
@@ -87,14 +62,7 @@ namespace EcommerceWebApplication.Controllers
                 NoOfUsers = c.NoOfUsers,
                 IsActive = c.IsActive,
                 NoOfUses = _context.Orders.Count(o => o.CouponCode == c.Code)
-            }).ToList();
-
-            // 🔹 Pagination
-            int totalItems = couponList.Count;
-            var pagedData = couponList
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            }).ToListAsync();
 
             var pagedModel = new PagedResult<CouponViewModel>
             {
@@ -110,6 +78,8 @@ namespace EcommerceWebApplication.Controllers
 
             return View(pagedModel);
         }
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
         public ActionResult Create(int? id)
         {
             if (id == null)
@@ -134,6 +104,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult Create(Coupon model)
         {
             try
@@ -193,6 +164,8 @@ namespace EcommerceWebApplication.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
         {
             try
@@ -210,7 +183,7 @@ namespace EcommerceWebApplication.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error: " + ex.Message });
+                return Json(new { success = false, message = "Unable to delete coupon." });
             }
         }
     }

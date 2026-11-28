@@ -395,6 +395,22 @@
                         {
                     <li class="@activeClass("Blocks", "BlockList")"><a href="@Url.Action("BlockList", "Blocks")" title="@_localizer["Blocks"]"><i class="ti-layout-grid2" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Blocks"]</span></a></li>
                         }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Banners, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Banner", "AddBanner")"><a href="@Url.Action("AddBanner", "Banner")" title="@_localizer["Add Banners"]"><i class="ti-image" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Add Banners"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Blog, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Blog", "BlogList")"><a href="@Url.Action("BlogList", "Blog")" title="@_localizer["Blog"]"><i class="ti-pencil-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Blog"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Coupons, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Coupon", "Index")"><a href="@Url.Action("Index", "Coupon")" title="@_localizer["Coupon"]"><i class="ti-ticket" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Coupon"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Deals, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("WekendDeals", "WekendDealsList")"><a href="@Url.Action("WekendDealsList", "WekendDeals")" title="@_localizer["Wekend Deals"]"><i class="ti-tag" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Wekend Deals"]</span></a></li>
+                        }
                     }
                     <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>

@@ -2,7 +2,9 @@
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.CouponViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Coupons, Context.RequestAborted);
     ViewData["Title"] = "Coupon List";
 }
 
@@ -41,9 +43,9 @@
                         <button type="button" class="btn btn-primary" onclick="submitFilter()">
                             @_localizer["Search"]
                         </button>
-                        <a asp-controller="Coupon" asp-action="Create" class="btn btn-primary">
+                        @if(rights.Create){<a asp-controller="Coupon" asp-action="Create" class="btn btn-primary">
                             <i class="ti-bookmark-alt bg-info"></i> @_localizer["Add Coupon"]
-                        </a>
+                        </a>}
                     </div>
                 </form>
                 @*  <div class="card-header">
@@ -111,13 +113,13 @@
                                                 </td>
 
                                                 <td class="text-center">
-                                                    <a asp-action="Create" asp-controller="Coupon" asp-route-id="@item.CouponId" class="btn btn-sm btn-primary me-1">
+                                                    @if(rights.Edit){<a asp-action="Create" asp-controller="Coupon" asp-route-id="@item.CouponId" class="btn btn-sm btn-primary me-1">
                                                         <i class="ti-pencil"></i>
-                                                    </a>
+                                                    </a>}
                                                 
-                                                    <button class="btn btn-sm btn-danger " onclick="deletecoupon(@item.CouponId)">
+                                                    @if(rights.Delete){<button class="btn btn-sm btn-danger " onclick="deletecoupon(@item.CouponId)">
                                                         <i class="ti-trash"></i>
-                                                    </button>
+                                                    </button>}
                                                 </td>
                                             </tr>
                                             serial++;

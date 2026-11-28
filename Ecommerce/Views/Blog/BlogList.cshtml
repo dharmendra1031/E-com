@@ -1,8 +1,9 @@
 ﻿@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BlogViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Blog, Context.RequestAborted);
     ViewData["Title"] = "Blog List";
-    var blogJson = System.Text.Json.JsonSerializer.Serialize(Model);
 }
 
 <div id="main-content">
@@ -14,9 +15,9 @@
                     <div class="card-header-right-icon">
                         <ul>
                             <li>
-                                <a asp-action="Add_Blog" class="btn btn-primary">
+                                @if(rights.Create){<a asp-action="Add_Blog" class="btn btn-primary">
                                     <i class="fas fa-list"></i> @_localizer["Add Blog"]
-                                </a>
+                                </a>}
                             </li>
                         </ul>
                     </div>
@@ -71,18 +72,23 @@
                                                 <td class="text-center">
                                                    
                                              
-                                                    <a asp-action="Add_Blog" asp-controller="Blog" asp-route-id="@item.BlogId" class="btn btn-sm btn-primary me-1">
+                                                    @if(rights.Edit){<a asp-action="Add_Blog" asp-controller="Blog" asp-route-id="@item.BlogId" class="btn btn-sm btn-primary me-1">
                                                         <i class="ti-pencil"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-danger delete-btn" onclick="deleteblog(@item.BlogId)">
+                                                    </a>}
+                                                    @if(rights.Delete){<button type="button" class="btn btn-sm btn-danger delete-btn" onclick="deleteblog(@item.BlogId)">
                                                         <i class="ti-trash"></i>
-                                                    </button>
+                                                    </button>}
                                                 </td>
                                             </tr>
                                             serial++;
                                         }
                                     </tbody>
                                 </table></div>
+<nav class="order-pagination">
+@if(Model.PageNumber>1){<a asp-action="BlogList" asp-route-page="@(Model.PageNumber-1)" asp-route-pageSize="@Model.PageSize" class="btn btn-default">@_localizer["Previous"]</a>}
+<span>@Model.PageNumber / @Math.Max(1,Model.TotalPages)</span>
+@if(Model.PageNumber<Model.TotalPages){<a asp-action="BlogList" asp-route-page="@(Model.PageNumber+1)" asp-route-pageSize="@Model.PageSize" class="btn btn-default">@_localizer["Next"]</a>}
+</nav>
 
                               
                             </div>
