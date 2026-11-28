@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -7,18 +8,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class AreasController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public AreasController(EcommerceDbContext context)
+        public AreasController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
-        public IActionResult AreaList(string? name, int page = 1, int pageSize = 10)
+        [HttpGet]
+        public async Task<IActionResult> AreaList(string? name, int page = 1, int pageSize = 10)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).View) return Forbid();
             var areasQuery = _context.Area.AsQueryable();
 
             // Apply filter
@@ -31,11 +36,11 @@ namespace EcommerceWebApplication.Controllers
             // Sort by latest
             areasQuery = areasQuery.OrderByDescending(a => a.Id);
 
-            var areas = areasQuery.ToList();
-
             ViewBag.FilterName = name;
-            int totalItems = areas.Count;
-            var pagedData = areas
+            pageSize = Math.Clamp(pageSize,1,100);
+            int totalItems = await areasQuery.CountAsync();
+            page = Math.Clamp(page,1,Math.Max(1,(int)Math.Ceiling((double)totalItems/pageSize)));
+            var pagedData = areasQuery.AsNoTracking()
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -52,8 +57,9 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ GET: Create
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).Create) return Forbid();
             return View();
         }
 
@@ -62,12 +68,14 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Area model)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).Create) return Forbid();
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            _context.Area.Add(model);
+            if (model.Id != 0) return BadRequest();
+            _context.Area.Add(new Area { AreaName=model.AreaName, AreaNameArb=model.AreaNameArb });
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Area created successfully!";
@@ -78,6 +86,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).Edit) return Forbid();
             var area = await _context.Area.FindAsync(id);
 
             if (area == null)
@@ -91,6 +100,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Area model)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).Edit) return Forbid();
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -112,6 +122,8 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ AJAX Delete
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteArea(int id)
         {
             var area = await _context.Area.FindAsync(id);
@@ -127,8 +139,9 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ For AutoComplete (Optional)
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteArea(string term)
+        public async Task<IActionResult> AutoCompleteArea(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Areas, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

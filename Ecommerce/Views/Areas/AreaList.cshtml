@@ -2,7 +2,9 @@
 
 @model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.Area>
 
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Areas, Context.RequestAborted);
     ViewData["Title"] = "Area List";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -16,9 +18,9 @@
                     <div class="card-header-right-icon">
                         <ul>
                             <li>
-                                <a asp-action="Create" class="btn btn-success">
+                                @if(rights.Create){<a asp-action="Create" class="btn btn-success">
                                     <i class="ti-plus bg-success"></i> @_localizer["Add New Area"]
-                                </a>
+                                </a>}
                             </li>
                         </ul>
                     </div>
@@ -81,12 +83,12 @@
                                                 <td>@item.AreaNameArb</td>
                                                 <td>@item.AreaName</td>
                                                 <td>
-                                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">
+                                                    @if(rights.Edit){<a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">
                                                         <i class="ti-pencil"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteArea(@item.Id)">
+                                                    </a>}
+                                                    @if(rights.Delete){<button type="button" class="btn btn-sm btn-danger" onclick="deleteArea(@item.Id)">
                                                         <i class="ti-trash"></i>
-                                                    </button>
+                                                    </button>}
                                                 </td>
 
                                             </tr>

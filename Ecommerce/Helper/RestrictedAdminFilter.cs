@@ -36,6 +36,14 @@ public sealed class RestrictedAdminFilter(AdminStaffAccess access) : IAsyncAutho
         controller == typeof(ManageOrdersController) &&
             (method == "GET" && action is "PendingOrder" or "GetOrderDetails" or "MarketplaceOrders" or "MarketplaceOrderDetails" ||
              method == "POST" && action == "AdvanceMarketplaceFulfillment") ||
+        controller == typeof(ManageCustomerController) && method == "GET" &&
+            action is "CustomerList" or "GetCustomerDetails" or "GetCustomerOrderItems" or "AutoCompleteSql" ||
+        controller == typeof(AreasController) && (
+            method == "GET" && action is "AreaList" or "Create" or "Edit" or "AutoCompleteArea" ||
+            method == "POST" && action is "Create" or "Edit") ||
+        controller == typeof(BlocksController) && (
+            method == "GET" && action is "BlockList" or "Create" or "Edit" or "AutoCompleteArea" ||
+            method == "POST" && action is "Create" or "Edit") ||
         method == "GET" && (
             controller == typeof(AccountController) && action is "Logout" or "AccessDenied" ||
             controller == typeof(HomeController) && action == "SetLanguage");

@@ -4,25 +4,27 @@ using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class ManageCustomerController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public ManageCustomerController(EcommerceDbContext context)
+        public ManageCustomerController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
        
         [HttpGet]
-        public IActionResult CustomerList(int? status, string? startDate, string? endDate, int? customerId, string? name, string? mobile, int page = 1, int pageSize = 10, bool partial = false)
+        public async Task<IActionResult> CustomerList(int? status, string? startDate, string? endDate, int? customerId, string? name, string? mobile, int page = 1, int pageSize = 10, bool partial = false)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Customers, HttpContext.RequestAborted)).View) return Forbid();
             var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var usersQuery = _context.Customers.AsNoTracking().Where(u => u.RoleId == 2 && u.IsDeleted == 0);
   
@@ -93,8 +95,9 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult GetCustomerDetails(int id, int page = 1)
+        public async Task<IActionResult> GetCustomerDetails(int id, int page = 1)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Customers, HttpContext.RequestAborted)).View) return Forbid();
             var ar = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
             var customer = _context.Customers.AsNoTracking()
                 .Where(u => u.UserId == id && u.RoleId == 2 && u.IsDeleted == 0)
@@ -124,7 +127,8 @@ namespace EcommerceWebApplication.Controllers
                              }).ToList();
 
             // Legacy order register only. Marketplace orders remain in their dedicated workflows.
-            var orders = _context.Orders.AsNoTracking().Where(o => o.CustomerId == id && o.MarketplaceRequestId == null);
+            var canViewOrders = (await _access.RightsAsync(User, AdminStaffAccess.Orders, HttpContext.RequestAborted)).View;
+            var orders = _context.Orders.AsNoTracking().Where(o => canViewOrders && o.CustomerId == id && o.MarketplaceRequestId == null);
             const int pageSize = 10;
             int total = orders.Count();
             int pages = Math.Max(1, (int)Math.Ceiling((double)total / pageSize));
@@ -136,13 +140,15 @@ namespace EcommerceWebApplication.Controllers
                     paymentStatus = _context.PaymentStatus.Where(p => p.PaymentstatusId == o.PaymentStatus)
                         .Select(p => ar ? p.PaymentStatusNameArb : p.PaymentstatusName).FirstOrDefault() })
                 .ToList();
-            return Json(new { customer, addresses, orders = orderPage, page, pages, total });
+            return Json(new { customer, addresses, orders = orderPage, page, pages, total, canViewOrders });
         }
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult GetCustomerOrderItems(int id, int orderId, int page = 1)
+        public async Task<IActionResult> GetCustomerOrderItems(int id, int orderId, int page = 1)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Customers, HttpContext.RequestAborted)).View) return Forbid();
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Orders, HttpContext.RequestAborted)).View) return Forbid();
             if (!_context.Customers.Any(u => u.UserId == id && u.RoleId == 2 && u.IsDeleted == 0) ||
                 !_context.Orders.Any(o => o.OrderId == orderId && o.CustomerId == id && o.MarketplaceRequestId == null))
                 return NotFound();
@@ -162,6 +168,7 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult ToggleUserStatus(int id, bool? active)
         {
             if (!ModelState.IsValid || !active.HasValue)
@@ -175,8 +182,9 @@ namespace EcommerceWebApplication.Controllers
         }
 
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteSql(string term)
+        public async Task<IActionResult> AutoCompleteSql(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Customers, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 
@@ -204,19 +212,16 @@ namespace EcommerceWebApplication.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult ChangePassword([FromBody] ChangePasswordModel model)
         {
             if (model == null || !CustomerPassword.IsValidNew(model.NewPassword))
                 return Json(new { success = false, message = "Password is required" });
 
-            var user = _context.Customers.FirstOrDefault(x => x.UserId == model.UserId);
+            var user = _context.Customers.FirstOrDefault(x => x.UserId == model.UserId && x.RoleId == 2 && x.IsDeleted == 0 && x.CustType == "Customer");
 
             if (user == null)
                 return Json(new { success = false, message = "User not found" });
-
-            // ✅ Hash password before saving
-            //var hasher = new PasswordHasher<Customers>();
-            //user.PasswordHash = hasher.HashPassword(user, model.NewPassword);
 
             user.PasswordHash = CustomerPassword.Hash(model.NewPassword);
 

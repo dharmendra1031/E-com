@@ -383,6 +383,18 @@
                         {
                     <li class="@activeClass("Brand", "Index")"><a href="@Url.Action("Index", "Brand")" title="@_localizer["Brand"]"><i class="ti-briefcase" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Brand"]</span></a></li>
                         }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Customers, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("ManageCustomer", "CustomerList")"><a href="@Url.Action("CustomerList", "ManageCustomer")" title="@_localizer["Customers"]"><i class="ti-user" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Customers"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Areas, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Areas", "AreaList")"><a href="@Url.Action("AreaList", "Areas")" title="@_localizer["Areas"]"><i class="ti-map-alt" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Areas"]</span></a></li>
+                        }
+                        @if ((await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Blocks, Context.RequestAborted)).View)
+                        {
+                    <li class="@activeClass("Blocks", "BlockList")"><a href="@Url.Action("BlockList", "Blocks")" title="@_localizer["Blocks"]"><i class="ti-layout-grid2" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Blocks"]</span></a></li>
+                        }
                     }
                     <li class="@activeClass("Account", "Logout")"><a href="@Url.Action("Logout", "Account")" title="@_localizer["Logout"]"><i class="ti-power-off" aria-hidden="true"></i><span class="admin-menu-text">@_localizer["Logout"]</span></a></li>
                 </ul>

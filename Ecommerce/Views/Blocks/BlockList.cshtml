@@ -1,7 +1,9 @@
 ﻿@model EcommerceWebApplication.Models.ViewModels.PagedResult<EcommerceWebApplication.Models.ViewModels.BlockViewModel>
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EcommerceWebApplication.Controllers.HomeController> _localizer
 
+@inject EcommerceWebApplication.Helper.AdminStaffAccess StaffAccess
 @{
+    var rights = await StaffAccess.RightsAsync(User, EcommerceWebApplication.Helper.AdminStaffAccess.Blocks, Context.RequestAborted);
     ViewData["Title"] = "Block List";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -14,9 +16,9 @@
                     <div class="card-header-right-icon">
                         <ul>
                             <li>
-                                <a asp-action="Create" class="btn btn-success">
+                                @if(rights.Create){<a asp-action="Create" class="btn btn-success">
                                     <i class="ti-plus bg-success"></i> @_localizer["Add New Block"]
-                                </a>
+                                </a>}
                             </li>
                         </ul>
                     </div>
@@ -81,12 +83,12 @@
                                                     <td>@block.BlockName</td>
                                                     <td>@block.AreaName</td>
                                                     <td>
-                                                        <a asp-action="Edit" asp-route-id="@block.Id" class="btn btn-sm btn-warning">
+                                                        @if(rights.Edit){<a asp-action="Edit" asp-route-id="@block.Id" class="btn btn-sm btn-warning">
                                                             <i class="ti-pencil"></i>
-                                                        </a>
-                                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteBlock(@block.Id)">
+                                                        </a>}
+                                                        @if(rights.Delete){<button type="button" class="btn btn-sm btn-danger" onclick="deleteBlock(@block.Id)">
                                                             <i class="ti-trash"></i>
-                                                        </button>
+                                                        </button>}
                                                     </td>
                                                 </tr>
                                                 serial++;

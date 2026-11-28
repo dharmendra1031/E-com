@@ -150,6 +150,18 @@ try
                     context.RejectPrincipal();
                 return;
             }
+            if (context.Principal?.IsInRole("Customer") == true)
+            {
+                var customer = context.Principal;
+                var customerDb = context.HttpContext.RequestServices.GetRequiredService<EcommerceDbContext>();
+                if (!int.TryParse(customer.FindFirst("UserId")?.Value,out var customerId)) { context.RejectPrincipal(); return; }
+                var password = await customerDb.Customers.AsNoTracking().Where(c=>c.UserId==customerId && c.IsActive && c.IsDeleted==0 &&
+                    c.CustType=="Customer" && c.Role!=null && c.Role.IsActive && c.Role.RoleName=="Customer")
+                    .Select(c=>c.PasswordHash).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+                if (string.IsNullOrEmpty(password) || customer.FindFirst(CustomerPassword.VersionClaim)?.Value != VendorPortalAuth.CredentialVersion(password))
+                    context.RejectPrincipal();
+                return;
+            }
             if (context.Principal?.IsInRole("Admin") != true) return;
             var principal = context.Principal;
             var email = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;

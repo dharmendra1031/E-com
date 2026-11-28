@@ -4,6 +4,7 @@
     var ar = System.Globalization.CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
     string T(string en,string arabic) => ar ? arabic : en;
     ViewData["Title"] = T("Customers","العملاء");
+    var canManageAccount = User.IsInRole("Admin");
 }
 <div class="admin-master-register" id="masterRegister" data-register-url="@Url.Action("CustomerList","ManageCustomer")" data-suggest-url="@Url.Action("AutoCompleteSql","ManageCustomer")">
     <section class="admin-panel" id="customerRegister">
@@ -31,10 +32,11 @@
                 <section><h3>@T("Profile","الملف الشخصي")</h3>
                     <img id="customerImage" class="admin-product-thumb" alt="" hidden />
                     <dl><dt>@T("ID","الرقم")</dt><dd data-customer="customerId"></dd><dt>@T("Name","الاسم")</dt><dd data-customer="fullName"></dd><dt>@T("Email","البريد الإلكتروني")</dt><dd data-customer="email"></dd><dt>@T("Phone","الهاتف")</dt><dd data-customer="phone"></dd><dt>@T("Registered","تاريخ التسجيل")</dt><dd data-customer="registrationDate"></dd><dt>@T("Status","الحالة")</dt><dd data-customer="status"></dd></dl>
-                    <div class="order-actions"><button type="button" class="btn btn-default" id="customerPassword">@T("Change password","تغيير كلمة المرور")</button><button type="button" class="btn btn-default" id="customerStatus"></button></div>
+                    @if(canManageAccount){<div class="order-actions"><button type="button" class="btn btn-default" id="customerPassword">@T("Change password","تغيير كلمة المرور")</button><button type="button" class="btn btn-default" id="customerStatus"></button></div>}
                 </section>
                 <section><h3>@T("Saved addresses","العناوين المحفوظة")</h3><div id="customerAddresses"></div></section>
             </div>
+            <div id="customerOrderSection">
             <div class="admin-section-heading"><h3>@T("Store orders","طلبات المتجر")</h3><span id="customerOrderCount"></span></div>
             <div class="admin-table-scroll"><table class="table table-hover"><thead><tr><th>@T("Order","الطلب")</th><th>@T("Date","التاريخ")</th><th>@T("Status","الحالة")</th><th>@T("Payment","الدفع")</th><th>@T("Total","الإجمالي")</th><th>@T("Action","الإجراء")</th></tr></thead><tbody id="customerOrders"></tbody></table></div>
             <nav class="order-pagination" aria-label="@T("Order pages","صفحات الطلبات")"><button type="button" id="customerPrev" class="btn btn-default">@T("Previous","السابق")</button><span id="customerPage"></span><button type="button" id="customerNext" class="btn btn-default">@T("Next","التالي")</button></nav>
@@ -44,9 +46,11 @@
                 <div class="admin-table-scroll"><table class="table"><thead><tr><th>@T("Product","المنتج")</th><th>@T("Quantity","الكمية")</th><th>@T("Price","السعر")</th><th>@T("Total","الإجمالي")</th></tr></thead><tbody id="customerItemRows"></tbody></table></div>
                 <nav class="order-pagination"><button type="button" id="itemsPrev" class="btn btn-default">@T("Previous","السابق")</button><span id="itemsPage"></span><button type="button" id="itemsNext" class="btn btn-default">@T("Next","التالي")</button></nav>
             </section>
+            </div>
         </div>
     </section>
 </div>
+@if(canManageAccount){
 <div class="modal fade" id="changePasswordModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -107,10 +111,12 @@
     </div>
 </div>
 
+}
 
 @section Scripts {
     <script src="~/js/master-register.js" asp-append-version="true"></script>
     <script src="~/js/customer-workspace.js" asp-append-version="true"></script>
+    @if(canManageAccount){
     <script>
         function togglePassword(id) {
             const input = document.getElementById(id);
@@ -189,4 +195,5 @@
         }
 
     </script>
+    }
 }

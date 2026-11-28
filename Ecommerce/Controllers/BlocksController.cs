@@ -1,4 +1,5 @@
 ﻿using EcommerceWebApplication.Data;
+using EcommerceWebApplication.Helper;
 using EcommerceWebApplication.Models;
 using EcommerceWebApplication.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -8,19 +9,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceWebApplication.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = AdminStaffAccess.Roles)]
     public class BlocksController : Controller
     {
         private readonly EcommerceDbContext _context;
+        private readonly AdminStaffAccess _access;
 
-        public BlocksController(EcommerceDbContext context)
+        public BlocksController(EcommerceDbContext context, AdminStaffAccess access)
         {
             _context = context;
+            _access = access;
         }
 
         // ✅ List blocks with Area name using join
-        public IActionResult BlockList(string? name, int page = 1, int pageSize = 10)
+        [HttpGet]
+        public async Task<IActionResult> BlockList(string? name, int page = 1, int pageSize = 10)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).View) return Forbid();
             var query = from b in _context.Block
                         join a in _context.Area on b.AreaId equals a.Id
                         select new BlockViewModel
@@ -37,9 +42,10 @@ namespace EcommerceWebApplication.Controllers
                 query = query.Where(b => b.BlockName.Contains(name) || b.BlockNameArb.Contains(name) || b.AreaName.Contains(name));
             }
 
-            var blocks = query.OrderByDescending(b => b.Id).ToList();
-            int totalItems = blocks.Count;
-            var pagedData = blocks
+            pageSize = Math.Clamp(pageSize,1,100);
+            int totalItems = await query.CountAsync();
+            page = Math.Clamp(page,1,Math.Max(1,(int)Math.Ceiling((double)totalItems/pageSize)));
+            var pagedData = query.OrderByDescending(b => b.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -57,8 +63,9 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ GET: Create
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).Create) return Forbid();
             ViewBag.Areas = new SelectList(_context.Area.ToList(), "Id", "AreaName");
             return View();
         }
@@ -68,13 +75,15 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Block model)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).Create) return Forbid();
             if (!ModelState.IsValid)
             {
                 ViewBag.Areas = new SelectList(_context.Area.ToList(), "Id", "AreaName", model.AreaId);
                 return View(model);
             }
 
-            _context.Block.Add(model);
+            if (model.Id != 0 || !await _context.Area.AnyAsync(a=>a.Id==model.AreaId)) return BadRequest();
+            _context.Block.Add(new Block { BlockName=model.BlockName, BlockNameArb=model.BlockNameArb, AreaId=model.AreaId });
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Block created successfully!";
@@ -85,6 +94,7 @@ namespace EcommerceWebApplication.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).Edit) return Forbid();
             var block = await _context.Block.FindAsync(id);
             if (block == null) return NotFound();
 
@@ -97,6 +107,7 @@ namespace EcommerceWebApplication.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Block model)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).Edit) return Forbid();
             if (!ModelState.IsValid)
             {
                 ViewBag.Areas = new SelectList(_context.Area.ToList(), "Id", "AreaName", model.AreaId);
@@ -106,6 +117,9 @@ namespace EcommerceWebApplication.Controllers
             var block = await _context.Block.FindAsync(model.Id);
             if (block == null) return NotFound();
 
+            if (!await _context.Area.AnyAsync(a=>a.Id==model.AreaId)) return BadRequest();
+            // Existing addresses may reference the original area/block pair.
+            if (AdminStaffAccess.IsRestricted(User) && block.AreaId != model.AreaId) return Forbid();
             block.BlockName = model.BlockName;
             block.BlockNameArb = model.BlockNameArb;
             block.AreaId = model.AreaId;
@@ -119,6 +133,8 @@ namespace EcommerceWebApplication.Controllers
 
         // ✅ AJAX Delete
         [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteBlock(int id)
         {
             var block = await _context.Block.FindAsync(id);
@@ -131,8 +147,9 @@ namespace EcommerceWebApplication.Controllers
             return Json(new { success = true, message = "Block deleted successfully!" });
         }
         [HttpGet]
-        public async Task<JsonResult> AutoCompleteArea(string term)
+        public async Task<IActionResult> AutoCompleteArea(string term)
         {
+            if (!(await _access.RightsAsync(User, AdminStaffAccess.Blocks, HttpContext.RequestAborted)).View) return Forbid();
             if (string.IsNullOrEmpty(term))
                 return Json(new List<string>());
 

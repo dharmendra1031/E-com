@@ -32,7 +32,7 @@ Type[] adminControllers =
     typeof(BlogController), typeof(CompanydetailsController), typeof(AreasController),
     typeof(BlocksController), typeof(ContactController), typeof(AboutUsController), typeof(ReportController)
 };
-foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
+foreach (var controller in adminControllers) RequireController(controller, role: new[] { typeof(BrandController), typeof(CategoryController), typeof(SubCategoryController), typeof(ProductsController), typeof(ManageOrdersController), typeof(ManageCustomerController), typeof(AreasController), typeof(BlocksController), typeof(EcommerceWebApplication.Controllers.Admin.ProductStockController) }.Contains(controller) ? "Admin,AdminManager,AdminStaff" : "Admin");
 
 Type[] superAdminControllers =
 {
@@ -183,7 +183,7 @@ Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(Categor
 foreach (var name in new[] { "Create", "Edit", "DeleteProduct", "DeleteProductImage" })
     foreach (var action in typeof(ProductsController).GetMethods().Where(m => m.Name == name && m.IsDefined(typeof(HttpPostAttribute))))
         Check(action.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)), $"Missing Product antiforgery: {name}");
-Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 7,
+Check(EcommerceWebApplication.Helper.AdminStaffAccess.Pages.Select(p => p.Code).Distinct().Count() == 10,
     "Unexpected catalog permission mapping.");
 Console.WriteLine("Catalog restricted-admin action and antiforgery checks passed.");
 
@@ -264,3 +264,17 @@ Check(typeof(VendorController).GetMethod("ReviewSettlementPreview")!.IsDefined(t
     typeof(VendorController).GetMethod("ReviewSettlementPreview")!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)) &&
     !EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(typeof(VendorController),"ReviewSettlementPreview","POST"),
     "Settlement approval endpoint authorization boundary failed.");
+
+foreach (var (controller,action,verb) in new[] {
+    (typeof(ManageCustomerController),"CustomerList","GET"),(typeof(ManageCustomerController),"GetCustomerDetails","GET"),
+    (typeof(ManageCustomerController),"GetCustomerOrderItems","GET"),(typeof(AreasController),"Create","POST"),
+    (typeof(AreasController),"Edit","POST"),(typeof(BlocksController),"Create","POST"),(typeof(BlocksController),"Edit","POST") })
+    Check(EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,verb),"New admin page boundary missing.");
+foreach(var (controller,action) in new[] { (typeof(ManageCustomerController),"ChangePassword"),(typeof(ManageCustomerController),"ToggleUserStatus"),
+    (typeof(AreasController),"DeleteArea"),(typeof(BlocksController),"DeleteBlock") })
+{
+    Check(!EcommerceWebApplication.Helper.RestrictedAdminFilter.Allows(controller,action,"POST"),"Privileged modification exposed.");
+    var method=controller.GetMethod(action)!;
+    Check(method.GetCustomAttributes<AuthorizeAttribute>().Any(a=>a.Roles=="Admin") &&
+        method.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),"Privileged modification protection missing.");
+}

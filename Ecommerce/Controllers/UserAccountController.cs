@@ -140,7 +140,8 @@ namespace EcommerceWebApplication.Controllers
         new Claim(ClaimTypes.Name, customer.FullName),
         new Claim(ClaimTypes.Email, customer.Email),
         new Claim(ClaimTypes.Role, "Customer"),
-        new Claim("UserId", customer.UserId.ToString())
+        new Claim("UserId", customer.UserId.ToString()),
+        new Claim(CustomerPassword.VersionClaim, VendorPortalAuth.CredentialVersion(customer.PasswordHash))
     };
 
             var identity = new ClaimsIdentity(
@@ -467,7 +468,8 @@ namespace EcommerceWebApplication.Controllers
         new Claim(ClaimTypes.Name, customer.FullName),
         new Claim(ClaimTypes.Email, customer.Email),
         new Claim(ClaimTypes.Role, customer.Role.RoleName),
-        new Claim("UserId", customer.UserId.ToString())
+        new Claim("UserId", customer.UserId.ToString()),
+        new Claim(CustomerPassword.VersionClaim, VendorPortalAuth.CredentialVersion(customer.PasswordHash))
     };
             // 🔹 DEVICE ID
             string deviceId = DeviceIdHelper.GetOrCreateDeviceId(HttpContext);
@@ -562,7 +564,8 @@ namespace EcommerceWebApplication.Controllers
         new Claim(ClaimTypes.Name, customer.FullName ?? ""),
         new Claim(ClaimTypes.Email, customer.Email ?? ""),
         new Claim(ClaimTypes.Role, customer.Role?.RoleName ?? ""),
-        new Claim("UserId", customer.UserId.ToString())
+        new Claim("UserId", customer.UserId.ToString()),
+        new Claim(CustomerPassword.VersionClaim, VendorPortalAuth.CredentialVersion(customer.PasswordHash))
     };
 
             // 🔹 DEVICE ID CART MERGE

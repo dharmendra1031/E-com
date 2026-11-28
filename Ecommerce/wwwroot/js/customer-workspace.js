@@ -38,8 +38,11 @@
             }
             const image=$("customerImage");image.hidden=!c.customerImage;
             if(c.customerImage)image.src=c.customerImage;else image.removeAttribute("src");
+            if(status){
             status.textContent=active?t("Block customer","حظر العميل"):t("Unblock customer","إلغاء حظر العميل");
             status.className="btn "+(active?"btn-danger":"btn-success");
+            }
+            $("customerOrderSection").hidden=data.canViewOrders===false;
             const addresses=$("customerAddresses");addresses.replaceChildren();
             if(!data.addresses.length)addresses.textContent=t("No saved addresses","لا توجد عناوين محفوظة");
             for(const a of data.addresses){
@@ -73,8 +76,8 @@
     $("retryCustomer").addEventListener("click",()=>load(page));
     $("customerPrev").addEventListener("click",()=>{if(!busy&&page>1)load(page-1);});
     $("customerNext").addEventListener("click",()=>{if(!busy&&page<pages)load(page+1);});
-    $("customerPassword").addEventListener("click",()=>{if(!busy)showChangePwdForm(id);});
-    status.addEventListener("click",async()=>{
+    $("customerPassword")?.addEventListener("click",()=>{if(!busy)showChangePwdForm(id);});
+    status?.addEventListener("click",async()=>{
         if(busy)return;busy=true;status.disabled=true;back.disabled=true;
         try{
             const next=!active;

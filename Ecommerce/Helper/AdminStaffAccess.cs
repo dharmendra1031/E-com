@@ -25,10 +25,14 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
     public const string TopCategories = "admin.topcategories";
     public const string Stock = "admin.stock";
     public const string Orders = "admin.orders";
+    public const string Customers = "admin.customers";
+    public const string Areas = "admin.areas";
+    public const string Blocks = "admin.blocks";
     public static readonly IReadOnlyList<(string Code, string Controller, string Action)> Pages =
         Array.AsReadOnly(new[] { (Brands, "Brand", "Index"), (Categories, "Category", "Index"),
             (Subcategories, "SubCategory", "List"), (Products, "Products", "ProductList"),
-            (TopCategories, "Category", "TopCategory"), (Stock, "ProductStock", "Index"), (Orders, "ManageOrders", "PendingOrder") });
+            (TopCategories, "Category", "TopCategory"), (Stock, "ProductStock", "Index"), (Orders, "ManageOrders", "PendingOrder"), (Customers, "ManageCustomer", "CustomerList"),
+            (Areas, "Areas", "AreaList"), (Blocks, "Blocks", "BlockList") });
 
     public static bool IsRestricted(string? role) => role is "AdminManager" or "AdminStaff";
     public static bool IsRestricted(ClaimsPrincipal? user) =>
@@ -74,7 +78,9 @@ public sealed class AdminStaffAccess(EcommerceDbContext db, IConfiguration confi
             .GroupBy(g => g.PageCode!, StringComparer.Ordinal).Where(g => g.Count() == 1)
             .ToDictionary(g => g.Key, g => {
                 var grant = g.Single();
-                return g.Key is Orders or Stock ? AdminPageRights.From(grant.ListPage, false, grant.UpdatePage, false) :
+                return g.Key == Customers ? AdminPageRights.From(grant.ListPage, false, false, false) :
+                    g.Key is Areas or Blocks ? AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, false) :
+                    g.Key is Orders or Stock ? AdminPageRights.From(grant.ListPage, false, grant.UpdatePage, false) :
                     AdminPageRights.From(grant.ListPage, grant.CreatePage, grant.UpdatePage, grant.DeletePage);
             }, StringComparer.Ordinal);
     }
