@@ -700,14 +700,23 @@ namespace EcommerceWebApplication.Controllers
             if (!(rights.Create)) return Forbid();
             if (!int.TryParse(User.FindFirst("UserId")?.Value, out var actor)) return Forbid();
             if (AdminStaffAccess.IsRestricted(User) && model.Stock != 0) return Forbid();
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var barcode = model.Ds_Barcode?.Trim();
+            model.Ds_Barcode = string.IsNullOrEmpty(barcode) ? null : barcode;
+            if (model.Ds_Barcode?.Length > 20)
+            {
+                ModelState.AddModelError(nameof(model.Ds_Barcode), "Barcode must not exceed 20 characters.");
+                LoadEditorOptions(model.CategoryId);
+                return View(model);
+            }
+            // Serialize catalog identity checks and insertion when a barcode is supplied.
+            using var transaction = await _context.Database.BeginTransactionAsync(
+                model.Ds_Barcode == null ? System.Data.IsolationLevel.ReadCommitted : System.Data.IsolationLevel.Serializable);
             try
             {
-              
-                if (!string.IsNullOrEmpty(model.Ds_Barcode))
+                if (model.Ds_Barcode != null)
                 {
                     bool barcodeExists = await _context.Products
-                        .AnyAsync(p => p.Ds_Barcode == model.Ds_Barcode);
+                        .AnyAsync(p => p.Ds_Barcode != null && p.Ds_Barcode.Trim() == model.Ds_Barcode);
 
                     if (barcodeExists)
                     {
