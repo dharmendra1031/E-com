@@ -358,3 +358,6 @@ Check(typeof(ReportController).GetMethod("OrderInvoicePrint")!.GetCustomAttribut
 
 foreach(var action in new[]{"AddOrUpdateCart","RemoveFromCart"})
     Check(typeof(WebCartController).GetMethod(action)!.IsDefined(typeof(ValidateAntiForgeryTokenAttribute)),"Legacy cart mutation missing CSRF.");
+
+if (Environment.GetEnvironmentVariable("MARKETPLACE_TEST_CONNECTION") is { Length: > 0 } marketplaceConnection)
+    await VendorDatabaseChecks.RunAsync(marketplaceConnection);

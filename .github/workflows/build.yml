@@ -34,12 +34,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
       - name: Rehearse additive inventory migration on disposable SQL Server
         shell: bash
         run: |
           set -euo pipefail
           password='InventoryCi_2026!Test'
-          docker run -d --name inventory-ci -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$password" mcr.microsoft.com/mssql/server:2022-latest
+          docker run -d --name inventory-ci -p 127.0.0.1:1433:1433 -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$password" mcr.microsoft.com/mssql/server:2022-latest
           trap 'docker rm -f inventory-ci >/dev/null 2>&1 || true' EXIT
           ready=0
           for attempt in {1..60}; do
@@ -73,4 +76,6 @@ jobs:
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-refund-review.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-first-party-listings.sql
           docker exec -w /tmp/marketplace inventory-ci /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$password" -C -b -I -d MarketplaceMigrationTest -i test-opening-stock.sql
+          export MARKETPLACE_TEST_CONNECTION="Server=127.0.0.1,1433;Database=MarketplaceMigrationTest;User Id=sa;Password=$password;Encrypt=True;TrustServerCertificate=True"
+          dotnet run --project tests/PortalAuthorizationChecks/PortalAuthorizationChecks.csproj --configuration Release
           exit "$inventory_result"
