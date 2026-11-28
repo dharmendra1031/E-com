@@ -161,13 +161,13 @@
                     e.preventDefault();
                     selectedIndex = (selectedIndex + 1) % items.length;
                     items.removeClass('selected').css('background-color', '');
-                    items.eq(selectedIndex).addClass('selected').css('background-color', '#f0f0f0');
+                    items.eq(selectedIndex).addClass('selected').css('background-color', 'var(--theme-tint)');
                     scrollIntoView(items.eq(selectedIndex), $suggestionBox);
                 } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     selectedIndex = (selectedIndex - 1 + items.length) % items.length;
                     items.removeClass('selected').css('background-color', '');
-                    items.eq(selectedIndex).addClass('selected').css('background-color', '#f0f0f0');
+                    items.eq(selectedIndex).addClass('selected').css('background-color', 'var(--theme-tint)');
                     scrollIntoView(items.eq(selectedIndex), $suggestionBox);
                 } else if (e.key === 'Enter') {
                     e.preventDefault();
@@ -580,7 +580,7 @@
     <script src="/AdminTheame/assets/js/lib/owl-carousel/owl.carousel.min.js"></script>
     <script src="/AdminTheame/assets/js/lib/owl-carousel/owl.carousel-init.js"></script>
     <script src="/AdminTheame/assets/js/scripts.js"></script>
-    <script src="/js/navigation.js"></script>
+    <script src="/js/Navigation.js"></script>
 
     <script>
 

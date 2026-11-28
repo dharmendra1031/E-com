@@ -32,12 +32,13 @@ public sealed record StoreTheme(string Primary, string Foreground, string Hover,
 
         int hr = (int)(r * 0.82), hg = (int)(g * 0.82), hb = (int)(b * 0.82);
         int lr = r, lg = g, lb = b;
-        // Link text must be readable on a white surface even for pale brand colors.
-        while (1.05 / (Luminance(lr, lg, lb) + 0.05) < 4.5)
+        int Tint(int c) => (int)(255 * 0.9 + c * 0.1);
+        double surfaceLuminance = Math.Min(Luminance(245, 245, 245), Luminance(Tint(r), Tint(g), Tint(b)));
+        // Link and selected navigation text must remain readable on neutral and tinted surfaces.
+        while ((surfaceLuminance + 0.05) / (Luminance(lr, lg, lb) + 0.05) < 4.5)
         {
             lr = (int)(lr * 0.9); lg = (int)(lg * 0.9); lb = (int)(lb * 0.9);
         }
-        int Tint(int c) => (int)(255 * 0.9 + c * 0.1);
         return new StoreTheme(primary, Text(r, g, b), Hex(hr, hg, hb), Text(hr, hg, hb),
             Hex(lr, lg, lb), Hex(Tint(r), Tint(g), Tint(b)), $"{r},{g},{b}");
     }

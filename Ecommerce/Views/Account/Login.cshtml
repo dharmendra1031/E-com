@@ -49,9 +49,11 @@
                 margin-left: 0 !important;
             }
     </style>
+    <link rel="stylesheet" href="~/css/admin-workspace.css" asp-append-version="true" />
+    <partial name="_StoreTheme" />
 </head>
 
-<body class="bg-video-container">
+<body class="bg-video-container admin-login">
     <video autoplay muted loop playsinline class="bg-video">
         <source src="/AdminTheame/assets/Video/LoginVdo.mp4" type="video/mp4">
     </video>
@@ -65,7 +67,7 @@
             <div class="login-form">
                 @if (!string.IsNullOrEmpty(Model.LogoBase64))
                 {
-                    <div class="mb-3 text-center bg-info">
+                    <div class="mb-3 text-center">
                         <img src="@Model.LogoBase64"
                              style="height:80px; object-fit:contain;" />
                     </div>

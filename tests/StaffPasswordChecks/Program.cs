@@ -97,5 +97,7 @@ foreach (var color in new[] { "#FFFFFF", "#000000", "#16E2F5", "#1569C7", "#F3E5
     Check(ThemeContrast(theme.Primary,theme.Foreground) >= 4.5, "Theme foreground contrast insufficient: " + color);
     Check(ThemeContrast(theme.Hover,theme.HoverForeground) >= 4.5, "Theme hover contrast insufficient: " + color);
     Check(ThemeContrast(theme.Link,"#FFFFFF") >= 4.5, "Theme link contrast insufficient: " + color);
+    Check(ThemeContrast(theme.Link,"#F5F5F5") >= 4.5, "Theme neutral surface contrast insufficient: " + color);
+    Check(ThemeContrast(theme.Link,theme.Tint) >= 4.5, "Theme selected surface contrast insufficient: " + color);
 }
 Console.WriteLine("Configurable theme checks passed.");
